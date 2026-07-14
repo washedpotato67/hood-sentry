@@ -211,6 +211,12 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   provider concentration, shallow pools, and unexpected migrations.
 - Added bounded relationship graph traversal with chain provenance, confidence, pagination, and
   external-label attribution.
+- Added deterministic weighted risk scoring with caps, grades, completeness, confidence, historical
+  methodology versions, and score-change explanations.
+- Added canonical Stock Token and ETF observations with raw and UI-adjusted balances, multiplier
+  timing, and official-address validation.
+- Added oracle status validation for freshness, invalid answers, pauses, sequencer state, and grace
+  periods, plus portfolio reconciliation outputs with exact and estimated values.
 
 ## Verification on 2026-07-14
 

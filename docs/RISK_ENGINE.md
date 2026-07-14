@@ -125,6 +125,14 @@ simulation evidence and never describes a fork result as a broadcast transaction
 
 `buildRelationshipGraph` traverses chain-evidenced edges with depth and edge limits. External labels retain provider attribution and do not create identity claims on their own.
 
+### 2. Deterministic score, oracle, and portfolio layers
+
+`scoreRisk` applies versioned category weights, penalties, caps, confidence, completeness, grades, finding counts, and score-change explanations. Incomplete data produces grade `U` and never becomes a zero-value finding.
+
+Stock Token and ETF observations require canonical verified addresses. Raw balances and UI-adjusted balances stay separate. Oracle observations expose stale, paused, invalid, sequencer, grace-period, and configuration states.
+
+`analyzePortfolio` keeps missing-price assets visible, separates exact and estimated value, applies multipliers once, and reports stale, critical, and spam exposure.
+
 ### 1. Contract identity
 
 - Runtime bytecode hash.
