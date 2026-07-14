@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AlertService } from '../alerts.js';
 import { NotificationService } from '../notifications.js';
-import { consumeClaim, issueClaim } from '../project-profiles.js';
 import { WatchlistService } from '../watchlists.js';
-describe('watchlists alerts notifications projects', () => {
+describe('watchlists, alerts, and notifications', () => {
   it('enforces ownership, duplicates, and limits', () => {
     const s = new WatchlistService({ free: 1 });
     const l = s.create('u', 'token', 'Main');
@@ -27,11 +26,5 @@ describe('watchlists alerts notifications projects', () => {
     expect(a.evaluate('r', 'e2', 2)).toBeNull();
     const n = new NotificationService();
     expect(n.enqueue('email', 'e').id).toBe(n.enqueue('email', 'e').id);
-  });
-  it('consumes claims once and validates binding', () => {
-    const c = issueClaim('p', '0x1111111111111111111111111111111111111111', 'app.test', 0);
-    const consumed = consumeClaim(c, c.wallet, 'app.test', 1, true);
-    expect(consumed.consumed).toBe(true);
-    expect(() => consumeClaim(consumed, c.wallet, 'app.test', 1, true)).toThrow();
   });
 });

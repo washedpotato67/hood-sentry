@@ -1,42 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { scoreRisk } from '../deterministic-score.js';
+import { approvalSignals } from '../approval-monitor.js';
+import { fifoCostBasis } from '../cost-basis.js';
 import { validateOracle } from '../oracle-adapters.js';
 import { analyzePortfolio } from '../portfolio-analysis.js';
 import { adjustedBalance, validateCanonical } from '../stock-tokens.js';
-describe('deterministic scoring and asset analysis', () => {
-  it('scores deterministically and explains changes', () => {
-    const a = scoreRisk(
+describe('portfolio: cost basis, approvals, oracle, and assets', () => {
+  it('uses FIFO and preserves missing price uncertainty', () => {
+    const r = fifoCostBasis(
       [
         {
-          id: 'mint',
-          category: 'contractControl',
-          penalty: 10n,
+          kind: 'buy',
+          transaction: 'b1',
+          amount: 10n,
+          priceRaw: 2n,
+          source: 'chain',
           confidence: 'high',
-          explanation: 'mint',
         },
-      ],
-      10000n,
-      'v1',
-    );
-    const b = scoreRisk(
-      [
         {
-          id: 'mint',
-          category: 'contractControl',
-          penalty: 20n,
+          kind: 'sell',
+          transaction: 's1',
+          amount: 4n,
+          priceRaw: 5n,
+          source: 'chain',
           confidence: 'high',
-          explanation: 'mint',
         },
       ],
-      10000n,
-      'v1',
-      a,
+      5n,
+      18,
     );
-    expect(a.grade).toBe('A');
-    expect(b.changes).toContain('contractControl changed');
+    expect(r.realizedPnlRaw).toBe(12n);
+    expect(r.costBasisRaw).toBe(12n);
   });
-  it('returns U for incomplete data', () => {
-    expect(scoreRisk([], 5000n, 'v1').grade).toBe('U');
+  it('flags dangerous approvals', () => {
+    expect(
+      approvalSignals({
+        owner: '0x1111111111111111111111111111111111111111',
+        token: '0x2222222222222222222222222222222222222222',
+        spender: '0x3333333333333333333333333333333333333333',
+        allowance: 2n ** 256n - 1n,
+        max: true,
+        classification: 'unknown_contract',
+        lastUpdate: 1n,
+        estimatedValueAtRisk: null,
+      }),
+    ).toContain('DANGEROUS_UNLIMITED_APPROVAL');
   });
   it('validates oracle freshness and failures', () => {
     const result = validateOracle(
