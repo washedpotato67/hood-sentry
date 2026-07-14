@@ -114,29 +114,6 @@ export const tokens = pgTable(
   ],
 );
 
-export const stockTokenMetadata = pgTable(
-  'stock_token_metadata',
-  {
-    token_id: varchar('token_id', { length: 128 })
-      .notNull()
-      .references(() => tokens.address, { onDelete: 'cascade' }),
-    chain_id: integer('chain_id').notNull(),
-    underlying_ticker: varchar('underlying_ticker', { length: 16 }).notNull(),
-    official: boolean('official').notNull().default(false),
-    ui_multiplier_raw: numeric('ui_multiplier_raw', { precision: 78, scale: 0 }),
-    pending_multiplier_raw: numeric('pending_multiplier_raw', { precision: 78, scale: 0 }),
-    multiplier_effective_at: timestamp('multiplier_effective_at', { withTimezone: true }),
-    oracle_paused: boolean('oracle_paused').notNull().default(false),
-    feed_address: varchar('feed_address', { length: 42 }),
-    feed_decimals: integer('feed_decimals'),
-    heartbeat_seconds: integer('heartbeat_seconds'),
-    source_url: text('source_url'),
-    verified_at: timestamp('verified_at', { withTimezone: true }),
-    ...timestamps,
-  },
-  (table) => [primaryKey({ columns: [table.token_id, table.chain_id] })],
-);
-
 export const tokenTransfers = pgTable(
   'token_transfers',
   {

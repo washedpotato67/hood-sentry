@@ -44,10 +44,6 @@ export function matchesDiscoveryFilters(
       (filters.graduationStatus === 'graduated') ===
         (item.launchpadState === 'graduated' || item.launchpadState === 'migrated'),
     () =>
-      filters.stockTokenCategory === undefined ||
-      item.stockTokenCategory === filters.stockTokenCategory,
-    () => filters.etfCategory === undefined || item.etfCategory === filters.etfCategory,
-    () =>
       filters.maximumDataAgeSeconds === undefined ||
       item.dataFreshnessSeconds <= filters.maximumDataAgeSeconds,
   ];

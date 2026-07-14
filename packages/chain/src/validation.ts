@@ -7,7 +7,6 @@ import {
   quoteProviderRegistry,
   sequencerFeedRegistry,
   smartAccountRegistry,
-  stockTokenRegistry,
 } from './registries/index.js';
 import { type RegistryValidationError, validateRegistry } from './registry.js';
 import type { Registry, RegistryEntry } from './types.js';
@@ -23,7 +22,6 @@ export interface ValidationResult {
 export function validateAllRegistries(): ValidationResult[] {
   const registries: Array<Registry<RegistryEntry>> = [
     canonicalAssetRegistry as unknown as Registry<RegistryEntry>,
-    stockTokenRegistry as unknown as Registry<RegistryEntry>,
     applicationContractRegistry as unknown as Registry<RegistryEntry>,
     dexRegistry as unknown as Registry<RegistryEntry>,
     quoteProviderRegistry as unknown as Registry<RegistryEntry>,

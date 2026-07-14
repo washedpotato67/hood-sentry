@@ -3,7 +3,6 @@ import { approvalSignals } from '../approval-monitor.js';
 import { fifoCostBasis } from '../cost-basis.js';
 import { validateOracle } from '../oracle-adapters.js';
 import { analyzePortfolio } from '../portfolio-analysis.js';
-import { adjustedBalance, validateCanonical } from '../stock-tokens.js';
 describe('portfolio: cost basis, approvals, oracle, and assets', () => {
   it('uses FIFO and preserves missing price uncertainty', () => {
     const r = fifoCostBasis(
@@ -62,30 +61,6 @@ describe('portfolio: cost basis, approvals, oracle, and assets', () => {
       20n,
     );
     expect(result.status).toBe('stale');
-  });
-  it('keeps stock units distinct and rejects fake tickers', () => {
-    const asset = {
-      address: '0x3333333333333333333333333333333333333333',
-      chainId: 1,
-      category: 'stock' as const,
-      underlyingTicker: 'ABC',
-      source: 'official',
-      rawBalance: 2n,
-      decimals: 18,
-      uiMultiplier: 3n,
-      multiplierDecimals: 0,
-      priceRaw: 10n,
-      priceDecimals: 0,
-      oracleStatus: 'available',
-      sourceBlock: 1n,
-    } as const;
-    validateCanonical(asset, [asset]);
-    expect(adjustedBalance(asset)).toBe(6n);
-    expect(() =>
-      validateCanonical({ ...asset, address: '0x4444444444444444444444444444444444444444' }, [
-        asset,
-      ]),
-    ).toThrow();
   });
   it('keeps missing prices while separating exact and estimated value', () => {
     const result = analyzePortfolio([

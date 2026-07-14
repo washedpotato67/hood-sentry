@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   type DiscoveryCandidate,
   type DiscoveryTrade,
-  applyCanonicalTokenRegistry,
   calculateTrendingScore,
   materializeDiscoveryItem,
   paginate,
@@ -45,8 +44,6 @@ function candidate(overrides: Partial<DiscoveryCandidate> = {}): DiscoveryCandid
     tokenType: 'erc20',
     canonicalState: 'unknown',
     canonicalTicker: null,
-    stockTokenCategory: null,
-    etfCategory: null,
     projectName: null,
     projectSlug: null,
     projectVerified: false,
@@ -208,22 +205,6 @@ describe('deterministic discovery rankings', () => {
     const result = searchDiscovery([item], WALLET_B)[0];
     expect(result?.rank).toBe(100_000);
     expect(result?.matchedFields).toContain('walletAddress');
-  });
-
-  it('does not classify a fake Stock Token from its ticker', () => {
-    const fake = candidate({ symbol: 'AAPL' });
-    const classified = applyCanonicalTokenRegistry(fake, [
-      {
-        chainId: fake.chainId,
-        address: TOKEN_B,
-        ticker: 'AAPL',
-        name: 'Apple Inc.',
-        assetType: 'stock',
-        category: 'equity',
-      },
-    ]);
-    expect(classified.canonicalState).toBe('unknown');
-    expect(classified.tokenType).toBe('erc20');
   });
 
   it('keeps sponsored placement separate from organic rank', () => {

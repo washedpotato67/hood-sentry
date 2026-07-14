@@ -24,6 +24,6 @@ export const PENDING_QUOTE_PROVIDERS = [
     provider: 'pending',
     quoteType: 'rfq' as const,
     status: 'pending-verification',
-    notes: 'RFQ provider address not yet verified. Required for Stock Token trading.',
+    notes: 'RFQ provider address not yet verified on Robinhood Chain.',
   },
 ] as const;

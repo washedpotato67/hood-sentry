@@ -239,40 +239,6 @@ describe('deterministic pricing', () => {
     expect(stale.authoritative).toBe(false);
   });
 
-  it('preserves a Stock Token Chainlink answer without applying a UI multiplier', () => {
-    const value = chainlinkEvidence(
-      {
-        answer: 12_345_678_900n,
-        decimals: 8,
-        roundId: 2n,
-        answeredInRound: 2n,
-        updatedAt: '2026-07-14T12:00:00.000Z',
-        sequencerUp: true,
-        sequencerGracePeriodElapsed: true,
-        oraclePaused: false,
-      },
-      {
-        sourceBlockNumber: 100n,
-        sourceBlockHash: HASH,
-        sourceTimestamp: '2026-07-14T12:00:00.000Z',
-        observedAt: '2026-07-14T12:00:10.000Z',
-        liquidityDepthRaw: null,
-        liquidityDepthDecimals: null,
-        priceImpactBps: null,
-        singleTransactionVolumeBps: null,
-        providerName: null,
-        poolAddress: null,
-        route: [],
-        canonical: true,
-      },
-    );
-    const result = evaluateObservation(
-      config({ sourceType: 'chainlink', assetClass: 'stockToken' }),
-      value,
-    );
-    expect(result.priceRaw).toBe(12_345_678_900n);
-  });
-
   it('uses a verified bonding curve before migration and stops after migration', () => {
     const base = {
       sourceBlockNumber: 100n,

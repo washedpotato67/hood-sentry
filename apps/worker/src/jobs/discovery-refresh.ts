@@ -1,8 +1,6 @@
-import { stockTokenRegistry } from '@hood-sentry/chain';
 import {
   type DiscoveryCandidate,
   type DiscoveryItem,
-  applyCanonicalTokenRegistry,
   materializeDiscoveryItem,
 } from '@hood-sentry/discovery-engine';
 import { getAddress, isAddress } from 'viem';
@@ -50,20 +48,7 @@ export class DiscoveryRefreshJob {
     ) {
       throw new Error('Discovery source candidate does not match the requested chain position');
     }
-    const classified = applyCanonicalTokenRegistry(
-      candidate,
-      stockTokenRegistry.entries
-        .filter((entry) => entry.enabled)
-        .map((entry) => ({
-          chainId: entry.chainId,
-          address: entry.address,
-          ticker: entry.ticker,
-          name: entry.name,
-          assetType: entry.assetType,
-          category: null,
-        })),
-    );
-    const item = materializeDiscoveryItem(classified);
+    const item = materializeDiscoveryItem(candidate);
     await this.writer.saveSnapshot(item);
     return { item, idempotencyKey };
   }

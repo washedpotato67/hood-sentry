@@ -1,6 +1,5 @@
 export * from './arithmetic.js';
 export * from './codec.js';
-export * from './canonical.js';
 export * from './feeds.js';
 export * from './filters.js';
 export * from './manipulation.js';

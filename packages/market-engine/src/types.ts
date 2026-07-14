@@ -10,14 +10,7 @@ export type PriceSourceType =
   | 'externalProvider'
   | 'unavailable';
 
-export type AssetClass =
-  | 'erc20'
-  | 'wrappedEth'
-  | 'stablecoin'
-  | 'launchpad'
-  | 'migratedLaunchpad'
-  | 'stockToken'
-  | 'etfToken';
+export type AssetClass = 'erc20' | 'wrappedEth' | 'stablecoin' | 'launchpad' | 'migratedLaunchpad';
 
 export type PriceStatus = 'available' | 'lowConfidence' | 'unavailable';
 export type MarketWindow = '1m' | '5m' | '15m' | '1h' | '6h' | '24h' | '7d' | '30d';

@@ -1,4 +1,3 @@
-import { getAddress } from 'viem';
 import { describe, expect, it } from 'vitest';
 import {
   buildAddressUrl,
@@ -29,12 +28,10 @@ import {
 import { quoteProviderRegistry } from '../registries/quote-providers.js';
 import { sequencerFeedRegistry } from '../registries/sequencer-feeds.js';
 import { smartAccountRegistry } from '../registries/smart-account.js';
-import { stockTokenRegistry } from '../registries/stock-tokens.js';
 import {
   RegistryValidationError,
   checksumAddress,
   findEnabledEntries,
-  findEntries,
   findEntry,
   getEnabledEntries,
   getEntriesByChainId,
@@ -82,10 +79,6 @@ describe('Chain Constants', () => {
 describe('Registry Validation', () => {
   it('validates canonical assets registry', () => {
     expect(() => validateRegistry(canonicalAssetRegistry)).not.toThrow();
-  });
-
-  it('validates stock token registry', () => {
-    expect(() => validateRegistry(stockTokenRegistry)).not.toThrow();
   });
 
   it('validates empty registries', () => {
@@ -286,11 +279,6 @@ describe('Registry Helpers', () => {
   it('findEntry returns undefined for no match', () => {
     const entry = findEntry(canonicalAssetRegistry, (e) => e.key === 'nonexistent');
     expect(entry).toBeUndefined();
-  });
-
-  it('findEntries returns all matching entries', () => {
-    const entries = findEntries(stockTokenRegistry, (e) => e.assetType === 'etf');
-    expect(entries.length).toBe(5);
   });
 
   it('findEnabledEntries filters by enabled state', () => {
@@ -498,7 +486,7 @@ describe('Guards', () => {
 describe('Startup Validation', () => {
   it('validateAllRegistries returns results for all registries', () => {
     const results = validateAllRegistries();
-    expect(results.length).toBe(9);
+    expect(results.length).toBe(8);
     expect(results.every((r) => r.valid)).toBe(true);
   });
 
@@ -511,10 +499,6 @@ describe('Startup Validation', () => {
     const canonicalAssets = results.find((r) => r.registryName === 'Canonical Assets');
     expect(canonicalAssets?.entryCount).toBe(2);
     expect(canonicalAssets?.enabledCount).toBe(2);
-
-    const stockTokens = results.find((r) => r.registryName === 'Canonical Stock Tokens and ETFs');
-    expect(stockTokens?.entryCount).toBe(25);
-    expect(stockTokens?.enabledCount).toBe(25);
   });
 
   it('verified DEX registry reports enabled entries', () => {
@@ -523,44 +507,6 @@ describe('Startup Validation', () => {
     expect(dex?.entryCount).toBe(2);
     expect(dex?.enabledCount).toBe(2);
     expect(dex?.valid).toBe(true);
-  });
-});
-
-describe('Stock Token Registry', () => {
-  it('contains 20 stock tokens', () => {
-    const stocks = stockTokenRegistry.entries.filter((e) => e.assetType === 'stock');
-    expect(stocks.length).toBe(20);
-  });
-
-  it('contains 5 ETF tokens', () => {
-    const etfs = stockTokenRegistry.entries.filter((e) => e.assetType === 'etf');
-    expect(etfs.length).toBe(5);
-  });
-
-  it('all stock tokens are on mainnet', () => {
-    expect(stockTokenRegistry.entries.every((e) => e.chainId === MAINNET_CHAIN_ID)).toBe(true);
-  });
-
-  it('all stock tokens are enabled', () => {
-    expect(stockTokenRegistry.entries.every((e) => e.enabled)).toBe(true);
-  });
-
-  it('all addresses are checksummed', () => {
-    for (const entry of stockTokenRegistry.entries) {
-      expect(getAddress(entry.address)).toBe(entry.address);
-    }
-  });
-
-  it('no duplicate addresses', () => {
-    const addresses = stockTokenRegistry.entries.map((e) => e.address.toLowerCase());
-    const unique = new Set(addresses);
-    expect(unique.size).toBe(addresses.length);
-  });
-
-  it('no duplicate tickers', () => {
-    const tickers = stockTokenRegistry.entries.map((e) => e.ticker);
-    const unique = new Set(tickers);
-    expect(unique.size).toBe(tickers.length);
   });
 });
 

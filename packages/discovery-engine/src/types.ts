@@ -16,12 +16,10 @@ export type DiscoveryFeed =
   | 'recentlyVerifiedProjects'
   | 'recentlyScanned'
   | 'recentCriticalRisk'
-  | 'canonicalStockTokens'
-  | 'canonicalEtfTokens'
   | 'mostWatched'
   | 'mostAlerted';
 
-export type DiscoveryTokenType = 'erc20' | 'stockToken' | 'etfToken' | 'unknown';
+export type DiscoveryTokenType = 'erc20' | 'unknown';
 export type CanonicalState = 'canonical' | 'nonCanonical' | 'unknown';
 export type LaunchpadState = 'none' | 'bondingCurve' | 'graduated' | 'migrated';
 export type PriceStatus = 'available' | 'lowConfidence' | 'unavailable';
@@ -128,8 +126,6 @@ export interface DiscoveryCandidate {
   tokenType: DiscoveryTokenType;
   canonicalState: CanonicalState;
   canonicalTicker: string | null;
-  stockTokenCategory: string | null;
-  etfCategory: string | null;
   projectName: string | null;
   projectSlug: string | null;
   projectVerified: boolean;
@@ -207,8 +203,6 @@ export interface DiscoveryFilters {
   quoteAssetAddress?: Address;
   migrationStatus?: 'migrated' | 'notMigrated';
   graduationStatus?: 'graduated' | 'notGraduated';
-  stockTokenCategory?: string;
-  etfCategory?: string;
   maximumDataAgeSeconds?: bigint;
 }
 

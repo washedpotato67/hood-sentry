@@ -53,11 +53,6 @@ export interface CanonicalAssetEntry extends RegistryEntry {
   category: 'native' | 'wrapped' | 'stablecoin' | 'utility';
 }
 
-export interface StockTokenEntry extends RegistryEntry {
-  ticker: string;
-  assetType: 'stock' | 'etf';
-}
-
 export interface ApplicationContractEntry extends RegistryEntry {
   contractType:
     | 'token'

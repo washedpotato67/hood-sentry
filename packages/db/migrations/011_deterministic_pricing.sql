@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS price_source_configs (
   source_key TEXT PRIMARY KEY,
   source_type TEXT NOT NULL CHECK (source_type IN ('chainlink', 'launchpadBondingCurve', 'stablecoinPool', 'wethRoute', 'directDex', 'multihop', 'externalProvider', 'unavailable')),
-  asset_class TEXT NOT NULL CHECK (asset_class IN ('erc20', 'wrappedEth', 'stablecoin', 'launchpad', 'migratedLaunchpad', 'stockToken', 'etfToken')),
+  asset_class TEXT NOT NULL CHECK (asset_class IN ('erc20', 'wrappedEth', 'stablecoin', 'launchpad', 'migratedLaunchpad')),
   chain_id INTEGER NOT NULL,
   source_contract_address TEXT,
   source_asset_address TEXT NOT NULL,

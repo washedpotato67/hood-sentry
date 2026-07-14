@@ -5,7 +5,6 @@ export {
   getTestnetConfig,
 } from './network.js';
 export { canonicalAssetRegistry } from './canonical-assets.js';
-export { stockTokenRegistry } from './stock-tokens.js';
 export {
   applicationContractRegistry,
   PENDING_APPLICATION_CONTRACTS,
