@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { WatchlistService } from '../watchlists.js';
 import { AlertService } from '../alerts.js';
 import { NotificationService } from '../notifications.js';
 import { consumeClaim, issueClaim } from '../project-profiles.js';
+import { WatchlistService } from '../watchlists.js';
 describe('watchlists alerts notifications projects', () => {
   it('enforces ownership, duplicates, and limits', () => {
     const s = new WatchlistService({ free: 1 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FeatureFlagService, InMemoryFlagStore } from '../service.js';
-import type { FlagName } from '../types.js';
+import { FLAG_NAMES, type FlagName } from '../types.js';
 
 describe('InMemoryFlagStore', () => {
   it('defaults all flags to disabled', async () => {
@@ -30,7 +30,7 @@ describe('InMemoryFlagStore', () => {
   it('returns all flags', async () => {
     const store = new InMemoryFlagStore();
     const flags = await store.getAllFlags();
-    expect(Object.keys(flags)).toHaveLength(10);
+    expect(Object.keys(flags)).toHaveLength(FLAG_NAMES.length);
     expect(flags.TRADING_ENABLED?.enabled).toBe(false);
     expect(flags.MAINNET_WRITES_ENABLED?.enabled).toBe(false);
   });
@@ -69,15 +69,14 @@ describe('FeatureFlagService', () => {
     const flags = await service.getAllFlags();
     const expectedFlags: FlagName[] = [
       'TRADING_ENABLED',
-      'TOKEN_STAKING_ENABLED',
-      'PROJECT_BONDS_ENABLED',
-      'REPORT_BONDS_ENABLED',
-      'ADMIN_SLASHING_ENABLED',
+      'TOKEN_GATE_ENABLED',
       'GAS_SPONSORSHIP_ENABLED',
       'AI_EXPLANATIONS_ENABLED',
       'WEBHOOKS_ENABLED',
       'STOCK_TOKEN_MODULE_ENABLED',
       'MAINNET_WRITES_ENABLED',
+      'PROJECT_CLAIMS_ENABLED',
+      'COMMUNITY_REPORTS_ENABLED',
     ];
     for (const flag of expectedFlags) {
       expect(flags[flag]).toBeDefined();

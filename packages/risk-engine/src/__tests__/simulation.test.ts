@@ -1,6 +1,5 @@
+import { type Hash, type Hex, getAddress } from 'viem';
 import { describe, expect, it } from 'vitest';
-import { getAddress, type Hash, type Hex } from 'viem';
-import { DynamicSimulationService } from '../simulation.js';
 import type {
   AnvilForkLauncher,
   AnvilForkProcess,
@@ -10,6 +9,7 @@ import type {
   SimulationRequest,
   SimulationResult,
 } from '../simulation-types.js';
+import { DynamicSimulationService } from '../simulation.js';
 
 const TOKEN = getAddress('0x1000000000000000000000000000000000000001');
 const SENDER = getAddress('0x2000000000000000000000000000000000000002');

@@ -6,6 +6,9 @@ Current phase: Foundation, indexer hardening, protocol adapters, deterministic m
 discovery rankings, risk-engine framework, proxy analysis, source privilege analysis, and fork
 simulation
 
+Launch audit status: local gates pass except production-backed integration and E2E evidence. All
+write, launchpad, token-gating, sponsorship, and notification paths remain disabled.
+
 Release readiness: Not ready for production
 
 ## Product goal
@@ -135,11 +138,11 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Alert evaluation and in-app, Telegram, email, push, and webhook delivery
 - SIWE authentication and session management
 - Project profile claims and contract verification flow
-- Community reports, bonds, moderation, and appeals
+- Community reports, moderation, and appeals
 - Non-custodial quote, simulation review, approval, and swap flows
 - Live Robinhood Stock Token and ETF Token feed activation, multiplier refresh, and corporate-action handling
-- Premium access staking
-- Project bond, report bond, registry, vesting, timelock, and deployment contracts
+- Holding-based premium token entitlements
+- Verified external launchpad and official `$SENTRY` production records
 - Admin product surface
 - Production deployment and live-service validation
 
@@ -221,14 +224,22 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
-- `pnpm lint`: passed with three existing indexer complexity warnings
+- `pnpm lint`: passed with eight complexity warnings in indexer and deterministic analysis code
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 548 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test`: passed across all 31 workspace tasks, including 66 risk-engine cases and 6 Forge tests
 - `pnpm test:integration`: passed. All 14 database service cases returned early because PostgreSQL
   was unavailable.
 - `pnpm build`: passed for all 21 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
+- `pnpm test:e2e`: command passed but is a placeholder and runs no browser tests
+- `pnpm audit --audit-level high`: passed after upgrading Vitest, Drizzle ORM, OpenTelemetry, Vite,
+  and protobuf.js. Six moderate advisories remain.
+- Codex Security bounded repository review: no open reportable finding survived validation and
+  attack-path policy calibration. Fifteen high-impact files were reviewed and 1,662 inventory rows
+  were deferred, so this is not an exhaustive security clearance.
+- TruffleHog and CodeQL are configured in CI. Their hosted scans were not executed locally because
+  their runners are unavailable in this environment.
 
 PostgreSQL was unavailable, so clean migration and repository integration validation remains
 pending, including live application of migrations 009, 010, 011, 012, and 013. The indexer,
@@ -242,10 +253,40 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
    metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
 5. Build token, wallet, portfolio, alert, project, report, trading, and Stock Token API routes and product screens.
-6. Implement and test the missing staking, bond, registry, report, vesting, and timelock contracts.
-7. Verify deployment addresses, contract source, Safe ownership, timelock roles, oracle sources, and sequencer checks before enabling writes.
+6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
+   contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
+   transaction, bytecode, treasury Safe, and launchpad state before token access is enabled.
+7. Verify deployment addresses, contract source, Safe ownership, oracle sources, and sequencer
+   checks before enabling writes.
 8. Run staging load, failover, backup, restore, alert delivery, and transaction simulation tests.
 9. Verify Chainlink proxy and sequencer addresses, feed decimals, and heartbeat values before
    enabling Stock Token, ETF Token, WETH, stablecoin, or other oracle sources.
 
 All transactional feature flags should stay disabled until their related blocker and security gate passes.
+
+## Launch-gate flags
+
+- `MAINNET_WRITES_ENABLED`: disabled
+- `TRADING_ENABLED`: disabled
+- `TOKEN_GATE_ENABLED`: disabled
+- `GAS_SPONSORSHIP_ENABLED`: disabled
+- `AI_EXPLANATIONS_ENABLED`: disabled
+- `WEBHOOKS_ENABLED`: disabled
+- `PROJECT_CLAIMS_ENABLED`: disabled
+- `COMMUNITY_REPORTS_ENABLED`: disabled
+- launchpad adapters: disabled until verified production contracts exist
+
+## Security review summary
+
+The dependency scan initially found one critical and three high advisory families. Patched versions
+were installed and the follow-up audit reports no critical or high advisories. The application review
+found a public API work-amplification path and a CSP nonce propagation defect. Global API throttling,
+safe schema and framework errors, and request-side nonce propagation were added. SIWE validation now
+binds the message nonce to the stored nonce and uses the injected verification time for expiry. The CI
+dependency audit now fails on high advisories and TruffleHog is pinned to an immutable release commit.
+Trading, launch review, token gating, gas sponsorship, and official-token helpers have incomplete
+production bindings and remain disabled.
+
+Rollback point before this audit is commit `ace6bc1`. Production deployment, backfill, browser QA,
+restore testing, state reconciliation, and smoke trading remain unproven. Official `$SENTRY` and
+verified launchpad details are unavailable and intentionally omitted rather than inferred.

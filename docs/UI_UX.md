@@ -9,7 +9,7 @@
 - Alerts
 - Projects
 - Reports
-- Stake
+- Token Access
 - API
 - Docs
 
@@ -26,7 +26,7 @@
 - `/projects`
 - `/projects/[slug]`
 - `/reports/[id]`
-- `/stake`
+- `/token-access`
 - `/trade`
 - `/api`
 - `/methodology`

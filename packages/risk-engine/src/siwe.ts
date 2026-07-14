@@ -17,7 +17,8 @@ export function validateSiwe(
 ): void {
   if (m.domain !== expected.domain || m.uri !== expected.uri || m.chainId !== expected.chainId)
     throw new Error('SIWE context mismatch');
-  if (nonce.consumed || Date.now() > nonce.expiresAt) throw new Error('Nonce invalid or expired');
+  if (m.nonce !== nonce.nonce || nonce.consumed || expected.now * 1000 > nonce.expiresAt)
+    throw new Error('Nonce invalid or expired');
   const issued = Date.parse(m.issuedAt);
   if (Number.isNaN(issued) || issued > expected.now * 1000) throw new Error('issuedAt invalid');
   if (m.expirationTime && Date.parse(m.expirationTime) <= expected.now * 1000)

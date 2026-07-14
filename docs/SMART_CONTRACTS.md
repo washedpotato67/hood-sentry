@@ -1,222 +1,49 @@
-# Smart Contract Specification
+# External Contract Policy
 
-Use Solidity, Foundry, OpenZeppelin, and explicit deployment scripts. Default to non-upgradeable, versioned contracts.
+Sentry does not deploy or maintain application smart contracts.
 
-## Administrative topology
+`$SENTRY` is created through a separately selected and verified external Robinhood Chain launchpad. The launchpad evaluation, launch manifest, transaction review, and simulation must finish before any launch transaction is presented. Sentry does not broadcast or sign the launch transaction.
 
-```text
-Deploy key (temporary hardware wallet)
-        |
-Transfers all roles after deployment
-        v
-Safe multisig (operations)
-        |
-TimelockController (48h+ for sensitive changes)
-        |
-Project contracts
-```
+Project profiles, community reports, moderation, watchlists, alerts, token entitlements, and API access stay in Sentry services. Product access uses verified token holdings. The product does not use token locking, bonds, or slashing.
 
-No production admin role remains on a personal EOA.
+## Contract registries
 
-## `SentryToken.sol`
+Every external contract record must include:
 
-Properties:
-- ERC-20
-- fixed supply minted once at deployment
-- ERC20Permit
-- ERC20Votes only if governance is genuinely intended
-- no further minting
-- no transfer tax
-- no blacklist
-- no pause
-- no confiscation
-- no anti-bot transfer restrictions
-- no rebasing/reflection
-- token contract is not upgradeable
+- chain ID
+- checksummed address
+- contract role
+- official source URL
+- explorer URL
+- verification time
+- runtime bytecode hash
+- proxy type, implementation, and admin where relevant
+- enabled state
 
-Constructor inputs:
-- name
-- symbol
-- initial recipient
-- total supply
+Startup verification rejects zero addresses, wrong-chain contracts, bytecode changes, proxy conflicts, and duplicate roles. Failed verification disables the related adapter and write path.
 
-Recommended deployment flow:
-- mint to `TokenDistributionVault`;
-- fund vesting, community, treasury, and liquidity allocations from documented distribution transactions;
-- publish allocation addresses and transaction hashes.
+## Transaction rules
 
-Do not hardcode tokenomics until the final allocation table is approved. A reasonable starting model is:
-- 40% ecosystem/community;
-- 20% initial and future liquidity;
-- 20% treasury;
-- 15% team with 12-month cliff and 36-month linear vesting;
-- 5% partners/early contributors with vesting.
+All chain writes pass through the transaction-intent service. The server binds the wallet, chain, target, selector, decoded arguments, calldata, value, quote, configuration version, expiry, and simulation result. The client reviews and signs. The wallet broadcasts.
 
-This is a product recommendation, not a promise of token value.
+Sentry never stores private keys, signs user transactions, accepts arbitrary calldata, or treats explorer metadata as chain truth.
 
-## `AccessStaking.sol`
+## `$SENTRY` requirements
 
-Purpose: lock tokens to unlock product tiers. It pays no yield.
+The official token record is identified by chain ID and contract address. Symbol and name are display metadata only. The record must preserve creation transaction, creation block, creator, launchpad, factory, curve, runtime code hash, supply, pool, quote asset, graduation state, migration transaction, liquidity ownership, and fee recipients.
 
-Functions:
-- `stake(uint256 amount)`
-- `requestUnstake(uint256 amount)`
-- `cancelUnstake(uint256 requestId)`
-- `withdraw(uint256 requestId)`
-- `stakeOf(address)`
-- `tierOf(address)`
+Token access stays disabled until direct `balanceOf` reads, indexed balances, bytecode identity, reorg handling, holding-duration rules, and entitlement thresholds pass production validation.
 
-Requirements:
-- `SafeERC20`
-- `ReentrancyGuard`
-- pause deposits and new requests in emergencies;
-- withdrawals remain available or have a documented emergency exit;
-- configurable tier thresholds only through timelock;
-- unstake cooldown;
-- no admin seizure;
-- no reward accounting;
-- events for every transition.
+## Launch gates
 
-## `ProjectRegistry.sol`
+- independently verify every launchpad dependency
+- compare runtime bytecode with the recorded hash
+- resolve proxy implementation and admin from direct chain state
+- validate fees, supply mechanics, creator allocation, and liquidity destination
+- reject unexplained mint, confiscation, transfer blocking, upgrade, or approval behavior
+- simulate the exact transaction at a pinned block
+- verify target, selector, arguments, value, fee recipients, and expected contracts
+- keep mainnet writes disabled after any failed check
+- publish the official address and verification evidence after canonical inclusion
 
-Stores minimal authoritative data:
-- project ID;
-- owner/operator wallet;
-- metadata content hash and URI;
-- verified contract addresses;
-- profile status;
-- version counter.
-
-Functions:
-- create/claim via EIP-712 authorization;
-- add/remove operator;
-- propose and finalize metadata update;
-- add/remove contract;
-- suspend only through documented moderation role;
-- migrate ownership.
-
-Large metadata remains offchain in content-addressed storage. Store hash onchain.
-
-## `ProjectBondVault.sol`
-
-- accepts Sentry token bonds;
-- maps bond to project;
-- supports top-up;
-- withdrawal request with delay;
-- dispute freeze;
-- objective slash reason codes;
-- slashing callable only by timelocked resolver role;
-- slash destination is treasury or community pool, never an arbitrary caller;
-- no automatic AI or vote-based slashing.
-
-## `ReportRegistry.sol`
-
-Stores:
-- report ID;
-- subject type/address;
-- reason code;
-- evidence hash/URI;
-- reporter;
-- reporter bond;
-- status;
-- resolution code;
-- appeal status.
-
-State machine:
-`SUBMITTED -> UNDER_REVIEW -> UPHELD | REJECTED -> APPEALED -> FINAL`
-
-Rules:
-- reporter bond is returned when upheld;
-- spam/malicious reporter bond may be partially slashed under objective policy;
-- project bond action is separate;
-- admin resolution passes through multisig/timelock policy;
-- evidence must never contain private personal data onchain.
-
-## `VestingFactory.sol`
-
-Use OpenZeppelin VestingWallet or clones:
-- beneficiary;
-- start;
-- duration;
-- cliff extension if implemented and tested;
-- revocable only if explicitly disclosed; default non-revocable.
-
-## `TokenDistributionVault.sol`
-
-- holds allocation inventory;
-- only executes documented distributions;
-- role controlled by Safe;
-- optional Merkle distributor for claims;
-- allocation cap invariants.
-
-## Optional `FeeCollector.sol`
-
-Only needed when onchain protocol fees exist. UI referral revenue does not require it.
-
-- accepted tokens allowlist;
-- withdrawals only to treasury Safe;
-- no arbitrary call;
-- transparent events;
-- timelocked configuration.
-
-## Upgrade policy
-
-Preferred:
-- token immutable;
-- staking, registry, bonds, and reports are non-upgradeable;
-- deploy V2 and migrate through explicit user action.
-
-If a proxy is unavoidable:
-- UUPS or transparent proxy;
-- implementation initializer disabled;
-- upgrade authorization only TimelockController;
-- storage-layout checks in CI;
-- minimum 48-hour delay;
-- public upgrade announcement;
-- emergency pause cannot perform an upgrade.
-
-## Tests
-
-Unit:
-- every state transition;
-- access control;
-- boundary amounts;
-- cooldowns;
-- replay protection;
-- pause behavior;
-- malicious ERC-20 behavior;
-- reentrancy attempts.
-
-Fuzz:
-- arbitrary stake/request/withdraw sequences;
-- bond conservation;
-- allocation conservation;
-- role changes;
-- report state machine.
-
-Invariants:
-- total token supply never changes;
-- vault liabilities never exceed balance;
-- users cannot withdraw more than staked;
-- resolved reports cannot return to mutable states;
-- only authorized roles change configuration;
-- paused contracts preserve user exit path.
-
-Tools:
-- Forge tests and coverage;
-- Slither;
-- Aderyn;
-- Echidna or Foundry invariant testing;
-- storage-layout diff if proxies exist.
-
-## Deployment gates
-
-- tests and invariants pass;
-- static analyzers reviewed;
-- compiler and optimizer pinned;
-- deterministic deployment artifacts saved;
-- testnet deployment exercised;
-- roles transferred to Safe/timelock;
-- source verified;
-- deployment manifest signed and committed;
-- feature flag remains off until the frontend reads the exact deployed address and bytecode hash.
+The current repository contains a local fixed-supply token fixture for deterministic contract tests. The fixture is not a production deployment dependency and is not an official `$SENTRY` address.

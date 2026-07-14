@@ -35,6 +35,11 @@
     "@biomejs/biome": "^1.9.4",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.7"
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs": "^8.4.1"
+    }
   }
 }

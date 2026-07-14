@@ -133,12 +133,7 @@ openssl rand -hex 32
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SENTRY_TOKEN_ADDRESS` | address | (optional) | SentryToken contract address |
-| `ACCESS_STAKING_ADDRESS` | address | (optional) | AccessStaking contract address |
-| `PROJECT_REGISTRY_ADDRESS` | address | (optional) | ProjectRegistry contract address |
-| `PROJECT_BOND_VAULT_ADDRESS` | address | (optional) | ProjectBondVault contract address |
-| `REPORT_REGISTRY_ADDRESS` | address | (optional) | ReportRegistry contract address |
-| `TIMELOCK_ADDRESS` | address | (optional) | TimelockController contract address |
+| `SENTRY_TOKEN_ADDRESS` | address | (optional) | Verified launchpad-created `$SENTRY` address |
 | `TREASURY_SAFE_ADDRESS` | address | (optional) | Treasury Safe (multisig) address |
 
 **Validation:**
@@ -153,10 +148,7 @@ openssl rand -hex 32
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `TRADING_ENABLED` | boolean | `false` | Enable trading functionality |
-| `TOKEN_STAKING_ENABLED` | boolean | `false` | Enable token staking |
-| `PROJECT_BONDS_ENABLED` | boolean | `false` | Enable project bonds |
-| `REPORT_BONDS_ENABLED` | boolean | `false` | Enable report bonds |
-| `ADMIN_SLASHING_ENABLED` | boolean | `false` | Enable admin slashing |
+| `TOKEN_GATE_ENABLED` | boolean | `false` | Enable holding-based token entitlements |
 | `GAS_SPONSORSHIP_ENABLED` | boolean | `false` | Enable gas sponsorship |
 | `AI_EXPLANATIONS_ENABLED` | boolean | `false` | Enable AI-powered explanations |
 | `WEBHOOKS_ENABLED` | boolean | `false` | Enable webhook notifications |

@@ -1,109 +1,75 @@
-# Token Launch Runbook
+# `$SENTRY` Launchpad Runbook
 
-## Pre-deployment decisions
+Sentry does not deploy or maintain its own smart contracts. This runbook reviews and rehearses a launch through an independently verified external Robinhood Chain launchpad. No step authorizes a mainnet broadcast.
 
-Finalize:
-- token name and symbol;
-- total fixed supply;
-- decimals, normally 18;
-- allocation table;
-- vesting recipients and schedules;
-- treasury Safe signers and threshold;
-- liquidity amount and pair;
-- official website/domain/social accounts;
-- legal notices;
-- contract source license.
+## Required decisions
 
-Recommended pair: Sentry token against canonical USDG or WETH, based on verified venue support and intended user experience. Do not send liquidity to an address copied from an unofficial post.
+- token name and symbol
+- description, logo, website, and official social accounts
+- product utility language
+- supply and curve mechanics
+- graduation threshold
+- migration venue and quote asset
+- creator and protocol fees
+- creator allocation
+- creator wallet and treasury Safe
+- liquidity ownership and withdrawal conditions
+- legal notices and anti-impersonation language
 
-## Wallet and authority setup
+Do not describe the token as equity, revenue ownership, guaranteed yield, guaranteed return, passive income, company profit participation, or risk-free.
 
-- Hardware-wallet-backed deployer.
-- Treasury Safe with at least 2-of-3 signers.
-- Operations Safe if separate.
-- TimelockController.
-- Small deployer balance only.
-- No seed phrase in shell history, `.env`, Codex context, or cloud logs.
+## Launchpad verification
 
-## Testnet rehearsal
+Record the official site, official documentation, entity, terms, eligibility, factory, token implementation, curve, migration contract, fee collector, destination venue, approval requirements, source verification, audits, and known incidents.
 
-1. Deploy token.
-2. Deploy distribution vault and vesting.
-3. Deploy AccessStaking.
-4. Deploy ProjectRegistry.
-5. Deploy ProjectBondVault.
-6. Deploy ReportRegistry.
-7. Configure roles.
-8. Transfer roles to Safe/timelock.
-9. Verify source.
-10. Run end-to-end frontend transactions.
-11. Exercise pause and exit.
-12. Confirm events index correctly.
-13. Save deployment manifest and bytecode hashes.
-14. Repeat from a clean state using scripts only.
+For every contract record the chain ID, checksummed address, role, official source, explorer verification, runtime bytecode, bytecode hash, proxy type, implementation, admin, and verification time.
 
-## Mainnet deployment
+Reject the launchpad when contracts are unverified, supply is arbitrarily mintable, transfers or balances are arbitrarily controlled, liquidity ownership is misleading, upgrade authority is unexplained, documentation conflicts with code, or the frontend requests arbitrary approvals.
 
-1. Confirm RPC chain ID `4663`.
-2. Pin git commit.
-3. Run full contract suite and analyzers.
-4. Generate deployment simulation.
-5. Deploy with hardware wallet or approved broadcaster.
-6. Verify each source on Blockscout.
-7. Compare deployed runtime bytecode to build artifact.
-8. Transfer all roles.
-9. Revoke deployer roles.
-10. Publish addresses and hashes.
-11. Seed application config.
-12. Confirm indexer recognizes contracts.
-13. Keep transactional feature flags disabled until smoke tests pass.
+## Launch manifest
 
-## Liquidity
+The immutable review artifact includes:
 
-- Verify the current official DEX deployment and pool creation path.
-- Confirm token ordering, fee tier, initial price, and tick range where applicable.
-- Simulate pool creation.
-- Use a documented liquidity wallet/Safe.
-- Publish liquidity position address or LP ownership.
-- Do not claim liquidity is locked unless enforceably locked and independently verifiable.
-- Avoid misleading initial valuation.
-- Test a small buy and sell.
-- Confirm quotes and chart indexing.
-- Set monitoring alerts for liquidity changes.
+- chain ID
+- launchpad and factory version
+- creator wallet and treasury Safe
+- metadata and sources
+- target, function, selector, decoded arguments, and value
+- fees, supply, curve, graduation threshold, and migration venue
+- liquidity ownership
+- runtime bytecode hashes
+- creation time and expiry
 
-## Distribution
+## Rehearsal
 
-- Team allocations go directly to vesting.
-- Community claims use a reviewed Merkle distributor.
-- Treasury allocation stays in Safe.
-- Publish all allocation wallets.
-- Do not manually transfer large allocations from a personal wallet.
-- Reconcile distributed amount against fixed supply.
+Use an official testnet when the same verified contracts exist there. Otherwise fork Robinhood Chain at a fixed block and simulate locally with disposable accounts.
 
-## Public launch package
+1. Fetch the proposed transaction from the verified adapter.
+2. Confirm chain ID, target, selector, arguments, value, and fee recipients.
+3. Compare runtime bytecode and proxy state with the verified registry.
+4. Check metadata, supply, allocation, curve, graduation, and migration fields.
+5. Simulate the exact transaction.
+6. Decode created contracts and emitted events.
+7. Compare expected and observed balances, supply, fees, and ownership.
+8. Save the fork block, RPC identity, calldata hash, trace, receipts, and result.
+9. Reject arbitrary calldata, unknown factories, changed bytecode, or failed simulation.
 
-- Verified contract address.
-- Explorer links.
-- Allocation and vesting table.
-- Product utility.
-- Methodology.
-- Risk disclosure.
-- Terms and privacy.
-- No price promise.
-- No “guaranteed returns.”
-- No false audit claim.
-- Warning about impersonator contracts.
+## Canonical launch processing
 
-## Post-launch monitoring
+After a separately approved wallet broadcasts, the indexer waits for canonical inclusion and records the token address, creation transaction, block, creator, factory, curve, code hash, metadata, supply, pool, quote asset, graduation, migration, liquidity ownership, and fee recipients.
 
-- admin-role changes;
-- Safe signer changes;
-- timelock operations;
-- token distribution;
-- vesting releases;
-- pool liquidity;
-- price impact;
-- suspicious approval/spender activity;
-- website/DNS changes;
-- fake token addresses;
-- provider/indexer health.
+Publish `$SENTRY` only by chain ID and address. Publish the explorer link, creation transaction, code hash, official website, official socials, and verification time. Treat copied names and symbols as impersonation candidates.
+
+## Enablement gates
+
+- official launchpad dependencies match direct chain state
+- launch simulation passes at a pinned block
+- creation transaction is canonical
+- official token record matches direct chain state
+- supply, creator, treasury, curve, pool, liquidity, and fee recipients reconcile
+- direct and indexed token balances reconcile
+- token entitlement holding-duration rules pass
+- monitoring and kill switches are active
+- trading stays disabled until a documented smoke trade passes
+
+Any unexplained token identity, supply, curve, migration, liquidity, or fee discrepancy stops the affected feature.

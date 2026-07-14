@@ -1,20 +1,23 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 export function middleware(request: NextRequest) {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   const nonce = btoa(String.fromCharCode(...bytes));
-  const response = NextResponse.next({ request: { headers: new Headers(request.headers) } });
+  const requestHeaders = new Headers(request.headers);
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `connect-src 'self' https:`,
-    'object-src none',
+    "object-src 'none'",
     "base-uri 'self'",
-    `frame-ancestors 'none'`,
-    'form-action self',
+    "frame-ancestors 'none'",
+    "form-action 'self'",
   ].join('; ');
+  requestHeaders.set('Content-Security-Policy', csp);
+  requestHeaders.set('x-csp-nonce', nonce);
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
   response.headers.set('x-csp-nonce', nonce);
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');

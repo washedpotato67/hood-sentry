@@ -171,10 +171,7 @@ pnpm build
 All transactional features are disabled by default. Enable them in the database or through the admin API:
 
 - `TRADING_ENABLED`
-- `TOKEN_STAKING_ENABLED`
-- `PROJECT_BONDS_ENABLED`
-- `REPORT_BONDS_ENABLED`
-- `ADMIN_SLASHING_ENABLED`
+- `TOKEN_GATE_ENABLED`
 - `GAS_SPONSORSHIP_ENABLED`
 - `AI_EXPLANATIONS_ENABLED`
 - `WEBHOOKS_ENABLED`

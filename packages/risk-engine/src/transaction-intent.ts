@@ -1,4 +1,4 @@
-import { keccak256, stringToHex, type Hex } from 'viem';
+import { type Hex, keccak256, stringToHex } from 'viem';
 
 export type TransactionIntent = {
   intentId: string;

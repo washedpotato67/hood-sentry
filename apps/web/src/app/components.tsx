@@ -20,7 +20,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           placeholder="Search address or token"
         />
         <span className="badge">Chain status unavailable</span>
-        <button aria-label="Connect wallet">Connect wallet</button>
+        <button type="button" aria-label="Connect wallet">
+          Connect wallet
+        </button>
       </nav>
       <div className="banner">
         Indexer status and live market data are unavailable. Values are not shown as zero.

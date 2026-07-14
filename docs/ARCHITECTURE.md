@@ -35,9 +35,9 @@ Fastify API Gateway ------------------------------------+
       +--> Auth/SIWE
       +--> Admin API
       |
-Robinhood Chain contracts:
-Token, AccessStaking, ProjectRegistry, ProjectBondVault,
-ReportRegistry, TimelockController
+Verified Robinhood Chain dependencies:
+launchpad, token implementation, bonding curve, migration,
+liquidity venue, oracle feeds, `$SENTRY`, and treasury Safe
 ```
 
 Risk workers load indexed facts at one canonical block hash. The deterministic orchestrator runs
@@ -201,15 +201,14 @@ Email/social authentication may be added for notification-only accounts, but wal
 
 At minimum:
 - `TRADING_ENABLED`
-- `TOKEN_STAKING_ENABLED`
-- `PROJECT_BONDS_ENABLED`
-- `REPORT_BONDS_ENABLED`
-- `ADMIN_SLASHING_ENABLED`
+- `TOKEN_GATE_ENABLED`
 - `GAS_SPONSORSHIP_ENABLED`
 - `AI_EXPLANATIONS_ENABLED`
 - `WEBHOOKS_ENABLED`
 - `STOCK_TOKEN_MODULE_ENABLED`
 - `MAINNET_WRITES_ENABLED`
+- `PROJECT_CLAIMS_ENABLED`
+- `COMMUNITY_REPORTS_ENABLED`
 
 Feature flags are server-controlled. The client may receive their state but cannot override them.
 

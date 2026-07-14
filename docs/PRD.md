@@ -96,10 +96,10 @@ The product must convert raw onchain activity into evidence-backed information.
 
 ### 8. Utility token
 
-- Fixed-supply ERC-20.
-- Access staking for premium tiers.
-- Project profile bonds.
-- Reporter bonds.
+- Launchpad-created utility token identified by verified chain and address.
+- Holding-based product access with no token locking.
+- Offchain project profiles with auditable application-level verification.
+- Offchain community reports with auditable moderation.
 - Product-fee discounts.
 - Governance can be added only after real governance surfaces exist.
 - No dividend, guaranteed return, revenue-share promise, or passive-yield representation.

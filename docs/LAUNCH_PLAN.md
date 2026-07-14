@@ -12,11 +12,11 @@ The full architecture is included. The execution order below protects dependenci
 - CI and code-quality commands.
 - Database schema and migrations.
 
-### Track B — contracts
-- Implement token, staking, registry, bond, report, vesting, and deployment scripts.
-- Unit, fuzz, and invariant tests.
-- Testnet deployment rehearsal.
-- Safe/timelock setup.
+### Track B, external contracts
+- Verify launchpad, token implementation, curve, migration, and liquidity contracts.
+- Record official sources, bytecode hashes, proxy state, fees, and controls.
+- Rehearse the launch transaction on a testnet or pinned local fork.
+- Keep mainnet launch and trading disabled until every gate passes.
 
 ### Track C — ingestion
 - Live block/log indexer.
@@ -27,16 +27,16 @@ The full architecture is included. The execution order below protects dependenci
 - Blockscout enrichment.
 
 ### Track D — frontend shell
-- design system;
-- navigation;
-- search;
-- discover;
-- token;
-- wallet;
-- alerts;
-- project;
-- staking;
-- report;
+- design system
+- navigation
+- search
+- discover
+- token
+- wallet
+- alerts
+- project
+- token access
+- report
 - transaction-review components.
 
 ## Tuesday, July 14
@@ -53,14 +53,14 @@ The full architecture is included. The execution order below protects dependenci
 - alert engine and Telegram/webhook delivery.
 - project claiming and profiles.
 - report workflow.
-- access staking frontend.
+- token entitlement frontend.
 - quote/trade adapter.
 - API key foundations.
 - AI finding summary behind a flag.
 
 ### Evening
 - staging/mainnet smoke tests.
-- contract verification and role transfer.
+- external contract verification.
 - production deployment.
 - launch data backfill.
 - legal/methodology pages.

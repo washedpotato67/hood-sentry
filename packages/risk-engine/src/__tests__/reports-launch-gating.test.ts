@@ -33,7 +33,7 @@ describe('reports launch review and token gating', () => {
           role: 'factory',
           officialSource: 'x',
           explorerVerified: false,
-          runtimeBytecodeHash: ('0x' + '1'.repeat(64)) as `0x${string}`,
+          runtimeBytecodeHash: `0x${'1'.repeat(64)}` as `0x${string}`,
           verifiedAt: 'now',
         },
       ],

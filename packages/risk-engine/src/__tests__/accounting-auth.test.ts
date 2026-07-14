@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fifoCostBasis } from '../cost-basis.js';
 import { approvalSignals } from '../approval-monitor.js';
+import { fifoCostBasis } from '../cost-basis.js';
 import { validateSiwe } from '../siwe.js';
 describe('accounting, approvals, and SIWE', () => {
   it('uses FIFO and preserves missing price uncertainty', () => {
@@ -64,6 +64,14 @@ describe('accounting, approvals, and SIWE', () => {
         m,
         { domain: 'app.test', uri: m.uri, chainId: 1, now: Math.floor(Date.now() / 1000) },
         nonce,
+        true,
+      ),
+    ).toThrow();
+    expect(() =>
+      validateSiwe(
+        { ...m, nonce: 'different' },
+        { domain: 'app.test', uri: m.uri, chainId: 1, now: Math.floor(Date.now() / 1000) },
+        { nonce: 'abc', expiresAt: Date.now() + 10_000, consumed: false },
         true,
       ),
     ).toThrow();

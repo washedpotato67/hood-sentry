@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isOfficialSentry } from '../official-sentry.js';
-import { validateQuote } from '../quote-trading.js';
 import { authorizeSponsorship } from '../account-abstraction.js';
 import { createApiKey, verifyApiKey } from '../api-customer.js';
+import { isOfficialSentry } from '../official-sentry.js';
+import { validateQuote } from '../quote-trading.js';
 describe('official token trading sponsorship api', () => {
   it('uses chain and address for official identity', () => {
     const r = {
@@ -15,7 +15,7 @@ describe('official token trading sponsorship api', () => {
       launchpad: '0x4444444444444444444444444444444444444444' as const,
       factory: '0x5555555555555555555555555555555555555555' as const,
       curve: '0x6666666666666666666666666666666666666666' as const,
-      codeHash: ('0x' + '1'.repeat(64)) as `0x${string}`,
+      codeHash: `0x${'1'.repeat(64)}` as `0x${string}`,
       name: 'Sentry',
       symbol: 'SENTRY',
       decimals: 18,

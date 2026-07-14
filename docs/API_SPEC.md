@@ -124,12 +124,10 @@ addresses and duplicate-symbol warnings. Cursor values bind to the feed and filt
 - `POST /reports/:id/bond-intent`
 - `POST /reports/:id/appeal`
 
-### Staking
+### Token entitlements
 
-- `GET /staking/status`
-- `POST /staking/stake-intent`
-- `POST /staking/unstake-request-intent`
-- `POST /staking/withdraw-intent`
+- `GET /token-entitlements/status`
+- `POST /token-entitlements/reconcile`
 
 Intent endpoints return:
 - chain ID;

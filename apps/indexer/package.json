@@ -18,13 +18,13 @@
     "@hood-sentry/db": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
     "@hood-sentry/shared": "workspace:*",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.45.2",
     "viem": "^2.22.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.7"
   }
 }

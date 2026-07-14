@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { authorizeAdmin, auditAdminMutation } from '../admin-console.js';
+import { auditAdminMutation, authorizeAdmin } from '../admin-console.js';
 import { explainFindings } from '../ai-explanations.js';
 describe('admin and AI explanation controls', () => {
   const session = {
