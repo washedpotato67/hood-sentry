@@ -70,6 +70,24 @@ describe('Database Migrations', () => {
     expect(migration).toContain('fully_diluted_valuation_raw NUMERIC(78,0)');
   });
 
+  it('defines versioned discovery snapshots and separate sponsorship audit history', () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'migrations',
+        '012_discovery_rankings.sql',
+      ),
+      'utf8',
+    );
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS discovery_snapshots');
+    expect(migration).toContain('methodology_version TEXT NOT NULL');
+    expect(migration).toContain('score_bps NUMERIC(78,0) NOT NULL');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS sponsored_placements');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS sponsored_placement_audit');
+  });
+
   it('should apply all migrations successfully', async () => {
     if (!dbAvailable) {
       // biome-ignore lint/suspicious/noConsole: test output

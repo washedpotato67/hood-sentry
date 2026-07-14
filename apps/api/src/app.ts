@@ -2,6 +2,7 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { getEnv } from '@hood-sentry/config';
 import {
+  DrizzleDiscoveryRepository,
   DrizzlePricingRepository,
   DrizzleProtocolRepositoryImpl,
   createDatabase,
@@ -10,6 +11,7 @@ import { createLogger } from '@hood-sentry/observability';
 import { generateRequestId } from '@hood-sentry/shared';
 import Fastify from 'fastify';
 import { errorHandler } from './plugins/error-handler.js';
+import { discoveryRoutes } from './routes/discovery.js';
 import { healthRoutes } from './routes/health.js';
 import { pricingRoutes } from './routes/pricing.js';
 import { protocolRoutes } from './routes/protocols.js';
@@ -20,6 +22,7 @@ export async function buildApp() {
   const database = createDatabase(env.DATABASE_URL);
   const protocolRepository = new DrizzleProtocolRepositoryImpl(database.db);
   const pricingRepository = new DrizzlePricingRepository(database.db);
+  const discoveryRepository = new DrizzleDiscoveryRepository(database.db);
 
   const app = Fastify({
     logger: false,
@@ -70,6 +73,10 @@ export async function buildApp() {
   await app.register(pricingRoutes, {
     prefix: '/v1',
     repository: pricingRepository,
+  });
+  await app.register(discoveryRoutes, {
+    prefix: '/v1',
+    repository: discoveryRepository,
   });
 
   app.addHook('onClose', async () => {

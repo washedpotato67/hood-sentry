@@ -66,6 +66,9 @@ importers:
       '@hood-sentry/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hood-sentry/discovery-engine':
+        specifier: workspace:*
+        version: link:../../packages/discovery-engine
       '@hood-sentry/feature-flags':
         specifier: workspace:*
         version: link:../../packages/feature-flags
@@ -205,6 +208,9 @@ importers:
       '@hood-sentry/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hood-sentry/discovery-engine':
+        specifier: workspace:*
+        version: link:../../packages/discovery-engine
       '@hood-sentry/market-engine':
         specifier: workspace:*
         version: link:../../packages/market-engine
@@ -333,6 +339,9 @@ importers:
       '@hood-sentry/chain':
         specifier: workspace:*
         version: link:../chain
+      '@hood-sentry/discovery-engine':
+        specifier: workspace:*
+        version: link:../discovery-engine
       '@hood-sentry/market-engine':
         specifier: workspace:*
         version: link:../market-engine
@@ -361,6 +370,25 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.20.1)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/discovery-engine:
+    dependencies:
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
