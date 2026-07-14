@@ -3,7 +3,7 @@
 Last updated: 2026-07-14
 
 Current phase: Foundation, indexer hardening, protocol adapters, deterministic market data,
-discovery rankings, and risk-engine framework
+discovery rankings, risk-engine framework, proxy analysis, and source privilege analysis
 
 Release readiness: Not ready for production
 
@@ -89,6 +89,21 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   cancellation state, trigger provenance, and reorg invalidation
 - Worker jobs for deterministic scans, rescan trigger storage, duplicate rejection, and reorg
   invalidation
+- Pinned proxy analysis for EIP-1967 implementation, admin, and beacon slots, transparent and UUPS
+  proxies, EIP-1167 clones, clone factories, nested proxies, common diamonds, and unknown
+  delegatecall proxies
+- Direct upgrade-authority resolution for owners, EOAs, Safe thresholds and owners, timelock delays,
+  implementation code hashes, initialization state, and recent upgrade events
+- Non-authoritative explorer comparison which preserves direct chain implementation and admin state,
+  records conflicts, and emits data-quality findings
+- Deterministic Solidity structural AST analysis for inheritance, modifiers, privileged functions,
+  controlling state variables, bounds, initializers, and external call surfaces
+- Current Ownable and AccessControl controller resolution with EOA, Safe, timelock, contract,
+  renounced, and unknown classifications
+- Versioned proxy and privilege risk rules with explicit source, ABI, and bytecode-selector confidence
+  levels and no AI scoring
+- Worker risk-context composition which keeps chain proxy and privilege analysis operational during
+  Blockscout outages
 - Fastify API shell with health routes and security headers
 - A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
   adapter runtime does not deploy, maintain, or reference its contracts.
@@ -97,22 +112,21 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 ### Partial
 
 - Derived indexer jobs only reach structured logs. No Redis or BullMQ publisher connects the indexer to a worker.
-- Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment exists as a typed
-  client and database adapter, but no durable worker queue invokes the enrichment job yet. Token
-  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, and worker
-  queue execution are absent. Protocol pool, swap, liquidity, launchpad, and reorg persistence paths
-  now exist.
+- Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment and contract analysis
+  context loading exist, but no durable worker queue invokes them yet. Token metadata calls, holder
+  snapshots, and worker queue execution are absent. Protocol pool, swap, liquidity, launchpad, and
+  reorg persistence paths now exist.
 - Live PostgreSQL migration and repository validation is pending. Deterministic adapter and indexer
   integration tests cover protocol behavior without a database service.
 - The API exposes health, external protocol, price, candle, market-metric, discovery, and search
   read routes. Most authenticated product routes remain absent.
 - The web app exposes a static product title only.
-- Deterministic risk business rules for contract, transfer, supply, proxy, liquidity, holder,
-  deployer, identity, market, oracle, metadata, and launchpad analysis are not implemented yet.
+- Deterministic proxy and source privilege rules exist. Liquidity, holder, deployer, identity,
+  market, oracle, and launchpad risk rules remain absent.
 
 ### Skeleton or absent
 
-- Production risk rules and public risk report APIs
+- Remaining production risk rules and public risk report APIs
 - Wallet balances, cost basis, approvals, and portfolio P&L
 - Alert evaluation and in-app, Telegram, email, push, and webhook delivery
 - SIWE authentication and session management
@@ -175,15 +189,25 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added deterministic risk orchestration with timeouts, cancellation, rule isolation, completeness,
   integer scoring, stable fingerprints, evidence preservation, and versioned behavior.
 - Added risk scan, rescan trigger, and reorg jobs with duplicate claim protection.
+- Added direct EIP-1967, beacon, UUPS, transparent, clone, diamond, nested, and unknown delegatecall
+  proxy analysis with implementation bytecode hashes and storage-slot evidence.
+- Added Safe, timelock, EOA, owner, role-holder, initialization, recent-upgrade, and explorer-conflict
+  evidence with versioned proxy findings.
+- Added verified Solidity structural parsing, inheritance closure, modifier and role analysis,
+  privilege bounds, current controllers, external calls, ABI fallback, and low-confidence bytecode
+  selector heuristics.
+- Added fixture coverage for proxy types, authority types, initialization, explorer disagreement,
+  Ownable, AccessControl, multiple roles, bounded and unbounded authority, hidden blacklist, rebase,
+  reflection, mutable router, arbitrary calls, and unverified bytecode.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 526 Vitest cases reported passing and 6 Forge tests passed
-- `pnpm test:integration`: passed. Four deterministic migration-shape cases ran. Ten database
-  service cases returned early because PostgreSQL was unavailable.
+- `pnpm test`: passed, 548 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test:integration`: passed. All 14 database service cases returned early because PostgreSQL
+  was unavailable.
 - `pnpm build`: passed for all 21 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
@@ -197,8 +221,8 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 1. Start PostgreSQL and Redis, apply every migration on a clean database, and run database integration tests without early returns.
 2. Publish derived jobs to a durable queue with idempotency keys, retries, and a dead-letter path.
 3. Add synthetic reorg, restart, lease contention, gap repair, and malformed RPC response integration tests.
-4. Implement production deterministic risk rules and evidence-backed report APIs before exposing
-   risk scores.
+4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
+   metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
 5. Build token, wallet, portfolio, alert, project, report, trading, and Stock Token API routes and product screens.
 6. Implement and test the missing staking, bond, registry, report, vesting, and timelock contracts.
 7. Verify deployment addresses, contract source, Safe ownership, timelock roles, oracle sources, and sequencer checks before enabling writes.

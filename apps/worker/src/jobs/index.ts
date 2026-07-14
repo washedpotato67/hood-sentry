@@ -14,3 +14,4 @@ export * from './discovery-refresh.js';
 export * from './discovery-reorg.js';
 export * from './risk-rescan.js';
 export * from './risk-scan.js';
+export * from './contract-analysis-context.js';

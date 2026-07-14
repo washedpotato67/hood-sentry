@@ -113,25 +113,57 @@ shared indexer-to-worker queue blocker.
 
 ### 2. Proxy analysis
 
-Resolve:
-- EIP-1967 implementation and admin slots;
-- beacon proxies;
-- transparent proxies;
-- UUPS patterns;
-- minimal clones;
-- diamond proxy facets where detectable.
+`ProxyAnalyzer` reads the EIP-1967 implementation, admin, and beacon slots from the shared resilient
+RPC client at the scan block. Direct storage values define the current implementation, beacon, and
+admin. Blockscout metadata stays in a separate attributed comparison record.
 
-Findings:
-- upgradeability;
-- current admin;
-- admin EOA vs multisig/timelock;
-- unverified implementation;
-- recent upgrade;
-- implementation self-destruct or delegatecall hazards.
+The analyzer recognizes transparent proxies, UUPS proxies through `proxiableUUID`, beacon proxies,
+supported EIP-1167 runtime templates, clone-factory selectors, nested proxy layers, common diamond
+loupe and cut surfaces, and otherwise unknown delegatecall proxies. Unknown delegatecall behavior
+stays unknown instead of receiving a known proxy label.
+
+Authority resolution checks runtime code, `owner()`, Safe owners and threshold, and timelock minimum
+delay at the pinned block. A ProxyAdmin or beacon owner is followed to its current controller. An
+empty code response identifies an EOA. No address label or explorer claim establishes Safe,
+timelock, owner, or EOA status.
+
+Every proxy result preserves:
+
+- all three storage slot keys and raw values
+- resolved addresses and implementation code hash
+- each nested layer
+- current authority classification
+- recent `Upgraded`, `AdminChanged`, `BeaconUpgraded`, and `DiamondCut` events
+- source-verification attribution
+- initialization evidence
+- explorer conflicts and data-quality warnings.
+
+Upgradeability produces an informational warning with zero score penalty. Separate rules cover EOA
+control, missing timelock evidence, unverified or empty implementations, recent upgrades,
+initialization hazards, unsupported delegatecall behavior, nested complexity, and metadata
+disagreement.
 
 ### 3. Privilege and source analysis
 
-Parse verified Solidity AST when available. Supplement with selectors and bytecode heuristics.
+`ContractPrivilegeAnalyzer` tokenizes verified Solidity source and builds a deterministic structural
+AST for contracts, inheritance, modifiers, functions, state variables, source paths, and line
+numbers. When Blockscout identifies the compiled contract, analysis follows only the selected
+contract and its source inheritance closure. Source files retain provider, fetch time, and source
+hash attribution.
+
+`PrivilegeStateReader` reads `owner()` and enumerable AccessControl role members at the source
+block. Indexed role-event candidates are supported through `hasRole` when role enumeration is not
+available. Each controller receives direct EOA, Safe, timelock, contract, renounced, or unknown
+classification.
+
+Each capability record contains the function, selector, role, current controllers, source-level
+bounds, timelock, multisig, EOA, renounced state, evidence, and explicit confidence. Renounced
+ownership does not suppress active non-owner roles.
+
+When verified source is absent, the analyzer uses a validated ABI when available. With neither
+source nor ABI, it scans EVM instructions for supported `PUSH4` selectors while skipping push data.
+ABI conclusions use medium confidence. Bytecode-selector conclusions use low confidence and state
+that selectors do not prove behavior or authorization.
 
 Detect:
 - mint or supply expansion;
@@ -151,6 +183,19 @@ Detect:
 - mutable router/pair;
 - permit/domain issues;
 - nonstandard transfer behavior.
+
+`ContractAnalysisContextLoader` composes chain storage, runtime bytecode, Blockscout source, current
+role state, proxy output, and privilege output into one pinned `RiskScanContext`. Blockscout outage
+returns unavailable source attribution while chain analysis and scan execution continue.
+
+To add a capability rule:
+
+1. Add the normalized capability to `PrivilegeCapability`.
+2. Add a source matcher tied to parsed function or state evidence.
+3. Add ABI and selector evidence only when the signature is stable enough for reduced-confidence
+   reporting.
+4. Add the capability to `createPrivilegeAnalysisRules` with a category and integer penalty.
+5. Add a Solidity fixture and tests for controller, bound, and confidence behavior.
 
 ### 4. Dynamic simulation
 
