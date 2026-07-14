@@ -1,5 +1,6 @@
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
+import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
 import type { Hash } from 'viem';
 import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
@@ -52,6 +53,7 @@ export class BlockIndexer {
     private readonly config: IndexerConfig,
     private readonly logger: Logger,
     private readonly protocolEventsHandler?: ProtocolEventsHandler,
+    private readonly jobPublisher?: DerivedJobPublisher,
   ) {
     this.drizzle = database.db;
     this.tokenDiscoveryHandler = new TokenDiscoveryHandler(this.config, this.logger);
@@ -536,6 +538,18 @@ export class BlockIndexer {
       type: job.type,
       blockNumber: job.blockNumber.toString(),
     });
+    if (this.jobPublisher === undefined) return;
+    const transactionHash =
+      typeof job.data.transactionHash === 'string' ? job.data.transactionHash : undefined;
+    const logIndex = typeof job.data.logIndex === 'number' ? job.data.logIndex : undefined;
+    const idempotencyKey = derivedJobIdempotencyKey({
+      type: job.type,
+      chainId: job.chainId,
+      blockHash: job.blockHash,
+      transactionHash,
+      logIndex,
+    });
+    await this.jobPublisher.publish(job, idempotencyKey);
   }
 
   private handleError(error: unknown, blockNumber: bigint | null): void {

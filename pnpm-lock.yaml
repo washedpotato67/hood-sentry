@@ -121,6 +121,9 @@ importers:
       '@hood-sentry/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@hood-sentry/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -220,6 +223,9 @@ importers:
       '@hood-sentry/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@hood-sentry/queue':
+        specifier: workspace:*
+        version: link:../../packages/queue
       '@hood-sentry/risk-engine':
         specifier: workspace:*
         version: link:../../packages/risk-engine
@@ -592,6 +598,28 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/queue:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      bullmq:
+        specifier: ^5.34.8
+        version: 5.80.2
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.11.1
     devDependencies:
       '@types/node':
         specifier: ^22.10.5

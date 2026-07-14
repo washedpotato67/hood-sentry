@@ -14,6 +14,11 @@ import {
   createDatabase,
 } from '@hood-sentry/db';
 import { type Logger, createLogger } from '@hood-sentry/observability';
+import {
+  type DerivedJobPublisher,
+  QueueJobPublisher,
+  createQueueConnection,
+} from '@hood-sentry/queue';
 import { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import {
   BlockFetcher,
@@ -66,6 +71,7 @@ async function initializeProtocolEvents(request: {
   tradingEnabled: boolean;
   mainnetWritesEnabled: boolean;
   repository: ProtocolRepository;
+  publisher: DerivedJobPublisher;
   logger: Logger;
 }): Promise<{ handler: ProtocolEventsHandler; validation: ProtocolValidationService }> {
   const chainRegistry = {
@@ -120,15 +126,7 @@ async function initializeProtocolEvents(request: {
   const handler = new ProtocolEventsHandler(
     runtime.manager,
     request.repository,
-    {
-      async publish(job, idempotencyKey) {
-        request.logger.debug('Publishing protocol-derived job', {
-          type: job.type,
-          idempotencyKey,
-          blockNumber: job.blockNumber.toString(),
-        });
-      },
-    },
+    request.publisher,
     request.logger,
   );
   return { handler, validation };
@@ -140,6 +138,8 @@ async function main() {
 
   let isShuttingDown = false;
   let indexer: BlockIndexer | null = null;
+  const queueConnection = createQueueConnection(env.REDIS_URL);
+  const jobPublisher = new QueueJobPublisher({ connection: queueConnection });
 
   const shutdown = async (signal: string) => {
     if (isShuttingDown) return;
@@ -150,6 +150,8 @@ async function main() {
     if (indexer) {
       await indexer.stop();
     }
+    await jobPublisher.close();
+    await queueConnection.quit();
 
     logger.info('Indexer stopped gracefully');
     process.exit(0);
@@ -231,6 +233,7 @@ async function main() {
       tradingEnabled: env.TRADING_ENABLED,
       mainnetWritesEnabled: env.MAINNET_WRITES_ENABLED,
       repository: protocolRepository,
+      publisher: jobPublisher,
       logger,
     });
 
@@ -257,6 +260,7 @@ async function main() {
       config,
       logger,
       protocolEvents.handler,
+      jobPublisher,
     );
 
     protocolEvents.validation.startPeriodicRevalidation();

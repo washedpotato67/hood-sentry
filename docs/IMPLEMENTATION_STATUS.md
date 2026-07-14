@@ -26,6 +26,11 @@ Release readiness: Not ready for production
   them into `*.integration.test.ts` (excluded from the unit run), made each file self-provision a
   clean migrated schema, and fixed four test defects. Integration suite passes 14/14
   deterministically; the unit suite, typecheck, and lint remain green.
+- Added the `@hood-sentry/queue` package: a durable BullMQ derived-jobs queue with idempotent
+  publishing (idempotency key hashed to a colon-free BullMQ jobId), exponential-backoff retries, and
+  a dead-letter path for exhausted jobs. Wired the indexer to publish (block-indexer transaction/log
+  jobs and protocol-event jobs) and the worker to consume via a typed router. Verified against live
+  Redis (queue integration suite 9/9). Per-type job processors behind the router remain to be built.
 
 ## Product goal
 
@@ -134,7 +139,7 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 
 ### Partial
 
-- Derived indexer jobs only reach structured logs. No Redis or BullMQ publisher connects the indexer to a worker.
+- Derived indexer jobs now publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys, retries, and a dead-letter path; the worker consumes them through a typed router. Per-type business processing is still a stub in the router.
 - Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment and contract analysis
   context loading exist, but no durable worker queue invokes them yet. Token metadata calls, holder
   snapshots, and worker queue execution are absent. Protocol pool, swap, liquidity, launchpad, and
@@ -261,7 +266,7 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 ## Active release blockers
 
 1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
-2. Publish derived jobs to a durable queue with idempotency keys, retries, and a dead-letter path.
+2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Remaining: implement the per-type job processors behind the router.
 3. Add synthetic reorg, restart, lease contention, gap repair, and malformed RPC response integration tests.
 4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
    metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
