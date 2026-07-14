@@ -1,0 +1,40 @@
+{
+  "name": "hood-sentry",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:unit": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "echo 'No e2e tests yet'",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check . && ./scripts/check-process-env.sh",
+    "lint:fix": "biome check --write .",
+    "lint:env": "./scripts/check-process-env.sh",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "db:migrate": "pnpm --filter @hood-sentry/db migrate",
+    "db:seed": "pnpm --filter @hood-sentry/db seed",
+    "db:reset": "pnpm --filter @hood-sentry/db reset",
+    "db:studio": "pnpm --filter @hood-sentry/db studio",
+    "contracts:test": "pnpm --filter @hood-sentry/contracts forge:test",
+    "contracts:coverage": "pnpm --filter @hood-sentry/contracts forge:coverage",
+    "setup": "pnpm install && pnpm docker:up && pnpm db:migrate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

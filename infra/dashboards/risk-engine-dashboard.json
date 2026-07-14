@@ -1,0 +1,70 @@
+{
+  "version": "1.0.0",
+  "name": "Hood Sentry Risk Engine Dashboard",
+  "description": "Risk scanning performance and alert delivery monitoring",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": "risk-scan-duration",
+      "title": "Risk Scan Duration",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "risk_scan_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99],
+          "groupBy": ["scan_type"]
+        }
+      ]
+    },
+    {
+      "id": "alert-evaluation-latency",
+      "title": "Alert Evaluation Latency",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "alert_evaluation_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99],
+          "groupBy": ["alert_type"]
+        }
+      ]
+    },
+    {
+      "id": "notification-delivery",
+      "title": "Notification Delivery",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "notification_delivery_total",
+          "type": "rate",
+          "groupBy": ["channel", "status"]
+        }
+      ]
+    },
+    {
+      "id": "webhook-retries",
+      "title": "Webhook Retries",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "webhook_retries_total",
+          "type": "rate",
+          "groupBy": ["endpoint"]
+        }
+      ]
+    },
+    {
+      "id": "contract-balance-monitoring",
+      "title": "Contract Balances",
+      "type": "table",
+      "metrics": [
+        {
+          "name": "contract_balance",
+          "type": "gauge",
+          "groupBy": ["contract_address", "chain_id"]
+        }
+      ]
+    }
+  ]
+}

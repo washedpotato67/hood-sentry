@@ -1,0 +1,29 @@
+node_modules/
+dist/
+.next/
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Foundry
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/lib/
+broadcast/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
