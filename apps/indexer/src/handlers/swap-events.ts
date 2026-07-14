@@ -15,6 +15,7 @@ export function swapDerivedJobs(swap: NormalizedSwap): readonly DerivedJob[] {
     logIndex: swap.logIndex,
   };
   return [
+    { type: 'new-price-observation', ...shared, data },
     { type: 'market-metric', ...shared, data },
     { type: 'wallet-activity', ...shared, data },
     { type: 'alert-evaluation', ...shared, data },

@@ -1,5 +1,5 @@
 {
-  "name": "@hood-sentry/db",
+  "name": "@hood-sentry/market-engine",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,25 +15,13 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:integration": "vitest run",
-    "migrate": "node --loader ts-node/esm src/migrate.ts",
-    "migrate:reset": "node --loader ts-node/esm src/migrate-reset.ts",
-    "seed": "echo 'No seeds yet'",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@hood-sentry/chain": "workspace:*",
-    "@hood-sentry/market-engine": "workspace:*",
-    "@hood-sentry/shared": "workspace:*",
-    "drizzle-orm": "^0.38.3",
-    "postgres": "^3.4.5",
     "viem": "^2.22.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.5",
-    "drizzle-kit": "^0.30.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

@@ -85,6 +85,9 @@ importers:
       '@hood-sentry/chain':
         specifier: workspace:*
         version: link:../../packages/chain
+      '@hood-sentry/market-engine':
+        specifier: workspace:*
+        version: link:../../packages/market-engine
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
@@ -202,6 +205,9 @@ importers:
       '@hood-sentry/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@hood-sentry/market-engine':
+        specifier: workspace:*
+        version: link:../../packages/market-engine
       '@hood-sentry/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -327,6 +333,9 @@ importers:
       '@hood-sentry/chain':
         specifier: workspace:*
         version: link:../chain
+      '@hood-sentry/market-engine':
+        specifier: workspace:*
+        version: link:../market-engine
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../shared
@@ -364,6 +373,22 @@ importers:
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../shared
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/market-engine:
+    dependencies:
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.24.1
         version: 3.25.76

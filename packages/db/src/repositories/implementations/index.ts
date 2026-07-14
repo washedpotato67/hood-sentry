@@ -1,6 +1,7 @@
 export * from './block-repository.js';
 export * from './token-repository.js';
 export * from './pool-repository.js';
+export * from './pricing-repository.js';
 export * from './risk-repository.js';
 export * from './wallet-repository.js';
 export * from './alert-repository.js';
