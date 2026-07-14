@@ -65,7 +65,7 @@ CREATE INDEX idx_transactions_created_at ON transactions(created_at);
 -- Transaction receipts
 CREATE TABLE IF NOT EXISTS transaction_receipts (
   chain_id INTEGER NOT NULL REFERENCES chains(chain_id),
-  transaction_hash TEXT NOT NULL REFERENCES transactions(hash),
+  transaction_hash TEXT NOT NULL,
   block_number BIGINT NOT NULL,
   block_hash TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('success', 'failed')),
@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS transaction_receipts (
   logs_count INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (chain_id, transaction_hash)
+  PRIMARY KEY (chain_id, transaction_hash),
+  FOREIGN KEY (chain_id, transaction_hash) REFERENCES transactions(chain_id, hash)
 );
 
 CREATE INDEX idx_transaction_receipts_chain_block ON transaction_receipts(chain_id, block_number);
@@ -82,7 +83,7 @@ CREATE INDEX idx_transaction_receipts_chain_block ON transaction_receipts(chain_
 -- Logs
 CREATE TABLE IF NOT EXISTS logs (
   chain_id INTEGER NOT NULL REFERENCES chains(chain_id),
-  transaction_hash TEXT NOT NULL REFERENCES transactions(hash),
+  transaction_hash TEXT NOT NULL,
   log_index INTEGER NOT NULL,
   block_hash TEXT NOT NULL,
   block_number BIGINT NOT NULL,
@@ -96,7 +97,8 @@ CREATE TABLE IF NOT EXISTS logs (
   canonical BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (chain_id, transaction_hash, log_index, block_hash)
+  PRIMARY KEY (chain_id, transaction_hash, log_index, block_hash),
+  FOREIGN KEY (chain_id, transaction_hash) REFERENCES transactions(chain_id, hash)
 );
 
 CREATE INDEX idx_logs_chain_address ON logs(chain_id, address);

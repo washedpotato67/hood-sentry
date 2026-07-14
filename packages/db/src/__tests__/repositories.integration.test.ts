@@ -113,19 +113,21 @@ describe('Repository Layer', () => {
       return;
     }
 
-    await sql`INSERT INTO users (id, status) VALUES ('user1', 'active')`;
-    await sql`INSERT INTO watchlists (id, user_id, name, is_default) VALUES ('wl1', 'user1', 'My Watchlist', true)`;
+    const userId = '00000000-0000-0000-0000-000000000001';
+    const watchlistId = '00000000-0000-0000-0000-0000000000a1';
+    await sql`INSERT INTO users (id, status) VALUES (${userId}, 'active')`;
+    await sql`INSERT INTO watchlists (id, user_id, name, is_default) VALUES (${watchlistId}, ${userId}, 'My Watchlist', true)`;
 
     // Soft delete
-    await sql`UPDATE watchlists SET deleted_at = NOW() WHERE id = 'wl1'`;
+    await sql`UPDATE watchlists SET deleted_at = NOW() WHERE id = ${watchlistId}`;
 
     // Should not appear in active queries
     const active =
-      await sql`SELECT * FROM watchlists WHERE user_id = 'user1' AND deleted_at IS NULL`;
+      await sql`SELECT * FROM watchlists WHERE user_id = ${userId} AND deleted_at IS NULL`;
     expect(active.length).toBe(0);
 
     // But still exists in database
-    const all = await sql`SELECT * FROM watchlists WHERE id = 'wl1'`;
+    const all = await sql`SELECT * FROM watchlists WHERE id = ${watchlistId}`;
     expect(all.length).toBe(1);
     expect(all[0]?.deleted_at).not.toBeNull();
   });

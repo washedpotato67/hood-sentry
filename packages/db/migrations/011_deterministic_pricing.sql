@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS market_candles (
   chain_id INTEGER NOT NULL,
   token_address TEXT NOT NULL,
   quote_asset_address TEXT NOT NULL,
-  window TEXT NOT NULL CHECK (window IN ('1m', '5m', '15m', '1h', '6h', '24h', '7d', '30d')),
+  "window" TEXT NOT NULL CHECK ("window" IN ('1m', '5m', '15m', '1h', '6h', '24h', '7d', '30d')),
   bucket_start TIMESTAMPTZ NOT NULL,
   price_decimals INTEGER NOT NULL,
   open_price_raw NUMERIC(78,0) NOT NULL,
@@ -76,14 +76,14 @@ CREATE TABLE IF NOT EXISTS market_candles (
   methodology_version TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (chain_id, token_address, quote_asset_address, window, bucket_start, methodology_version)
+  PRIMARY KEY (chain_id, token_address, quote_asset_address, "window", bucket_start, methodology_version)
 );
 
 CREATE TABLE IF NOT EXISTS market_metrics (
   chain_id INTEGER NOT NULL,
   token_address TEXT NOT NULL,
   quote_asset_address TEXT NOT NULL,
-  window TEXT NOT NULL CHECK (window IN ('1m', '5m', '15m', '1h', '6h', '24h', '7d', '30d')),
+  "window" TEXT NOT NULL CHECK ("window" IN ('1m', '5m', '15m', '1h', '6h', '24h', '7d', '30d')),
   bucket_start TIMESTAMPTZ NOT NULL,
   quote_decimals INTEGER NOT NULL,
   spot_price_raw NUMERIC(78,0),
@@ -115,10 +115,10 @@ CREATE TABLE IF NOT EXISTS market_metrics (
   methodology_version TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (chain_id, token_address, quote_asset_address, window, bucket_start, methodology_version)
+  PRIMARY KEY (chain_id, token_address, quote_asset_address, "window", bucket_start, methodology_version)
 );
 
 CREATE INDEX IF NOT EXISTS market_candles_asset_window_idx
-  ON market_candles(chain_id, token_address, quote_asset_address, window, bucket_start DESC);
+  ON market_candles(chain_id, token_address, quote_asset_address, "window", bucket_start DESC);
 CREATE INDEX IF NOT EXISTS market_metrics_asset_window_idx
-  ON market_metrics(chain_id, token_address, quote_asset_address, window, bucket_start DESC);
+  ON market_metrics(chain_id, token_address, quote_asset_address, "window", bucket_start DESC);
