@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-14
 
-Current phase: Foundation, indexer hardening, and explorer enrichment
+Current phase: Foundation, indexer hardening, explorer enrichment, and protocol adapters
 
 Release readiness: Not ready for production
 
@@ -30,6 +30,10 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Persistent explorer metadata cache separated from direct chain facts
 - Proxy metadata reconciliation which keeps chain implementation and admin values authoritative,
   preserves Blockscout values, and records data-quality conflicts
+- Generic liquidity-venue adapter interfaces, normalized pool and event models, and protocol-neutral
+  adapter manager
+- Verified Uniswap v2 Robinhood Chain mainnet adapter with registry-only contract loading, runtime
+  bytecode gates, normalized event decoding, quoting, price impact, and simulated transaction intent
 - Fastify API shell with health routes and security headers
 - Fixed-supply SentryToken contract with ERC-20 Permit
 - Minimal Next.js landing page
@@ -39,8 +43,8 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Derived indexer jobs only reach structured logs. No Redis or BullMQ publisher connects the indexer to a worker.
 - Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment exists as a typed
   client and database adapter, but no durable worker queue invokes the enrichment job yet. Token
-  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, verified DEX
-  adapters, pool discovery, and swap decoding are absent.
+  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, durable DEX
+  pool and swap persistence, pool-state refresh, and worker execution are absent.
 - The database schema and repositories are broad. Live PostgreSQL integration validation is pending.
 - The API exposes health routes only.
 - The web app exposes a static product title only.
@@ -79,13 +83,18 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added isolated Blockscout enrichment storage so explorer claims never replace direct chain facts.
 - Added verified, unverified, malformed ABI, rate limit, outage, timeout, proxy disagreement, large
   response, and stale refresh coverage.
+- Added a protocol-neutral liquidity adapter system and enabled only the independently verified
+  Uniswap v2 mainnet factory and Router02 deployment.
+- Added pool creation, swap, liquidity add and remove, malformed log, unsupported fee, unknown
+  factory, duplicate pool, wrong address, canonical factory mapping, and verified and unverified
+  quote and transaction tests.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 402 Vitest tests and 6 Forge tests executed
+- `pnpm test`: passed, 417 Vitest tests and 6 Forge tests executed
 - `pnpm test:integration`: command passed, but all 10 database cases returned early because PostgreSQL was unavailable
 - `pnpm build`: passed for all 19 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests

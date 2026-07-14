@@ -148,7 +148,14 @@ always come from direct chain reads.
 ## DEX and pricing
 
 ### `dex_protocols`
-- protocol key, version, factory/router/quoter addresses, verification source and date
+- protocol key and version
+- factory, router, quoter, position-manager, and Permit2 roles where applicable
+- supported fee tiers and canonical event signatures
+- official verification source and date
+- expected runtime bytecode hash for every configured contract
+
+Only enabled registry entries populate this table. A protocol name without official addresses and
+direct runtime verification does not qualify as a supported venue.
 
 ### `pools`
 - `chain_id`
@@ -160,13 +167,15 @@ always come from direct chain reads.
 - `created_block`
 - `created_tx_hash`
 - `active`
+- normalized state model, either constant product or concentrated liquidity
+- creation block hash and log index
 
 ### `swaps`
 - chain provenance columns
 - `pool_address`
 - `sender`
 - `recipient`
-- amount fields
+- normalized direction, amount in, and amount out
 - normalized USD value when available
 - price impact estimate when available
 

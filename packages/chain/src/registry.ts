@@ -1,10 +1,24 @@
 import { type Address, getAddress } from 'viem';
 import {
+  type DexContractEntry,
   type Registry,
   type RegistryEntry,
   type SupportedChainId,
   isSupportedChainId,
 } from './types.js';
+
+function isDexContractEntry(entry: RegistryEntry): entry is DexContractEntry {
+  return 'dexType' in entry && 'protocol' in entry && 'protocolVersion' in entry;
+}
+
+function validateDexEntryFields(entry: DexContractEntry, issues: string[]): void {
+  if (entry.protocol.trim().length === 0 || entry.protocolVersion.trim().length === 0) {
+    issues.push(`DEX entry "${entry.name}" lacks protocol or version`);
+  }
+  if (entry.runtimeBytecodeHash === null || !/^0x[0-9a-f]{64}$/.test(entry.runtimeBytecodeHash)) {
+    issues.push(`DEX entry "${entry.name}" lacks a verified runtime bytecode hash`);
+  }
+}
 
 export class RegistryValidationError extends Error {
   constructor(
@@ -41,6 +55,9 @@ function validateEntryFields(entry: RegistryEntry, issues: string[]): void {
   }
   if (!entry.verificationDate || entry.verificationDate.trim().length === 0) {
     issues.push(`Entry "${entry.name}" has an empty verification date`);
+  }
+  if (isDexContractEntry(entry)) {
+    validateDexEntryFields(entry, issues);
   }
 }
 

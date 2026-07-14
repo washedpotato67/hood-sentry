@@ -132,3 +132,4 @@ export {
 } from './rpc/index.js';
 
 export * from './blockscout/index.js';
+export * from './protocol-adapters/index.js';
