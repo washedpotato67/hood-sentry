@@ -1,8 +1,14 @@
+import { Page, Stat } from './components';
 export default function Home() {
   return (
-    <main>
-      <h1>Hood Sentry</h1>
-      <p>Robinhood Chain intelligence and safety terminal.</p>
-    </main>
+    <Page title="Robinhood Chain safety terminal">
+      <p className="muted">Evidence-based token, wallet, liquidity, and protocol intelligence.</p>
+      <div className="grid">
+        <Stat label="Trending" />
+        <Stat label="New tokens" />
+        <Stat label="Critical findings" />
+        <Stat label="Chain status" />
+      </div>
+    </Page>
   );
 }
