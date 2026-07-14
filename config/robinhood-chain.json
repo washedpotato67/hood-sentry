@@ -1,0 +1,30 @@
+{
+  "mainnet": {
+    "name": "Robinhood Chain",
+    "chainId": 4663,
+    "nativeCurrency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "publicRpcUrl": "https://rpc.mainnet.chain.robinhood.com",
+    "explorerUrl": "https://robinhoodchain.blockscout.com",
+    "weth": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    "usdg": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+    "source": "https://docs.robinhood.com/chain/",
+    "verifiedOn": "2026-07-13"
+  },
+  "testnet": {
+    "name": "Robinhood Chain Testnet",
+    "chainId": 46630,
+    "nativeCurrency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "publicRpcUrl": "https://rpc.testnet.chain.robinhood.com",
+    "explorerUrl": "https://explorer.testnet.chain.robinhood.com",
+    "source": "https://docs.robinhood.com/chain/",
+    "verifiedOn": "2026-07-13"
+  }
+}

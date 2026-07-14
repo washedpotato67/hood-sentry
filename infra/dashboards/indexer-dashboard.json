@@ -1,0 +1,117 @@
+{
+  "version": "1.0.0",
+  "name": "Hood Sentry Indexer Dashboard",
+  "description": "Blockchain indexer performance and health monitoring",
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": "block-lag",
+      "title": "Indexer Block Lag",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "indexer_block_lag",
+          "type": "gauge",
+          "groupBy": ["chain_id"]
+        }
+      ]
+    },
+    {
+      "id": "reorg-count",
+      "title": "Reorg Events",
+      "type": "stat",
+      "metrics": [
+        {
+          "name": "reorg_count_total",
+          "type": "counter",
+          "groupBy": ["chain_id"]
+        }
+      ]
+    },
+    {
+      "id": "rpc-latency",
+      "title": "RPC Request Latency",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "rpc_request_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99],
+          "groupBy": ["method", "provider"]
+        }
+      ]
+    },
+    {
+      "id": "rpc-errors",
+      "title": "RPC Errors",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "rpc_errors_total",
+          "type": "rate",
+          "groupBy": ["error_type", "provider"]
+        }
+      ]
+    },
+    {
+      "id": "provider-failovers",
+      "title": "Provider Failovers",
+      "type": "stat",
+      "metrics": [
+        {
+          "name": "provider_failovers_total",
+          "type": "counter",
+          "groupBy": ["from_provider", "to_provider"]
+        }
+      ]
+    },
+    {
+      "id": "queue-depth",
+      "title": "Queue Depth",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "queue_depth",
+          "type": "gauge",
+          "groupBy": ["queue_name"]
+        }
+      ]
+    },
+    {
+      "id": "oldest-job-age",
+      "title": "Oldest Job Age",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "job_oldest_age_ms",
+          "type": "gauge",
+          "groupBy": ["queue_name"]
+        }
+      ]
+    },
+    {
+      "id": "job-retries",
+      "title": "Job Retries",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "job_retries_total",
+          "type": "rate",
+          "groupBy": ["job_name"]
+        }
+      ]
+    },
+    {
+      "id": "dead-letter-count",
+      "title": "Dead Letter Queue",
+      "type": "stat",
+      "metrics": [
+        {
+          "name": "dead_letter_count",
+          "type": "gauge",
+          "groupBy": ["queue_name"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@hood-sentry/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "forge:test": "forge test -vvv",
+    "forge:coverage": "forge coverage",
+    "clean": "forge clean"
+  },
+  "devDependencies": {}
+}

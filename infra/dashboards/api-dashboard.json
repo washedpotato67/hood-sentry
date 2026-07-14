@@ -1,0 +1,82 @@
+{
+  "version": "1.0.0",
+  "name": "Hood Sentry API Dashboard",
+  "description": "API performance and health monitoring",
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": "http-request-rate",
+      "title": "HTTP Request Rate",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "http_requests_total",
+          "type": "rate",
+          "groupBy": ["method", "route"]
+        }
+      ]
+    },
+    {
+      "id": "http-request-latency",
+      "title": "HTTP Request Latency (p50, p95, p99)",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "http_request_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99]
+        }
+      ]
+    },
+    {
+      "id": "api-error-rate",
+      "title": "API Error Rate",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "api_errors_total",
+          "type": "rate",
+          "groupBy": ["error_code", "status_code"]
+        }
+      ]
+    },
+    {
+      "id": "database-latency",
+      "title": "Database Query Latency",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "database_query_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99],
+          "groupBy": ["operation"]
+        }
+      ]
+    },
+    {
+      "id": "redis-latency",
+      "title": "Redis Operation Latency",
+      "type": "timeseries",
+      "metrics": [
+        {
+          "name": "redis_operation_duration_ms",
+          "type": "histogram",
+          "quantiles": [0.5, 0.95, 0.99],
+          "groupBy": ["operation"]
+        }
+      ]
+    },
+    {
+      "id": "feature-flag-changes",
+      "title": "Feature Flag Changes",
+      "type": "table",
+      "metrics": [
+        {
+          "name": "feature_flag_changes_total",
+          "type": "counter",
+          "groupBy": ["flag_name", "new_value"]
+        }
+      ]
+    }
+  ]
+}

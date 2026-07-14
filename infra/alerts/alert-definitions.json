@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "alerts": [
+    {
+      "id": "high-api-error-rate",
+      "name": "High API Error Rate",
+      "description": "API error rate exceeds 5% over 5 minutes",
+      "severity": "critical",
+      "condition": {
+        "metric": "api_errors_total",
+        "type": "rate",
+        "window": "5m",
+        "threshold": 0.05,
+        "operator": "gt"
+      },
+      "channels": ["pagerduty", "slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/api-error-rate.md"
+    },
+    {
+      "id": "high-api-latency",
+      "name": "High API Latency",
+      "description": "API p95 latency exceeds 500ms over 5 minutes",
+      "severity": "warning",
+      "condition": {
+        "metric": "http_request_duration_ms",
+        "type": "histogram",
+        "quantile": 0.95,
+        "window": "5m",
+        "threshold": 500,
+        "operator": "gt"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/api-latency.md"
+    },
+    {
+      "id": "indexer-block-lag",
+      "name": "Indexer Block Lag",
+      "description": "Indexer is more than 10 blocks behind chain head",
+      "severity": "critical",
+      "condition": {
+        "metric": "indexer_block_lag",
+        "type": "gauge",
+        "window": "2m",
+        "threshold": 10,
+        "operator": "gt"
+      },
+      "channels": ["pagerduty", "slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/indexer-lag.md"
+    },
+    {
+      "id": "high-rpc-error-rate",
+      "name": "High RPC Error Rate",
+      "description": "RPC error rate exceeds 10% over 5 minutes",
+      "severity": "warning",
+      "condition": {
+        "metric": "rpc_errors_total",
+        "type": "rate",
+        "window": "5m",
+        "threshold": 0.1,
+        "operator": "gt"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/rpc-errors.md"
+    },
+    {
+      "id": "provider-failover",
+      "name": "Provider Failover",
+      "description": "Provider failover occurred",
+      "severity": "warning",
+      "condition": {
+        "metric": "provider_failovers_total",
+        "type": "counter",
+        "window": "1m",
+        "threshold": 1,
+        "operator": "gte"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/provider-failover.md"
+    },
+    {
+      "id": "queue-depth-high",
+      "name": "High Queue Depth",
+      "description": "Queue depth exceeds 1000 jobs",
+      "severity": "warning",
+      "condition": {
+        "metric": "queue_depth",
+        "type": "gauge",
+        "window": "5m",
+        "threshold": 1000,
+        "operator": "gt"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/queue-depth.md"
+    },
+    {
+      "id": "dead-letter-queue",
+      "name": "Dead Letter Queue Growth",
+      "description": "Dead letter queue has more than 10 items",
+      "severity": "critical",
+      "condition": {
+        "metric": "dead_letter_count",
+        "type": "gauge",
+        "window": "5m",
+        "threshold": 10,
+        "operator": "gt"
+      },
+      "channels": ["pagerduty", "slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/dead-letter-queue.md"
+    },
+    {
+      "id": "risk-scan-slow",
+      "name": "Slow Risk Scans",
+      "description": "Risk scan p95 duration exceeds 30 seconds",
+      "severity": "warning",
+      "condition": {
+        "metric": "risk_scan_duration_ms",
+        "type": "histogram",
+        "quantile": 0.95,
+        "window": "10m",
+        "threshold": 30000,
+        "operator": "gt"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/risk-scan-slow.md"
+    },
+    {
+      "id": "notification-delivery-failure",
+      "name": "Notification Delivery Failures",
+      "description": "Notification delivery failure rate exceeds 5%",
+      "severity": "warning",
+      "condition": {
+        "metric": "notification_delivery_total",
+        "type": "rate",
+        "window": "5m",
+        "threshold": 0.05,
+        "operator": "gt",
+        "labelFilter": { "status": "failure" }
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/notification-failures.md"
+    },
+    {
+      "id": "database-latency-high",
+      "name": "High Database Latency",
+      "description": "Database query p95 latency exceeds 200ms",
+      "severity": "warning",
+      "condition": {
+        "metric": "database_query_duration_ms",
+        "type": "histogram",
+        "quantile": 0.95,
+        "window": "5m",
+        "threshold": 200,
+        "operator": "gt"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/database-latency.md"
+    },
+    {
+      "id": "contract-balance-low",
+      "name": "Low Contract Balance",
+      "description": "Contract balance below minimum threshold",
+      "severity": "critical",
+      "condition": {
+        "metric": "contract_balance",
+        "type": "gauge",
+        "window": "5m",
+        "threshold": 0.1,
+        "operator": "lt"
+      },
+      "channels": ["pagerduty", "slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/contract-balance.md"
+    },
+    {
+      "id": "reorg-detected",
+      "name": "Chain Reorg Detected",
+      "description": "Chain reorganization event detected",
+      "severity": "info",
+      "condition": {
+        "metric": "reorg_count_total",
+        "type": "counter",
+        "window": "1m",
+        "threshold": 1,
+        "operator": "gte"
+      },
+      "channels": ["slack"],
+      "runbook": "https://github.com/hood-sentry/runbooks/blob/main/reorg.md"
+    }
+  ]
+}
