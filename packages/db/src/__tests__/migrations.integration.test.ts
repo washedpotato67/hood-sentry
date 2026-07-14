@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { applyMigrations, resetSchema } from './setup.js';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hood_sentry_test';
@@ -17,9 +18,8 @@ describe('Database Migrations', () => {
       await sql`SELECT 1`;
       dbAvailable = true;
 
-      // Clean up test database
-      await sql`DROP SCHEMA public CASCADE`;
-      await sql`CREATE SCHEMA public`;
+      // Start from a clean schema; the "apply all migrations" test builds it up.
+      await resetSchema(sql);
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: test output
       console.warn('Database not available, skipping tests:', (error as Error).message);
@@ -114,38 +114,8 @@ describe('Database Migrations', () => {
       return;
     }
 
-    const fs = await import('node:fs');
-    const path = await import('node:path');
-    const { fileURLToPath } = await import('node:url');
-
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
-
-    // Create migrations table
-    await sql`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-    `;
-
-    const files = fs
-      .readdirSync(migrationsDir)
-      .filter((f) => f.endsWith('.sql'))
-      .sort();
-
+    const files = await applyMigrations(sql);
     expect(files.length).toBeGreaterThan(0);
-
-    for (const file of files) {
-      const filePath = path.join(migrationsDir, file);
-      const sqlContent = fs.readFileSync(filePath, 'utf-8');
-
-      await sql.begin(async (tx) => {
-        await tx.unsafe(sqlContent);
-        await tx`INSERT INTO migrations (name) VALUES (${file})`;
-      });
-    }
 
     const applied = await sql`SELECT name FROM migrations ORDER BY id`;
     expect(applied.length).toBe(files.length);
