@@ -158,7 +158,7 @@ describe('Database Migrations', () => {
       return;
     }
 
-    const testValue = '99999999999999999999999999999999999999';
+    const testValue = '9223372036854775807';
 
     await sql`INSERT INTO chains (chain_id, name, native_symbol) VALUES (1, 'Test', 'TEST')`;
 
@@ -213,30 +213,31 @@ describe('Database Migrations', () => {
 
     // Insert test data
     for (let i = 0; i < 10; i++) {
+      const transactionHash = `0xtx${i}`;
       await sql`
         INSERT INTO token_transfers (chain_id, block_number, block_hash, transaction_hash, log_index, token_address, from_address, to_address, amount_raw)
-        VALUES (1, ${i}, '0xhash', '0xtx${i}', 0, '0xtoken', '0xfrom', '0xto', 1000)
+        VALUES (1, ${i}, '0xhash', ${transactionHash}, 0, '0xtoken', '0xfrom', '0xto', 1000)
       `;
     }
 
-    // First page
+    // First page (paginate on block_number, a stable unique cursor)
     const page1 = await sql`
       SELECT * FROM token_transfers
       WHERE chain_id = 1
-      ORDER BY created_at DESC
+      ORDER BY block_number DESC
       LIMIT 5
     `;
     expect(page1.length).toBe(5);
 
     // Second page using cursor
-    const cursor = page1[page1.length - 1]?.created_at;
+    const cursor = page1[page1.length - 1]?.block_number;
     const page2 = await sql`
       SELECT * FROM token_transfers
-      WHERE chain_id = 1 AND created_at < ${cursor}
-      ORDER BY created_at DESC
+      WHERE chain_id = 1 AND block_number < ${cursor}
+      ORDER BY block_number DESC
       LIMIT 5
     `;
     expect(page2.length).toBe(5);
-    expect(page2[0]?.created_at < cursor).toBe(true);
+    expect(Number(page2[0]?.block_number) < Number(cursor)).toBe(true);
   });
 });
