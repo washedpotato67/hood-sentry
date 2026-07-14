@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  TransactionIntentService,
   type IntentProvider,
   type IntentRequest,
+  TransactionIntentService,
 } from '../transaction-intent.js';
 const request: IntentRequest = {
   userId: 'u1',

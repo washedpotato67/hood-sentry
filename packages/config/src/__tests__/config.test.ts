@@ -41,10 +41,7 @@ describe('Configuration Schema', () => {
     LOG_LEVEL: 'info',
     OTEL_SERVICE_NAME: 'hood-sentry',
     TRADING_ENABLED: 'false',
-    TOKEN_STAKING_ENABLED: 'false',
-    PROJECT_BONDS_ENABLED: 'false',
-    REPORT_BONDS_ENABLED: 'false',
-    ADMIN_SLASHING_ENABLED: 'false',
+    TOKEN_GATE_ENABLED: 'false',
     GAS_SPONSORSHIP_ENABLED: 'false',
     AI_EXPLANATIONS_ENABLED: 'false',
     WEBHOOKS_ENABLED: 'false',
@@ -468,10 +465,7 @@ describe('Configuration Schema', () => {
       expect(result.success).toBe(true);
       if (result.success) {
         expect(result.data.TRADING_ENABLED).toBe(false);
-        expect(result.data.TOKEN_STAKING_ENABLED).toBe(false);
-        expect(result.data.PROJECT_BONDS_ENABLED).toBe(false);
-        expect(result.data.REPORT_BONDS_ENABLED).toBe(false);
-        expect(result.data.ADMIN_SLASHING_ENABLED).toBe(false);
+        expect(result.data.TOKEN_GATE_ENABLED).toBe(false);
         expect(result.data.GAS_SPONSORSHIP_ENABLED).toBe(false);
         expect(result.data.AI_EXPLANATIONS_ENABLED).toBe(false);
         expect(result.data.WEBHOOKS_ENABLED).toBe(false);

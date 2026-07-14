@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import {
+  type Hash,
+  type Hex,
   encodeFunctionData,
   getAddress,
   isAddress,
@@ -7,8 +9,6 @@ import {
   parseAbi,
   stringToHex,
   zeroAddress,
-  type Hash,
-  type Hex,
 } from 'viem';
 import { z } from 'zod';
 import type {

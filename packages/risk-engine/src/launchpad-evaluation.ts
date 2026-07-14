@@ -25,7 +25,7 @@ export function evaluateLaunchpad(
   const findings: string[] = [];
   for (const c of input.contracts) {
     if (!c.explorerVerified) findings.push(`${c.role}: unverified contract`);
-    if (c.runtimeBytecodeHash === '0x' + '0'.repeat(64))
+    if (c.runtimeBytecodeHash === `0x${'0'.repeat(64)}`)
       findings.push(`${c.role}: missing bytecode`);
   }
   return {

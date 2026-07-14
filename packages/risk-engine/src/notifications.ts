@@ -37,8 +37,9 @@ export class NotificationService {
   update(id: string, status: DeliveryStatus) {
     const d = this.deliveries.get(id);
     if (!d) throw new Error('Delivery not found');
-    this.deliveries.set(id, { ...d, status, attempts: d.attempts + 1 });
-    return this.deliveries.get(id)!;
+    const updated = { ...d, status, attempts: d.attempts + 1 };
+    this.deliveries.set(id, updated);
+    return updated;
   }
   correct(eventId: string) {
     for (const [id, d] of this.deliveries)

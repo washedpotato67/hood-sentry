@@ -13,15 +13,14 @@ export class InMemoryFlagStore implements FlagStore {
     this.flags = new Map();
     for (const name of [
       'TRADING_ENABLED',
-      'TOKEN_STAKING_ENABLED',
-      'PROJECT_BONDS_ENABLED',
-      'REPORT_BONDS_ENABLED',
-      'ADMIN_SLASHING_ENABLED',
+      'TOKEN_GATE_ENABLED',
       'GAS_SPONSORSHIP_ENABLED',
       'AI_EXPLANATIONS_ENABLED',
       'WEBHOOKS_ENABLED',
       'STOCK_TOKEN_MODULE_ENABLED',
       'MAINNET_WRITES_ENABLED',
+      'PROJECT_CLAIMS_ENABLED',
+      'COMMUNITY_REPORTS_ENABLED',
     ] as const) {
       this.flags.set(name, {
         enabled: initial?.[name] ?? false,

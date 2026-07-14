@@ -128,11 +128,6 @@ const notificationsSchema = z.object({
 
 const contractsSchema = z.object({
   SENTRY_TOKEN_ADDRESS: ethereumAddressSchema.optional(),
-  ACCESS_STAKING_ADDRESS: ethereumAddressSchema.optional(),
-  PROJECT_REGISTRY_ADDRESS: ethereumAddressSchema.optional(),
-  PROJECT_BOND_VAULT_ADDRESS: ethereumAddressSchema.optional(),
-  REPORT_REGISTRY_ADDRESS: ethereumAddressSchema.optional(),
-  TIMELOCK_ADDRESS: ethereumAddressSchema.optional(),
   TREASURY_SAFE_ADDRESS: ethereumAddressSchema.optional(),
 });
 
@@ -147,10 +142,7 @@ const booleanStringSchema = z.preprocess((val) => {
 
 const featureFlagsSchema = z.object({
   TRADING_ENABLED: booleanStringSchema.default(false),
-  TOKEN_STAKING_ENABLED: booleanStringSchema.default(false),
-  PROJECT_BONDS_ENABLED: booleanStringSchema.default(false),
-  REPORT_BONDS_ENABLED: booleanStringSchema.default(false),
-  ADMIN_SLASHING_ENABLED: booleanStringSchema.default(false),
+  TOKEN_GATE_ENABLED: booleanStringSchema.default(false),
   GAS_SPONSORSHIP_ENABLED: booleanStringSchema.default(false),
   AI_EXPLANATIONS_ENABLED: booleanStringSchema.default(false),
   WEBHOOKS_ENABLED: booleanStringSchema.default(false),
@@ -246,9 +238,7 @@ const PUBLIC_KEYS = new Set([
   'ROBINHOOD_CHAIN_ID',
   'BLOCKSCOUT_WEB_BASE',
   'TRADING_ENABLED',
-  'TOKEN_STAKING_ENABLED',
-  'PROJECT_BONDS_ENABLED',
-  'REPORT_BONDS_ENABLED',
+  'TOKEN_GATE_ENABLED',
   'AI_EXPLANATIONS_ENABLED',
   'WEBHOOKS_ENABLED',
   'STOCK_TOKEN_MODULE_ENABLED',
@@ -269,9 +259,7 @@ export type PublicEnv = {
   ROBINHOOD_CHAIN_ID: number;
   BLOCKSCOUT_WEB_BASE: string;
   TRADING_ENABLED: boolean;
-  TOKEN_STAKING_ENABLED: boolean;
-  PROJECT_BONDS_ENABLED: boolean;
-  REPORT_BONDS_ENABLED: boolean;
+  TOKEN_GATE_ENABLED: boolean;
   AI_EXPLANATIONS_ENABLED: boolean;
   WEBHOOKS_ENABLED: boolean;
   STOCK_TOKEN_MODULE_ENABLED: boolean;

@@ -1,5 +1,6 @@
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import { getEnv } from '@hood-sentry/config';
 import {
   DrizzleDiscoveryRepository,
@@ -42,6 +43,12 @@ export async function buildApp() {
   await app.register(cors, {
     origin: env.PUBLIC_APP_URL,
     credentials: true,
+  });
+
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+    keyGenerator: (request) => request.ip,
   });
 
   app.setErrorHandler(errorHandler(logger));

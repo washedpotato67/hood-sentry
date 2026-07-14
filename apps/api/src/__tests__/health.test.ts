@@ -124,3 +124,35 @@ describe('API Startup', () => {
     await expect(app.close()).resolves.toBeUndefined();
   });
 });
+
+describe('API Rate Limits', () => {
+  it('throttles repeated public requests by client address', async () => {
+    const app = await buildApp();
+    let finalStatus = 0;
+    for (let index = 0; index < 101; index += 1) {
+      const response = await app.inject({ method: 'GET', url: '/health/live' });
+      finalStatus = response.statusCode;
+    }
+    expect(finalStatus).toBe(429);
+    await app.close();
+  });
+});
+
+describe('API Safe Errors', () => {
+  it('returns a generic 400 response for invalid request schemas', async () => {
+    const app = await buildApp();
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/discovery/pricePump?chainId=4663',
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'The request did not match the required schema.',
+      },
+    });
+    expect(response.body).not.toContain('invalid_enum_value');
+    await app.close();
+  });
+});
