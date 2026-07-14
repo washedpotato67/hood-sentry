@@ -232,6 +232,12 @@ export class RPCClient {
     });
   }
 
+  async getChainId(): Promise<number> {
+    return this.executeWithFailover('eth_chainId', async (client) => {
+      return await client.getChainId();
+    });
+  }
+
   async getBlock(params: {
     blockNumber?: bigint;
     blockHash?: Hash;
@@ -278,6 +284,13 @@ export class RPCClient {
     return this.executeWithFailover('eth_getCode', async (client) => {
       const bytecode = await client.getBytecode({ address, blockNumber });
       return bytecode ?? '0x';
+    });
+  }
+
+  async getStorageAt(address: Address, slot: Hash, blockNumber?: bigint): Promise<Hex> {
+    return this.executeWithFailover('eth_getStorageAt', async (client) => {
+      const value = await client.getStorageAt({ address, slot, blockNumber });
+      return value ?? '0x';
     });
   }
 

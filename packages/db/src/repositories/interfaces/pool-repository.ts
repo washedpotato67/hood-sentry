@@ -1,92 +1,83 @@
-import type { CursorPaginationOptions, PaginatedResult } from '../../core/pagination.js';
-import type { TransactionContext } from '../../core/transaction.js';
+import type {
+  LaunchpadGraduation,
+  LaunchpadMigration,
+  LaunchpadTokenCreated,
+  LaunchpadTrade,
+  NormalizedLiquidityEvent,
+  NormalizedPool,
+  NormalizedPoolState,
+  NormalizedQuote,
+  NormalizedSwap,
+  ProtocolDefinition,
+  ProtocolKind,
+  ProtocolValidationResult,
+} from '@hood-sentry/chain';
 
-export interface Pool {
+export interface ProtocolSummary {
   chainId: number;
+  protocolKey: string;
+  protocolName: string;
+  protocolVersion: string;
+  kind: ProtocolKind;
+  enabled: boolean;
+  validationStatus: 'active' | 'disabled' | 'failed';
+  validatedAt: Date | null;
+  validationExpiresAt: Date | null;
+}
+
+export interface ProtocolVerificationRecord {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  contractRole: string;
   address: string;
-  protocolId: string;
-  token0Address: string;
-  token1Address: string;
-  feeTier: number;
-  createdBlock: bigint;
-  createdTxHash: string;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  expectedRuntimeBytecodeHash: string;
+  observedRuntimeBytecodeHash: string | null;
+  valid: boolean;
+  failureCode: string | null;
+  errors: readonly string[];
+  checkedAt: Date;
+  expiresAt: Date;
 }
 
-export interface Swap {
-  id: string;
-  chainId: number;
-  blockNumber: bigint;
-  blockHash: string;
-  transactionHash: string;
-  logIndex: number;
-  poolAddress: string;
-  sender: string;
-  recipient: string;
-  amount0Raw: string;
-  amount1Raw: string;
-  sqrtPriceX96: string;
-  liquidity: string;
-  tick: number;
-  normalizedUsdValue: string | null;
-  priceImpactEstimate: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface PoolRepository {
-  getPool(chainId: number, address: string, tx?: TransactionContext): Promise<Pool | null>;
-
-  getPools(
-    chainId: number,
-    options: CursorPaginationOptions,
-    tx?: TransactionContext,
-  ): Promise<PaginatedResult<Pool>>;
-
-  getPoolsByToken(
-    chainId: number,
-    tokenAddress: string,
-    options: CursorPaginationOptions,
-    tx?: TransactionContext,
-  ): Promise<PaginatedResult<Pool>>;
-
-  insertPool(pool: Omit<Pool, 'createdAt' | 'updatedAt'>, tx?: TransactionContext): Promise<Pool>;
-
-  upsertPool(pool: Omit<Pool, 'createdAt' | 'updatedAt'>, tx?: TransactionContext): Promise<Pool>;
-
-  updatePool(
-    chainId: number,
-    address: string,
-    data: Partial<Omit<Pool, 'chainId' | 'address' | 'createdAt' | 'updatedAt'>>,
-    tx?: TransactionContext,
-  ): Promise<Pool | null>;
-}
-
-export interface SwapRepository {
-  getSwap(id: string, tx?: TransactionContext): Promise<Swap | null>;
-
-  getSwapsByPool(
+export interface ProtocolRepository {
+  saveProtocolValidation(
+    definition: ProtocolDefinition,
+    result: ProtocolValidationResult,
+    registryVersion: string,
+  ): Promise<void>;
+  upsertPool(pool: NormalizedPool): Promise<void>;
+  upsertPoolTokens(pool: NormalizedPool): Promise<void>;
+  updatePoolState(
     chainId: number,
     poolAddress: string,
-    options: CursorPaginationOptions,
-    tx?: TransactionContext,
-  ): Promise<PaginatedResult<Swap>>;
-
-  getSwapsByTransaction(
+    state: NormalizedPoolState,
+    blockNumber: bigint,
+  ): Promise<void>;
+  insertSwap(swap: NormalizedSwap): Promise<void>;
+  insertLiquidityEvent(event: NormalizedLiquidityEvent): Promise<void>;
+  insertLaunchpadToken(event: LaunchpadTokenCreated): Promise<void>;
+  insertLaunchpadTrade(event: LaunchpadTrade): Promise<void>;
+  insertCreatorFeeEvent(event: LaunchpadTrade): Promise<void>;
+  insertGraduation(event: LaunchpadGraduation): Promise<void>;
+  insertMigration(event: LaunchpadMigration): Promise<void>;
+  saveQuote(quote: NormalizedQuote): Promise<void>;
+  markDerivedNonCanonical(chainId: number, fromBlock: bigint, toBlock: bigint): Promise<void>;
+  listProtocols(chainId: number, kind?: ProtocolKind): Promise<readonly ProtocolSummary[]>;
+  listProtocolVerifications(chainId: number): Promise<readonly ProtocolVerificationRecord[]>;
+  getActivePools(chainId: number): Promise<readonly NormalizedPool[]>;
+  getPoolsByToken(chainId: number, tokenAddress: string): Promise<readonly NormalizedPool[]>;
+  getSwapsByPool(chainId: number, poolAddress: string): Promise<readonly NormalizedSwap[]>;
+  getLiquidityHistory(
     chainId: number,
-    transactionHash: string,
-    tx?: TransactionContext,
-  ): Promise<Swap[]>;
-
-  insertSwap(
-    swap: Omit<Swap, 'id' | 'createdAt' | 'updatedAt'>,
-    tx?: TransactionContext,
-  ): Promise<Swap>;
-
-  insertSwaps(
-    swaps: Omit<Swap, 'id' | 'createdAt' | 'updatedAt'>[],
-    tx?: TransactionContext,
-  ): Promise<Swap[]>;
+    poolAddress: string,
+  ): Promise<readonly NormalizedLiquidityEvent[]>;
+  getLaunchpadToken(chainId: number, tokenAddress: string): Promise<LaunchpadTokenCreated | null>;
+  getGraduation(chainId: number, tokenAddress: string): Promise<LaunchpadGraduation | null>;
+  getMigration(chainId: number, tokenAddress: string): Promise<LaunchpadMigration | null>;
 }
+
+export type Pool = NormalizedPool;
+export type Swap = NormalizedSwap;
+export type PoolRepository = ProtocolRepository;
+export type SwapRepository = ProtocolRepository;

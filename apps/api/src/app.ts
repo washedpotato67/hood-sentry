@@ -1,15 +1,19 @@
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { getEnv } from '@hood-sentry/config';
+import { DrizzleProtocolRepositoryImpl, createDatabase } from '@hood-sentry/db';
 import { createLogger } from '@hood-sentry/observability';
 import { generateRequestId } from '@hood-sentry/shared';
 import Fastify from 'fastify';
 import { errorHandler } from './plugins/error-handler.js';
 import { healthRoutes } from './routes/health.js';
+import { protocolRoutes } from './routes/protocols.js';
 
 export async function buildApp() {
   const env = getEnv();
   const logger = createLogger({ level: env.LOG_LEVEL as 'info', service: 'api' });
+  const database = createDatabase(env.DATABASE_URL);
+  const protocolRepository = new DrizzleProtocolRepositoryImpl(database.db);
 
   const app = Fastify({
     logger: false,
@@ -53,6 +57,14 @@ export async function buildApp() {
   });
 
   await app.register(healthRoutes, { prefix: '/health' });
+  await app.register(protocolRoutes, {
+    prefix: '/v1',
+    repository: protocolRepository,
+  });
+
+  app.addHook('onClose', async () => {
+    await database.close();
+  });
 
   return app;
 }

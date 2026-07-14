@@ -1,4 +1,4 @@
-import type { Database } from '@hood-sentry/db';
+import type { Database, ProtocolRepository } from '@hood-sentry/db';
 import { schema } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import { and, eq, gte, lte } from 'drizzle-orm';
@@ -14,6 +14,7 @@ export class ReorgDetector {
     private readonly blockFetcher: BlockFetcher,
     private readonly config: IndexerConfig,
     private readonly logger: Logger,
+    private readonly protocolRepository?: ProtocolRepository,
   ) {
     this.drizzle = database.db;
   }
@@ -111,6 +112,11 @@ export class ReorgDetector {
     await this.markBlocksOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markTransactionsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markLogsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
+    await this.protocolRepository?.markDerivedNonCanonical(
+      Number(this.config.chainId),
+      reorgEvent.fromBlock,
+      reorgEvent.toBlock,
+    );
     await this.resolveReorgEvent(reorgEvent.id);
 
     this.logger.info('Reorg handled successfully', {

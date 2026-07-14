@@ -1,7 +1,19 @@
-import { RPCClient, getChainDefinition } from '@hood-sentry/chain';
+import {
+  ProtocolValidationService,
+  RPCClient,
+  ResilientProtocolClient,
+  createProtocolAdapterRuntime,
+  getChainDefinition,
+  protocolRegistry,
+} from '@hood-sentry/chain';
 import { getEnv } from '@hood-sentry/config';
-import { createDatabase } from '@hood-sentry/db';
-import { createLogger } from '@hood-sentry/observability';
+import {
+  DrizzleProtocolRepositoryImpl,
+  type ProtocolRepository,
+  createDatabase,
+} from '@hood-sentry/db';
+import { type Logger, createLogger } from '@hood-sentry/observability';
+import { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import {
   BlockFetcher,
   BlockIndexer,
@@ -11,6 +23,115 @@ import {
   ReorgDetector,
 } from './index.js';
 import type { IndexerConfig, IndexerMode } from './types.js';
+
+interface IndexerArguments {
+  mode: IndexerMode;
+  startBlock?: string;
+  endBlock?: string;
+  batchSize?: string;
+}
+
+function parseMode(value: string | undefined): IndexerMode {
+  switch (value ?? 'live') {
+    case 'live':
+      return 'live';
+    case 'historical':
+      return 'historical';
+    case 'gap-repair':
+      return 'gap-repair';
+    case 'reorg-reconciliation':
+      return 'reorg-reconciliation';
+    case 'contract-replay':
+      return 'contract-replay';
+    default:
+      throw new Error(`Unsupported indexer mode: ${value}`);
+  }
+}
+
+function readArguments(args: readonly string[]): IndexerArguments {
+  const value = (name: string) =>
+    args.find((argument) => argument.startsWith(`--${name}=`))?.split('=')[1];
+  return {
+    mode: parseMode(value('mode')),
+    startBlock: value('start-block'),
+    endBlock: value('end-block'),
+    batchSize: value('batch-size'),
+  };
+}
+
+async function initializeProtocolEvents(request: {
+  rpcClient: RPCClient;
+  chainId: number;
+  tradingEnabled: boolean;
+  mainnetWritesEnabled: boolean;
+  repository: ProtocolRepository;
+  logger: Logger;
+}): Promise<{ handler: ProtocolEventsHandler; validation: ProtocolValidationService }> {
+  const chainRegistry = {
+    ...protocolRegistry,
+    protocols: protocolRegistry.protocols.filter(
+      (definition) => definition.chainId === request.chainId,
+    ),
+  };
+  const protocolClient = new ResilientProtocolClient(request.rpcClient);
+  const validation = new ProtocolValidationService(chainRegistry, protocolClient, {
+    onAlert: (alert) => request.logger.error('Protocol adapter disabled', { ...alert }),
+  });
+  const runtime = await createProtocolAdapterRuntime({
+    registry: chainRegistry,
+    chainId: request.chainId,
+    client: protocolClient,
+    validation,
+    featurePolicy: {
+      async assertTradingEnabled(chainId) {
+        if (!request.tradingEnabled) throw new Error('TRADING_ENABLED is disabled');
+        if (chainId === 4663 && !request.mainnetWritesEnabled) {
+          throw new Error('MAINNET_WRITES_ENABLED is disabled');
+        }
+      },
+    },
+  });
+  for (const error of runtime.initializationErrors) {
+    request.logger.error('Protocol adapter initialization failed', { error });
+  }
+  for (const result of runtime.validationResults) {
+    const definition = chainRegistry.protocols.find(
+      (candidate) =>
+        candidate.protocolKey === result.protocolKey &&
+        candidate.protocolVersion === result.protocolVersion &&
+        candidate.chainId === result.chainId,
+    );
+    if (definition !== undefined) {
+      await request.repository.saveProtocolValidation(definition, result, chainRegistry.version);
+    }
+  }
+  const activePools = await request.repository.getActivePools(request.chainId);
+  for (const pool of activePools) {
+    try {
+      runtime.manager.registerPool(pool);
+    } catch (error) {
+      request.logger.warn('Skipping pool owned by an inactive adapter', {
+        poolAddress: pool.poolAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  const handler = new ProtocolEventsHandler(
+    runtime.manager,
+    request.repository,
+    {
+      async publish(job, idempotencyKey) {
+        request.logger.debug('Publishing protocol-derived job', {
+          type: job.type,
+          idempotencyKey,
+          blockNumber: job.blockNumber.toString(),
+        });
+      },
+    },
+    request.logger,
+  );
+  return { handler, validation };
+}
 
 async function main() {
   const env = getEnv();
@@ -37,12 +158,7 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'));
 
   try {
-    const args = process.argv.slice(2);
-    const mode = (args.find((arg) => arg.startsWith('--mode='))?.split('=')[1] ??
-      'live') as IndexerMode;
-    const startBlock = args.find((arg) => arg.startsWith('--start-block='))?.split('=')[1];
-    const endBlock = args.find((arg) => arg.startsWith('--end-block='))?.split('=')[1];
-    const batchSize = args.find((arg) => arg.startsWith('--batch-size='))?.split('=')[1];
+    const { mode, startBlock, endBlock, batchSize } = readArguments(process.argv.slice(2));
 
     logger.info('Indexer starting', {
       mode,
@@ -106,10 +222,20 @@ async function main() {
       safeConfirmations: 32,
     };
 
+    const protocolRepository = new DrizzleProtocolRepositoryImpl(db.db);
+    const protocolEvents = await initializeProtocolEvents({
+      rpcClient,
+      chainId: env.ROBINHOOD_CHAIN_ID,
+      tradingEnabled: env.TRADING_ENABLED,
+      mainnetWritesEnabled: env.MAINNET_WRITES_ENABLED,
+      repository: protocolRepository,
+      logger,
+    });
+
     const checkpointManager = new CheckpointManager(db, config);
     const blockFetcher = new BlockFetcher(rpcClient, config, logger);
     const blockPersister = new BlockPersister(db, config, logger);
-    const reorgDetector = new ReorgDetector(db, blockFetcher, config, logger);
+    const reorgDetector = new ReorgDetector(db, blockFetcher, config, logger, protocolRepository);
     const gapScanner = new GapScanner(db, config, logger);
 
     indexer = new BlockIndexer(
@@ -121,7 +247,10 @@ async function main() {
       gapScanner,
       config,
       logger,
+      protocolEvents.handler,
     );
+
+    protocolEvents.validation.startPeriodicRevalidation();
 
     await indexer.start();
   } catch (err) {
