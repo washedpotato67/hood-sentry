@@ -35,6 +35,8 @@ export * from './official-sentry.js';
 export * from './quote-trading.js';
 export * from './account-abstraction.js';
 export * from './api-customer.js';
+export * from './admin-console.js';
+export * from './ai-explanations.js';
 export * from './solidity-parser.js';
 export * from './triggers.js';
 export * from './types.js';
