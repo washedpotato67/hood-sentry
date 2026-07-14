@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-14
 
-Current phase: Foundation, indexer hardening, explorer enrichment, and external protocol adapters
+Current phase: Foundation, indexer hardening, protocol adapters, and deterministic market data
 
 Release readiness: Not ready for production
 
@@ -44,6 +44,19 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Read APIs for supported DEX protocols, disabled launchpads, verification state, pools, swaps,
   liquidity history, launch state, graduation, and migration
 - Worker job implementations for protocol revalidation, pool state refresh, and quote freshness
+- Deterministic integer-safe pricing engine with configurable Chainlink, bonding-curve, stablecoin
+  pool, WETH route, direct DEX, multihop, external-provider, and unavailable source types
+- Versioned price-source configuration, independent activation checks, source selection, confidence
+  penalties, stale handling, outlier reason codes, and provider rate limits
+- Price observations with contract, pool, route, provider, block, timestamp, liquidity, confidence,
+  canonical state, and methodology provenance
+- Reproducible OHLC and market metrics for 1m, 5m, 15m, 1h, 6h, 24h, 7d, and 30d windows
+- Separate market capitalization and fully diluted valuation with reliable circulating-supply gates
+- Bonding-curve to verified DEX migration transitions and pricing reorg invalidation
+- Read APIs for current price, price history, candles, metrics, liquidity, market capitalization,
+  fully diluted valuation, freshness, source status, and disagreement warnings
+- Worker jobs for observation, OHLC, metrics, reconciliation, outliers, stale cleanup, migration,
+  historical recomputation, and reorg recomputation
 - Fastify API shell with health routes and security headers
 - A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
   adapter runtime does not deploy, maintain, or reference its contracts.
@@ -59,7 +72,8 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   now exist.
 - Live PostgreSQL migration and repository validation is pending. Deterministic adapter and indexer
   integration tests cover protocol behavior without a database service.
-- The API exposes health and external protocol read routes. Most product routes remain absent.
+- The API exposes health, external protocol, price, candle, and market-metric read routes. Most
+  product routes remain absent.
 - The web app exposes a static product title only.
 - The risk engine defines schemas only.
 
@@ -72,7 +86,7 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Project profile claims and contract verification flow
 - Community reports, bonds, moderation, and appeals
 - Non-custodial quote, simulation review, approval, and swap flows
-- Robinhood Stock Token multiplier, oracle, and corporate-action support
+- Live Robinhood Stock Token and ETF Token feed activation, multiplier refresh, and corporate-action handling
 - Premium access staking
 - Project bond, report bond, registry, vesting, timelock, and deployment contracts
 - Admin product surface
@@ -110,21 +124,26 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added protocol read routes and worker jobs for protocol refresh, pool refresh, and quote checks.
 - Added fixture coverage for launchpad creation, buys, sells, graduation, migration, duplicate
   migration, provider outage, bytecode changes, failed initialization, and API serialization.
+- Added migration 011 for versioned price sources, deterministic observations, candles, and metrics.
+- Added exact pool, Chainlink, bonding-curve, migrated-pool, and external-provider evaluation paths.
+- Added thin-pool, depeg, stale feed, disagreement, negative price, zero price, decimal conversion,
+  integer rounding, large bigint, missing circulating supply, and reorged swap tests.
+- Added source, freshness, history, candle, and windowed metric APIs with null unavailable values.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 459 Vitest cases reported passing and 6 Forge tests passed
-- `pnpm test:integration`: passed. One deterministic migration-shape case ran. Ten database
+- `pnpm test`: passed, 489 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test:integration`: passed. Two deterministic migration-shape cases ran. Ten database
   service cases returned early because PostgreSQL was unavailable.
-- `pnpm build`: passed for all 19 workspaces
+- `pnpm build`: passed for all 20 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
 
 PostgreSQL was unavailable, so clean migration and repository integration validation remains
-pending, including live application of migrations 009 and 010. The indexer, adapter, API, worker,
+pending, including live application of migrations 009, 010, and 011. The indexer, adapter, API, worker,
 and Blockscout paths have deterministic local coverage.
 
 ## Active release blockers
@@ -137,5 +156,7 @@ and Blockscout paths have deterministic local coverage.
 6. Implement and test the missing staking, bond, registry, report, vesting, and timelock contracts.
 7. Verify deployment addresses, contract source, Safe ownership, timelock roles, oracle sources, and sequencer checks before enabling writes.
 8. Run staging load, failover, backup, restore, alert delivery, and transaction simulation tests.
+9. Verify Chainlink proxy and sequencer addresses, feed decimals, and heartbeat values before
+   enabling Stock Token, ETF Token, WETH, stablecoin, or other oracle sources.
 
 All transactional feature flags should stay disabled until their related blocker and security gate passes.

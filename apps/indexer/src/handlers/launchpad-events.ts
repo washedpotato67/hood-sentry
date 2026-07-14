@@ -32,7 +32,16 @@ export function launchpadDerivedJobs(event: LaunchpadEvent): readonly DerivedJob
       { type: 'risk-analysis', ...shared, data },
     ];
   }
+  if ('destinationPoolAddress' in event) {
+    return [
+      { type: 'bonding-curve-migration-transition', ...shared, data },
+      { type: 'source-reconciliation', ...shared, data },
+      { type: 'market-metric', ...shared, data },
+      { type: 'alert-evaluation', ...shared, data },
+    ];
+  }
   return [
+    { type: 'new-price-observation', ...shared, data },
     { type: 'market-metric', ...shared, data },
     { type: 'wallet-activity', ...shared, data },
     { type: 'alert-evaluation', ...shared, data },

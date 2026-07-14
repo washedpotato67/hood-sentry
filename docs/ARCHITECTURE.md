@@ -88,6 +88,18 @@ BullMQ consumers for:
 - protocol contract revalidation
 - pool state refresh
 - quote freshness validation
+- new price observations and source reconciliation
+- OHLC and market-metric aggregation
+- price outlier detection and stale-source cleanup
+- bonding-curve migration transitions
+- historical and reorg recomputation
+
+### `packages/market-engine`
+
+Pure deterministic pricing and metric logic. The package owns source configuration, integer-safe
+price arithmetic, source selection, confidence penalties, outlier reason codes, candle aggregation,
+market metrics, and market-capitalization rules. Chain clients supply verified state. Database and
+queue code stay outside the package.
 
 ### `apps/telegram-bot`
 

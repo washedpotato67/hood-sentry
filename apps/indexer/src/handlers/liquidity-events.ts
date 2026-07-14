@@ -16,6 +16,7 @@ export function liquidityDerivedJobs(event: NormalizedLiquidityEvent): readonly 
     eventType: event.eventType,
   };
   return [
+    { type: 'source-reconciliation', ...shared, data },
     { type: 'liquidity-metric', ...shared, data },
     { type: 'alert-evaluation', ...shared, data },
   ];

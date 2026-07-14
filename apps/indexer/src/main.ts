@@ -8,6 +8,7 @@ import {
 } from '@hood-sentry/chain';
 import { getEnv } from '@hood-sentry/config';
 import {
+  DrizzlePricingRepository,
   DrizzleProtocolRepositoryImpl,
   type ProtocolRepository,
   createDatabase,
@@ -223,6 +224,7 @@ async function main() {
     };
 
     const protocolRepository = new DrizzleProtocolRepositoryImpl(db.db);
+    const pricingRepository = new DrizzlePricingRepository(db.db);
     const protocolEvents = await initializeProtocolEvents({
       rpcClient,
       chainId: env.ROBINHOOD_CHAIN_ID,
@@ -235,7 +237,14 @@ async function main() {
     const checkpointManager = new CheckpointManager(db, config);
     const blockFetcher = new BlockFetcher(rpcClient, config, logger);
     const blockPersister = new BlockPersister(db, config, logger);
-    const reorgDetector = new ReorgDetector(db, blockFetcher, config, logger, protocolRepository);
+    const reorgDetector = new ReorgDetector(
+      db,
+      blockFetcher,
+      config,
+      logger,
+      protocolRepository,
+      pricingRepository,
+    );
     const gapScanner = new GapScanner(db, config, logger);
 
     indexer = new BlockIndexer(

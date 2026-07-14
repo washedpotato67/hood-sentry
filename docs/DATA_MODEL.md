@@ -219,6 +219,40 @@ direct runtime verification produce an active adapter.
 or sell direction, raw trade and fee values, graduation threshold, migration contract, destination
 protocol, destination pool, protocol version, and full chain provenance.
 
+### `price_source_configs`
+- source key and source type
+- asset class, chain ID, source asset address, and quote asset address
+- source contract address where applicable
+- verification URL and verification date
+- minimum raw liquidity and decimal scale
+- maximum staleness, priority, enabled state, confidence rules, and route
+- methodology version
+
+### `deterministic_price_observations`
+- token and quote asset contract addresses
+- source key, type, contract, provider, pool, and route
+- nullable raw price and explicit decimal scale
+- source block number, block hash, source time, and observation time
+- liquidity depth, price impact, and single-transaction concentration
+- confidence basis points, stale state, status, reason codes, and authoritative state
+- canonical state and methodology version
+
+### `market_candles`
+- token and quote asset contract addresses
+- window and bucket start
+- raw integer OHLC values and price decimal scale
+- source observation count
+- canonical state and methodology version
+
+### `market_metrics`
+- spot price and decimal scale
+- raw buy, sell, total, whale, average, and median volumes
+- buy, sell, trader, holder, and transaction measures
+- liquidity and standard-size price impacts
+- nullable market capitalization and separate nullable fully diluted valuation
+- circulating supply, methodology, and exclusions
+- canonical state and methodology version
+
 ### `token_metrics_1m`, `token_metrics_1h`, `token_metrics_1d`
 - OHLC integer prices
 - volume

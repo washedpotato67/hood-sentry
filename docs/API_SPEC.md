@@ -27,7 +27,10 @@ Filters:
 ### Token
 
 - `GET /tokens/:address`
-- `GET /tokens/:address/metrics`
+- `GET /tokens/:tokenAddress/price?chainId=&quoteAssetAddress=`
+- `GET /tokens/:tokenAddress/price/history?chainId=&quoteAssetAddress=&from=&to=`
+- `GET /tokens/:tokenAddress/candles?chainId=&quoteAssetAddress=&window=&limit=`
+- `GET /tokens/:tokenAddress/metrics?chainId=&quoteAssetAddress=&window=`
 - `GET /tokens/:address/holders`
 - `GET /tokens/:address/transfers`
 - `GET /tokens/:address/pools`
@@ -35,6 +38,10 @@ Filters:
 - `GET /tokens/:address/contract`
 - `GET /tokens/:address/deployer`
 - `GET /tokens/:address/related`
+
+Price responses include an exact raw integer and decimal scale, source, source contract, source
+block, source time, observation time, stale state, confidence basis points, warnings, and
+methodology version. Unavailable prices return `priceRaw: null` and `status: "unavailable"`.
 
 ### Wallet
 

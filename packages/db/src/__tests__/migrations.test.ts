@@ -51,6 +51,25 @@ describe('Database Migrations', () => {
     expect(migration).toContain('protocol_id BIGINT NOT NULL REFERENCES dex_protocols(id)');
   });
 
+  it('defines deterministic price provenance and versioned market aggregates', () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'migrations',
+        '011_deterministic_pricing.sql',
+      ),
+      'utf8',
+    );
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS price_source_configs');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS deterministic_price_observations');
+    expect(migration).toContain('source_block_hash TEXT');
+    expect(migration).toContain('methodology_version TEXT NOT NULL');
+    expect(migration).toContain('market_capitalization_raw NUMERIC(78,0)');
+    expect(migration).toContain('fully_diluted_valuation_raw NUMERIC(78,0)');
+  });
+
   it('should apply all migrations successfully', async () => {
     if (!dbAvailable) {
       // biome-ignore lint/suspicious/noConsole: test output

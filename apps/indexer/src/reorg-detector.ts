@@ -1,4 +1,4 @@
-import type { Database, ProtocolRepository } from '@hood-sentry/db';
+import type { Database, PricingRepository, ProtocolRepository } from '@hood-sentry/db';
 import { schema } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import { and, eq, gte, lte } from 'drizzle-orm';
@@ -15,6 +15,7 @@ export class ReorgDetector {
     private readonly config: IndexerConfig,
     private readonly logger: Logger,
     private readonly protocolRepository?: ProtocolRepository,
+    private readonly pricingRepository?: PricingRepository,
   ) {
     this.drizzle = database.db;
   }
@@ -113,6 +114,11 @@ export class ReorgDetector {
     await this.markTransactionsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markLogsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.protocolRepository?.markDerivedNonCanonical(
+      Number(this.config.chainId),
+      reorgEvent.fromBlock,
+      reorgEvent.toBlock,
+    );
+    await this.pricingRepository?.markPricingNonCanonical(
       Number(this.config.chainId),
       reorgEvent.fromBlock,
       reorgEvent.toBlock,
