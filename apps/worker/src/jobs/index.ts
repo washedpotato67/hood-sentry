@@ -12,3 +12,5 @@ export * from './historical-recomputation.js';
 export * from './pricing-reorg.js';
 export * from './discovery-refresh.js';
 export * from './discovery-reorg.js';
+export * from './risk-rescan.js';
+export * from './risk-scan.js';

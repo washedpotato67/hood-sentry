@@ -651,7 +651,8 @@ export class DrizzleDiscoverySourceRepository {
         and(
           eq(schema.riskScanRuns.chainId, chainId),
           eq(schema.riskScanRuns.targetAddress, tokenAddress),
-          eq(schema.riskScanRuns.status, 'completed'),
+          inArray(schema.riskScanRuns.status, ['completed', 'partial']),
+          eq(schema.riskScanRuns.canonical, true),
           lte(schema.riskScanRuns.sourceBlock, sourceBlock),
         ),
       )
@@ -665,6 +666,7 @@ export class DrizzleDiscoverySourceRepository {
         and(
           eq(schema.riskScanRuns.chainId, chainId),
           eq(schema.riskScanRuns.targetAddress, tokenAddress),
+          eq(schema.riskScanRuns.canonical, true),
           lte(schema.riskScanRuns.sourceBlock, sourceBlock),
           eq(schema.riskFindings.severity, 'critical'),
           eq(schema.riskFindings.suppressed, false),
