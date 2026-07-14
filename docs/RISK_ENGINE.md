@@ -100,6 +100,31 @@ shared indexer-to-worker queue blocker.
 
 ## Analysis stages
 
+### 0. Fork-based dynamic simulation
+
+`DynamicSimulationService` starts Anvil with a Robinhood Chain RPC fork and a fixed block number.
+The process uses only locally generated Anvil accounts. `ProcessAnvilForkLauncher` never exposes a
+mainnet transaction method. `AnvilJsonRpcSimulationProvider` sends calls and transactions only to
+the local Anvil endpoint, snapshots before each transaction, records receipt and probe changes, and
+reverts the snapshot after execution.
+
+Every execution preserves the fork configuration, source block and hash, target, sender, calldata,
+route, expected and actual output, revert data, decoded error, gas, fee, balance changes, allowance
+changes, warnings, and hypothetical-state status. Unverified routes fail before execution.
+Timeouts quarantine the batch. A cancellation returns completed executions as partial evidence.
+
+Simulation findings compare buy and sell paths, ordinary transfers, expected and actual output,
+effective fees, address-dependent behavior, and unexpected asset changes. A finding reports
+simulation evidence and never describes a fork result as a broadcast transaction.
+
+### 1. Holder, liquidity, and relationship intelligence
+
+`analyzeHolders` calculates raw and adjusted concentration, Gini, supply allocations, and visible exclusions with bigint arithmetic. Contract addresses stay included until an independently verified classification excludes them. Rebase uncertainty and incomplete history produce explicit warnings.
+
+`analyzeLiquidityRisk` keeps unsupported protocols and unverified lock claims in an unknown state. Ownership evidence, lock beneficiary, unlock data, removals, provider concentration, and migration destinations remain attached to the result.
+
+`buildRelationshipGraph` traverses chain-evidenced edges with depth and edge limits. External labels retain provider attribution and do not create identity claims on their own.
+
 ### 1. Contract identity
 
 - Runtime bytecode hash.

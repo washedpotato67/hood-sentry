@@ -3,7 +3,8 @@
 Last updated: 2026-07-14
 
 Current phase: Foundation, indexer hardening, protocol adapters, deterministic market data,
-discovery rankings, risk-engine framework, proxy analysis, and source privilege analysis
+discovery rankings, risk-engine framework, proxy analysis, source privilege analysis, and fork
+simulation
 
 Release readiness: Not ready for production
 
@@ -104,6 +105,9 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   levels and no AI scoring
 - Worker risk-context composition which keeps chain proxy and privilege analysis operational during
   Blockscout outages
+- Anvil fork simulation service with fixed-block configuration, disposable local accounts, snapshot
+  rollback, local-only JSON-RPC execution, timeout quarantine, hypothetical-state labels, balance and
+  allowance probes, revert capture, and buy-sell risk findings
 - Fastify API shell with health routes and security headers
 - A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
   adapter runtime does not deploy, maintain, or reference its contracts.
@@ -199,6 +203,14 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added fixture coverage for proxy types, authority types, initialization, explorer disagreement,
   Ownable, AccessControl, multiple roles, bounded and unbounded authority, hidden blacklist, rebase,
   reflection, mutable router, arbitrary calls, and unverified bytecode.
+- Added Anvil simulation fixtures for standard transfers, honeypot sell failures, fee-on-transfer,
+  hypothetical state, balance and allowance changes, timeout quarantine, and unverified routes.
+- Added bigint-only holder and supply analysis with visible exclusions, raw and adjusted concentration,
+  Gini, rebase uncertainty, and concentration-change alerts.
+- Added liquidity-risk analysis for verified protocols, lock evidence, creator liquidity, removals,
+  provider concentration, shallow pools, and unexpected migrations.
+- Added bounded relationship graph traversal with chain provenance, confidence, pagination, and
+  external-label attribution.
 
 ## Verification on 2026-07-14
 
