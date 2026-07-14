@@ -21,6 +21,23 @@ describe('discovery jobs', () => {
     });
   });
 
+  it('rejects malformed queue input before reading indexed data', async () => {
+    let loaded = false;
+    const job = new DiscoveryRefreshJob(
+      {
+        loadCandidate: async (): Promise<DiscoveryCandidate | null> => {
+          loaded = true;
+          return null;
+        },
+      },
+      { saveSnapshot: async (_item: DiscoveryItem) => undefined },
+    );
+    await expect(
+      job.run({ chainId: 4663, tokenAddress: 'not-an-address', sourceBlockNumber: 50n }),
+    ).rejects.toThrow('Token address is malformed');
+    expect(loaded).toBe(false);
+  });
+
   it('invalidates and republishes a reorg range', async () => {
     const invalidated: string[] = [];
     const republished: string[] = [];

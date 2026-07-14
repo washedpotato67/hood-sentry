@@ -5,6 +5,17 @@ import {
   applyCanonicalTokenRegistry,
   materializeDiscoveryItem,
 } from '@hood-sentry/discovery-engine';
+import { getAddress, isAddress } from 'viem';
+import { z } from 'zod';
+
+const discoveryRefreshInputSchema = z.object({
+  chainId: z.number().int().positive(),
+  tokenAddress: z
+    .string()
+    .refine(isAddress, 'Token address is malformed')
+    .transform((address) => getAddress(address)),
+  sourceBlockNumber: z.bigint().nonnegative(),
+});
 
 export interface DiscoveryCandidateLoader {
   loadCandidate(input: {
@@ -29,12 +40,13 @@ export class DiscoveryRefreshJob {
     tokenAddress: string;
     sourceBlockNumber: bigint;
   }): Promise<{ item: DiscoveryItem | null; idempotencyKey: string }> {
-    const idempotencyKey = `discovery-refresh:${input.chainId}:${input.tokenAddress.toLowerCase()}:${input.sourceBlockNumber.toString()}`;
-    const candidate = await this.loader.loadCandidate(input);
+    const parsed = discoveryRefreshInputSchema.parse(input);
+    const idempotencyKey = `discovery-refresh:${parsed.chainId}:${parsed.tokenAddress.toLowerCase()}:${parsed.sourceBlockNumber.toString()}`;
+    const candidate = await this.loader.loadCandidate(parsed);
     if (candidate === null) return { item: null, idempotencyKey };
     if (
-      candidate.chainId !== input.chainId ||
-      candidate.sourceBlockNumber !== input.sourceBlockNumber
+      candidate.chainId !== parsed.chainId ||
+      candidate.sourceBlockNumber !== parsed.sourceBlockNumber
     ) {
       throw new Error('Discovery source candidate does not match the requested chain position');
     }
