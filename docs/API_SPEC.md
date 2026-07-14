@@ -12,7 +12,6 @@ Use JSON except exports. Generate OpenAPI from Zod schemas.
 - `GET /tokens/new`
 - `GET /pools/new`
 - `GET /search?q=`
-- `GET /stock-tokens`
 
 Filters:
 - chain

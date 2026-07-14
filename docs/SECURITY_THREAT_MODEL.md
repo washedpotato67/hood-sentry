@@ -90,13 +90,12 @@
 
 ## Oracle controls
 
-For Stock Tokens:
+For oracle-backed prices:
 - validate answer > 0;
 - read feed decimals;
 - staleness against official heartbeat;
 - check L2 sequencer uptime and grace period;
 - check token oracle-pause flag;
-- account for UI multiplier;
 - stop price-dependent actions when any check fails.
 
 ## Alert and webhook controls
@@ -149,7 +148,6 @@ Runbooks:
 - Terms, privacy policy, risk disclosure, cookie notice where applicable.
 - Not-financial-advice notice.
 - No claim that a risk scan is an audit.
-- Clear jurisdiction and eligibility notice for Stock Tokens.
 - Do not collect unnecessary identity information.
 - Mechanism for project/report appeal and correction.
 - Public methodology and conflict-of-interest disclosure.

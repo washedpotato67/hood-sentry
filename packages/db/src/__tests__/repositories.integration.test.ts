@@ -1,5 +1,6 @@
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { resetAndMigrate } from './setup.js';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hood_sentry_test';
@@ -13,6 +14,9 @@ describe('Repository Layer', () => {
       sql = postgres(TEST_DATABASE_URL, { connect_timeout: 2 });
       await sql`SELECT 1`;
       dbAvailable = true;
+      // Provision a clean, migrated schema so this file is self-sufficient
+      // regardless of test order or running in isolation.
+      await resetAndMigrate(sql);
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: test output
       console.warn('Database not available, skipping tests:', (error as Error).message);

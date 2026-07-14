@@ -175,7 +175,6 @@ All transactional features are disabled by default. Enable them in the database 
 - `GAS_SPONSORSHIP_ENABLED`
 - `AI_EXPLANATIONS_ENABLED`
 - `WEBHOOKS_ENABLED`
-- `STOCK_TOKEN_MODULE_ENABLED`
 - `MAINNET_WRITES_ENABLED`
 
 ## Security Notes

@@ -27,7 +27,6 @@ The product must convert raw onchain activity into evidence-backed information.
 
 - New tokens and new liquidity pools.
 - Trending by volume, transaction count, unique traders, liquidity change, and holder growth.
-- Canonical Robinhood Stock Tokens and ETFs shown in a separate verified category.
 - Search by address, symbol, name, project, deployer, or wallet.
 - Duplicate-symbol and impersonation warnings.
 
@@ -46,7 +45,6 @@ The product must convert raw onchain activity into evidence-backed information.
 ### 3. Wallet intelligence
 
 - Native and ERC-20 balances.
-- Canonical Stock Token balances with multiplier-aware display.
 - Estimated cost basis, realized P&L, unrealized P&L, and cash flows.
 - Token approvals and risky allowances.
 - Counterparty and deployer exposure.
@@ -65,7 +63,6 @@ The product must convert raw onchain activity into evidence-backed information.
 - Holder-concentration movement.
 - Deployer movement.
 - New pool or token.
-- Oracle pause, stale price, or corporate-action multiplier update for Stock Tokens.
 - Delivery by in-app, browser push, Telegram, email, and webhook.
 
 ### 5. Project verification

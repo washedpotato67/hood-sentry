@@ -8,7 +8,6 @@ Verify these again immediately before production deployment.
 - Contract deployment: https://docs.robinhood.com/chain/deploy-smart-contracts/
 - Token contracts: https://docs.robinhood.com/chain/contracts/
 - Protocol contracts: https://docs.robinhood.com/chain/protocol-contracts/
-- Stock Token integration: https://docs.robinhood.com/chain/building-with-stock-tokens/
 - Oracle integration: https://docs.robinhood.com/chain/oracles-and-price-feeds/
 - Account abstraction: https://docs.robinhood.com/chain/account-abstraction/
 - Finality: https://docs.robinhood.com/chain/transaction-finality/

@@ -152,7 +152,6 @@ openssl rand -hex 32
 | `GAS_SPONSORSHIP_ENABLED` | boolean | `false` | Enable gas sponsorship |
 | `AI_EXPLANATIONS_ENABLED` | boolean | `false` | Enable AI-powered explanations |
 | `WEBHOOKS_ENABLED` | boolean | `false` | Enable webhook notifications |
-| `STOCK_TOKEN_MODULE_ENABLED` | boolean | `false` | Enable stock token features |
 | `MAINNET_WRITES_ENABLED` | boolean | `false` | Enable mainnet write operations |
 | `PROJECT_CLAIMS_ENABLED` | boolean | `false` | Enable project claims |
 | `COMMUNITY_REPORTS_ENABLED` | boolean | `false` | Enable community reports |

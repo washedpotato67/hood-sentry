@@ -46,7 +46,6 @@ The full architecture is included. The execution order below protects dependenci
 - holder and liquidity analysis.
 - token metrics and trending.
 - wallet balances, approvals, and P&L.
-- Stock Token multiplier/oracle module.
 - SIWE.
 
 ### Afternoon

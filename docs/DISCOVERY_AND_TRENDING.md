@@ -22,8 +22,6 @@ The API supports these feed keys:
 - `recentlyVerifiedProjects`
 - `recentlyScanned`
 - `recentCriticalRisk`
-- `canonicalStockTokens`
-- `canonicalEtfTokens`
 - `mostWatched`
 - `mostAlerted`
 
@@ -66,11 +64,11 @@ Signals use `observed`, `notObserved`, or `insufficientData`. An observed signal
 
 Search ranks exact contract, pool, deployer, and wallet address matches first. Address matches work when token name and symbol are missing. Text matching covers token name, token symbol, project name, project slug, launchpad key, and canonical ticker.
 
-Canonical Stock Token and ETF Token identity comes from exact chain ID and contract address registry matches. A community token using `AAPL` or another official ticker does not receive canonical status. Duplicate ticker results include every known contract address and a duplicate warning.
+Duplicate ticker results include every known contract address and a duplicate warning.
 
 ## Filters
 
-The feed API supports token age, pool age, minimum liquidity, minimum volume, minimum holders, risk grade, risk completeness, project verification, canonical state, protocol, launchpad, quote asset, migration state, graduation state, Stock Token category, ETF category, and maximum data age.
+The feed API supports token age, pool age, minimum liquidity, minimum volume, minimum holders, risk grade, risk completeness, project verification, canonical state, protocol, launchpad, quote asset, migration state, graduation state, and maximum data age.
 
 Unknown values fail minimum-value filters. Unfiltered feeds still expose unknown values as unavailable.
 

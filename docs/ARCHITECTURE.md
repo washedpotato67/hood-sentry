@@ -205,25 +205,11 @@ At minimum:
 - `GAS_SPONSORSHIP_ENABLED`
 - `AI_EXPLANATIONS_ENABLED`
 - `WEBHOOKS_ENABLED`
-- `STOCK_TOKEN_MODULE_ENABLED`
 - `MAINNET_WRITES_ENABLED`
 - `PROJECT_CLAIMS_ENABLED`
 - `COMMUNITY_REPORTS_ENABLED`
 
 Feature flags are server-controlled. The client may receive their state but cannot override them.
-
-## Stock Token integration
-
-Canonical Stock Tokens:
-- are ERC-20 with 18 decimals;
-- implement ERC-8056 UI multiplier behavior;
-- require multiplier-aware display;
-- use Chainlink feeds;
-- require staleness, decimals, sequencer, and oracle-pause checks;
-- may have corporate-action update events;
-- must be separated from ordinary community tokens in the UI.
-
-Do not hardcode Chainlink feed addresses. Seed them from the current official Chainlink registry and store source/verification metadata.
 
 ## Account abstraction
 

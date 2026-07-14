@@ -3,17 +3,33 @@
 Last updated: 2026-07-14
 
 Current phase: Foundation, indexer hardening, protocol adapters, deterministic market data,
-discovery rankings, risk-engine framework, proxy analysis, source privilege analysis, and fork
-simulation
+discovery rankings, risk-engine framework, proxy analysis, source privilege analysis, fork
+simulation, package decomposition, and live database bring-up
 
 Launch audit status: local gates pass except production-backed integration and E2E evidence. All
 write, launchpad, token-gating, sponsorship, and notification paths remain disabled.
 
 Release readiness: Not ready for production
 
+## Recent changes (2026-07-14)
+
+- Decomposed the risk-engine monolith into focused domain packages (auth, portfolio-engine,
+  alert-engine, admin-core, trading, launchpad, projects, reports, entitlements, ai); risk-engine
+  now holds only the deterministic contract-risk core. Tests moved with their code; all gates green.
+- Removed Robinhood Stock Token and ETF Token support across code, config, feature flags, schema,
+  UI, migrations, and docs. `STOCK_TOKEN_MODULE_ENABLED` no longer exists.
+- Stood up local PostgreSQL and Redis via docker-compose and applied all 13 migrations to a clean
+  database for the first time. This surfaced and fixed two schema bugs that had blocked every
+  migration: a single-column FK to a composite-keyed `transactions` table (001), and the reserved
+  keyword `window` used unquoted as a column name (011).
+- The db integration tests now execute against a real database instead of early-returning. Split
+  them into `*.integration.test.ts` (excluded from the unit run), made each file self-provision a
+  clean migrated schema, and fixed four test defects. Integration suite passes 14/14
+  deterministically; the unit suite, typecheck, and lint remain green.
+
 ## Product goal
 
-Hood Sentry targets Robinhood Chain token discovery, evidence-based contract risk analysis, wallet and portfolio tracking, liquidity and whale monitoring, alerts, verified project profiles, non-custodial trading, community reports, SENTRY token access, and Robinhood Stock Token support.
+Hood Sentry targets Robinhood Chain token discovery, evidence-based contract risk analysis, wallet and portfolio tracking, liquidity and whale monitoring, alerts, verified project profiles, non-custodial trading, community reports, and SENTRY token access.
 
 ## Current implementation
 
@@ -63,7 +79,7 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Worker jobs for observation, OHLC, metrics, reconciliation, outliers, stale cleanup, migration,
   historical recomputation, and reorg recomputation
 - Deterministic discovery feeds for new tokens, new pools, trending, metric gainers, launchpad
-  transitions, verified projects, scans, critical findings, canonical Stock Tokens and ETF Tokens,
+  transitions, verified projects, scans, critical findings,
   watchlists, and alerts
 - Versioned `trending-v1` scoring with stored positive components, penalties, confidence, source
   block provenance, and no price-change score input
@@ -140,7 +156,6 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Project profile claims and contract verification flow
 - Community reports, moderation, and appeals
 - Non-custodial quote, simulation review, approval, and swap flows
-- Live Robinhood Stock Token and ETF Token feed activation, multiplier refresh, and corporate-action handling
 - Holding-based premium token entitlements
 - Verified external launchpad and official `$SENTRY` production records
 - Admin product surface
@@ -190,7 +205,7 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   cursor pagination.
 - Added discovery refresh and reorg jobs plus discovery and search API routes.
 - Added organic growth, wash pattern, wallet concentration, thin liquidity, token age, duplicate
-  ticker, fake Stock Token, sponsorship, launchpad graduation, reorg, missing data, and cursor tests.
+  ticker, sponsorship, launchpad graduation, reorg, missing data, and cursor tests.
 - Added migration 013 for pinned risk provenance, finding status, immutable rulesets, scan
   idempotency, cancellation, suppressions, rescan triggers, and canonical reorg state.
 - Added deterministic risk orchestration with timeouts, cancellation, rule isolation, completeness,
@@ -216,8 +231,6 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   external-label attribution.
 - Added deterministic weighted risk scoring with caps, grades, completeness, confidence, historical
   methodology versions, and score-change explanations.
-- Added canonical Stock Token and ETF observations with raw and UI-adjusted balances, multiplier
-  timing, and official-address validation.
 - Added oracle status validation for freshness, invalid answers, pauses, sequencer state, and grace
   periods, plus portfolio reconciliation outputs with exact and estimated values.
 
@@ -247,12 +260,12 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 
 ## Active release blockers
 
-1. Start PostgreSQL and Redis, apply every migration on a clean database, and run database integration tests without early returns.
+1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
 2. Publish derived jobs to a durable queue with idempotency keys, retries, and a dead-letter path.
 3. Add synthetic reorg, restart, lease contention, gap repair, and malformed RPC response integration tests.
 4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
    metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
-5. Build token, wallet, portfolio, alert, project, report, trading, and Stock Token API routes and product screens.
+5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
    transaction, bytecode, treasury Safe, and launchpad state before token access is enabled.
@@ -260,7 +273,7 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
    checks before enabling writes.
 8. Run staging load, failover, backup, restore, alert delivery, and transaction simulation tests.
 9. Verify Chainlink proxy and sequencer addresses, feed decimals, and heartbeat values before
-   enabling Stock Token, ETF Token, WETH, stablecoin, or other oracle sources.
+   enabling WETH, stablecoin, or other oracle sources.
 
 All transactional feature flags should stay disabled until their related blocker and security gate passes.
 

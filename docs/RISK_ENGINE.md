@@ -129,7 +129,7 @@ simulation evidence and never describes a fork result as a broadcast transaction
 
 `scoreRisk` applies versioned category weights, penalties, caps, confidence, completeness, grades, finding counts, and score-change explanations. Incomplete data produces grade `U` and never becomes a zero-value finding.
 
-Stock Token and ETF observations require canonical verified addresses. Raw balances and UI-adjusted balances stay separate. Oracle observations expose stale, paused, invalid, sequencer, grace-period, and configuration states.
+Oracle observations expose stale, paused, invalid, sequencer, grace-period, and configuration states.
 
 `analyzePortfolio` keeps missing-price assets visible, separates exact and estimated value, applies multipliers once, and reports stale, critical, and spam exposure.
 
@@ -142,7 +142,6 @@ Stock Token and ETF observations require canonical verified addresses. Raw balan
 - Contract age.
 - Bytecode similarity to known contracts.
 - Duplicate name/symbol addresses.
-- Canonical Stock Token allowlist check.
 
 ### 2. Proxy analysis
 
@@ -322,7 +321,6 @@ Example caps:
 - sell simulation consistently fails: maximum score 20;
 - unbounded owner mint: maximum score 30;
 - arbitrary confiscation: maximum score 20;
-- fake canonical Stock Token address: maximum score 10;
 - unverified source alone: warning and completeness reduction, not automatic scam classification.
 
 Version the weights. Persist old reports.

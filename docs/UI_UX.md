@@ -3,7 +3,6 @@
 ## Navigation
 
 - Discover
-- Stock Tokens
 - Watchlists
 - Portfolio
 - Alerts
@@ -17,7 +16,6 @@
 
 - `/`
 - `/discover`
-- `/stock-tokens`
 - `/token/[address]`
 - `/wallet/[address]`
 - `/portfolio`
@@ -41,7 +39,6 @@
 - Search.
 - New pools.
 - Trending community assets.
-- Canonical Stock Tokens.
 - Recent high-severity findings.
 - Product explanation.
 - No fake TVL or fabricated usage metrics.
@@ -93,21 +90,6 @@ Risk presentation:
 - methodology version;
 - source block and scan time;
 - “not an audit” notice.
-
-## Stock Token page
-
-Display:
-- raw token units;
-- share-equivalent units;
-- UI multiplier;
-- pending multiplier and effective time;
-- feed price;
-- underlying-share price when derivable;
-- oracle status;
-- market-hours/staleness context;
-- official address.
-
-Never silently apply the multiplier twice.
 
 ## Wallet/portfolio
 

@@ -112,7 +112,3 @@ from pricing data.
 4. Run source activation validation.
 5. Add fixtures for valid, stale, malformed, manipulated, outage, and reorg cases.
 6. Keep the source disabled until live verification passes.
-
-For Stock Tokens and ETF Tokens, use the official token contract address as identity. Chainlink feed
-prices already reflect the corporate-action multiplier. The UI share-equivalent multiplier must
-not be applied to the token price a second time.

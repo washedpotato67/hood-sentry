@@ -104,20 +104,6 @@ always come from direct chain reads.
 - `first_seen_block`
 - timestamps
 
-### `stock_token_metadata`
-- `token_id`
-- `underlying_ticker`
-- `official`
-- `ui_multiplier_raw`
-- `pending_multiplier_raw`
-- `multiplier_effective_at`
-- `oracle_paused`
-- `feed_address`
-- `feed_decimals`
-- `heartbeat_seconds`
-- `source_url`
-- `verified_at`
-
 ### `token_transfers`
 - chain provenance columns
 - `token_address`
