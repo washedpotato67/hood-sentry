@@ -22,6 +22,7 @@ export * from './portfolio-analysis.js';
 export * from './cost-basis.js';
 export * from './approval-monitor.js';
 export * from './siwe.js';
+export * from './transaction-intent.js';
 export * from './solidity-parser.js';
 export * from './triggers.js';
 export * from './types.js';
