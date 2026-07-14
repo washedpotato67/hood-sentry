@@ -375,6 +375,43 @@ protocol, destination pool, protocol version, and full chain provenance.
 ### `admin_audit_logs`
 ### `feature_flags`
 
+## Discovery analytics
+
+### `discovery_snapshots`
+
+- chain ID and token address
+- methodology version
+- source block number and hash
+- organic score and confidence in basis points
+- serialized public item with every component and manipulation evidence
+- canonical status and observation time
+
+The primary key makes refresh jobs idempotent by chain, token, methodology, and source block.
+
+### `discovery_current`
+
+- latest canonical projection per chain, token, and methodology
+- source block provenance
+- organic score and confidence
+- complete public payload
+
+### `sponsored_placements`
+
+- placement, chain, token, and feed identity
+- separate sponsored priority
+- active time range
+- required label and disclosure
+- actor and timestamps
+
+### `sponsored_placement_audit`
+
+- placement identity
+- action and actor
+- before and after payloads
+- reason and recorded time
+
+Sponsorship records never update discovery snapshots or risk records.
+
 ## Retention
 
 - Raw canonical chain facts: indefinite.

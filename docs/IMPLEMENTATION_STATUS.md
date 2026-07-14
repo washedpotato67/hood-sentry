@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-14
 
-Current phase: Foundation, indexer hardening, protocol adapters, and deterministic market data
+Current phase: Foundation, indexer hardening, protocol adapters, deterministic market data, and discovery rankings
 
 Release readiness: Not ready for production
 
@@ -57,6 +57,20 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   fully diluted valuation, freshness, source status, and disagreement warnings
 - Worker jobs for observation, OHLC, metrics, reconciliation, outliers, stale cleanup, migration,
   historical recomputation, and reorg recomputation
+- Deterministic discovery feeds for new tokens, new pools, trending, metric gainers, launchpad
+  transitions, verified projects, scans, critical findings, canonical Stock Tokens and ETF Tokens,
+  watchlists, and alerts
+- Versioned `trending-v1` scoring with stored positive components, penalties, confidence, source
+  block provenance, and no price-change score input
+- Evidence records for self-trading, repeated wallet pairs, wallet volume concentration, circular
+  flow, rapid buy and sell loops, tiny count-inflation trades, thin-pool impact, wallet clusters,
+  and launchpad transaction bursts
+- Exact-address-first search, duplicate-symbol warnings, address-based canonical ticker matching,
+  discovery filters, and query-bound cursor pagination
+- Separate sponsored placement rank, required disclosure, active dates, and append-only audit history
+  without organic score or risk mutation
+- Immutable discovery snapshots, current canonical projections, refresh jobs, and reorg invalidation
+- Read APIs for every discovery feed and cross-field token search
 - Fastify API shell with health routes and security headers
 - A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
   adapter runtime does not deploy, maintain, or reference its contracts.
@@ -72,8 +86,8 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
   now exist.
 - Live PostgreSQL migration and repository validation is pending. Deterministic adapter and indexer
   integration tests cover protocol behavior without a database service.
-- The API exposes health, external protocol, price, candle, and market-metric read routes. Most
-  product routes remain absent.
+- The API exposes health, external protocol, price, candle, market-metric, discovery, and search
+  read routes. Most authenticated product routes remain absent.
 - The web app exposes a static product title only.
 - The risk engine defines schemas only.
 
@@ -129,21 +143,29 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added thin-pool, depeg, stale feed, disagreement, negative price, zero price, decimal conversion,
   integer rounding, large bigint, missing circulating supply, and reorged swap tests.
 - Added source, freshness, history, candle, and windowed metric APIs with null unavailable values.
+- Added migration 012 for immutable discovery history, current projections, sponsored placement,
+  and sponsorship audit history.
+- Added deterministic trending components, integer log scaling, explainable manipulation penalties,
+  feed-specific comparators, filtering, address-first search, canonical ticker protection, and
+  cursor pagination.
+- Added discovery refresh and reorg jobs plus discovery and search API routes.
+- Added organic growth, wash pattern, wallet concentration, thin liquidity, token age, duplicate
+  ticker, fake Stock Token, sponsorship, launchpad graduation, reorg, missing data, and cursor tests.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 489 Vitest cases reported passing and 6 Forge tests passed
-- `pnpm test:integration`: passed. Two deterministic migration-shape cases ran. Ten database
+- `pnpm test`: passed, 508 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test:integration`: passed. Three deterministic migration-shape cases ran. Ten database
   service cases returned early because PostgreSQL was unavailable.
-- `pnpm build`: passed for all 20 workspaces
+- `pnpm build`: passed for all 21 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
 
 PostgreSQL was unavailable, so clean migration and repository integration validation remains
-pending, including live application of migrations 009, 010, and 011. The indexer, adapter, API, worker,
+pending, including live application of migrations 009, 010, 011, and 012. The indexer, adapter, API, worker,
 and Blockscout paths have deterministic local coverage.
 
 ## Active release blockers

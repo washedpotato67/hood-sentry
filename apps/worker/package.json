@@ -16,6 +16,7 @@
     "@hood-sentry/chain": "workspace:*",
     "@hood-sentry/config": "workspace:*",
     "@hood-sentry/db": "workspace:*",
+    "@hood-sentry/discovery-engine": "workspace:*",
     "@hood-sentry/market-engine": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
     "@hood-sentry/shared": "workspace:*",

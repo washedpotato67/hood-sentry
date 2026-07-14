@@ -20,11 +20,12 @@ This repository pack describes the complete system. It does not pretend that eve
 8. `docs/SECURITY_THREAT_MODEL.md`
 9. `docs/UI_UX.md`
 10. `docs/PRICING_AND_MARKET_METRICS.md`
-11. `docs/DEPLOYMENT_OPERATIONS.md`
-12. `docs/TOKEN_LAUNCH_RUNBOOK.md`
-13. `docs/LAUNCH_PLAN.md`
-14. `AGENTS.md`
-15. `prompts/00_MASTER_CODEX_PROMPT.md`
+11. `docs/DISCOVERY_AND_TRENDING.md`
+12. `docs/DEPLOYMENT_OPERATIONS.md`
+13. `docs/TOKEN_LAUNCH_RUNBOOK.md`
+14. `docs/LAUNCH_PLAN.md`
+15. `AGENTS.md`
+16. `prompts/00_MASTER_CODEX_PROMPT.md`
 
 ## Core technical choices
 

@@ -10,3 +10,5 @@ export * from './stale-source-cleanup.js';
 export * from './bonding-curve-transition.js';
 export * from './historical-recomputation.js';
 export * from './pricing-reorg.js';
+export * from './discovery-refresh.js';
+export * from './discovery-reorg.js';

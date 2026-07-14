@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = '0.3.0';
+export const SCHEMA_VERSION = '0.4.0';
 
 export { createDatabase, type Database } from './client.js';
 export { DatabaseDataQualityWarningRepository } from './data-quality-warning-repository.js';

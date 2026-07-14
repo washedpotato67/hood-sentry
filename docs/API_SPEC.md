@@ -76,6 +76,20 @@ Public wallet responses must be rate-limited and must not imply identity.
 These routes expose active and disabled states. They exclude internal registry notes and provider
 credentials. Raw integer values use decimal strings in JSON.
 
+### Discovery and search
+
+- `GET /discovery/:feed?chainId=&limit=&cursor=&sponsoredCursor=`
+- `GET /search?chainId=&query=&limit=&cursor=`
+
+Discovery feeds expose separate organic and sponsored pages. Sponsored placement does not alter
+the organic score, risk fields, warnings, or canonical state. Every token item includes address,
+chain ID, nullable price, price status, nullable liquidity, nullable volume, nullable holders, risk
+grade, risk completeness, project verification, canonical state, launchpad state, trending
+components, warnings, and freshness.
+
+Exact address search ranks before metadata matches. Canonical ticker results show contract
+addresses and duplicate-symbol warnings. Cursor values bind to the feed and filter query.
+
 ## Authenticated endpoints
 
 ### Auth

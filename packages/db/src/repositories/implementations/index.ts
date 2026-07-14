@@ -10,3 +10,4 @@ export * from './report-repository.js';
 export * from './auth-repository.js';
 export * from './feature-flag-repository.js';
 export * from './audit-repository.js';
+export * from './discovery-repository.js';

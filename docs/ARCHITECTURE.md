@@ -93,6 +93,7 @@ BullMQ consumers for:
 - price outlier detection and stale-source cleanup
 - bonding-curve migration transitions
 - historical and reorg recomputation
+- discovery snapshot refresh and discovery reorg recomputation
 
 ### `packages/market-engine`
 
@@ -100,6 +101,13 @@ Pure deterministic pricing and metric logic. The package owns source configurati
 price arithmetic, source selection, confidence penalties, outlier reason codes, candle aggregation,
 market metrics, and market-capitalization rules. Chain clients supply verified state. Database and
 queue code stay outside the package.
+
+### `packages/discovery-engine`
+
+Pure deterministic feed ranking, trending score, manipulation evidence, canonical asset matching,
+filtering, search, sponsorship ordering, and cursor pagination. The package uses bigint values for
+financial inputs and stores every organic score component. Database, provider, and queue code stay
+outside the package.
 
 ### `apps/telegram-bot`
 

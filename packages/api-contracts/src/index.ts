@@ -4,3 +4,4 @@ export * from './protocols.js';
 export * from './quotes.js';
 export * from './prices.js';
 export * from './market-metrics.js';
+export * from './discovery.js';

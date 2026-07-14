@@ -16,6 +16,7 @@
     "@hood-sentry/api-contracts": "workspace:*",
     "@hood-sentry/config": "workspace:*",
     "@hood-sentry/db": "workspace:*",
+    "@hood-sentry/discovery-engine": "workspace:*",
     "@hood-sentry/feature-flags": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
     "@hood-sentry/shared": "workspace:*",

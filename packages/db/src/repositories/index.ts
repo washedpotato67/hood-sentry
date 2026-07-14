@@ -41,6 +41,9 @@ export type {
   FeatureFlagRepository,
   AdminAuditLog,
   AuditRepository,
+  DiscoveryRepository,
+  SponsorshipAuditInput,
+  SponsorshipAuditAction,
 } from './interfaces/index.js';
 
 // Export implementations
@@ -62,4 +65,5 @@ export {
   DrizzleAuthRepository,
   DrizzleFeatureFlagRepository,
   DrizzleAuditRepository,
+  DrizzleDiscoveryRepository,
 } from './implementations/index.js';
