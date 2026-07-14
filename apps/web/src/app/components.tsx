@@ -8,7 +8,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <div className="navlinks">
           <Link href="/discover">Discover</Link>
-          <Link href="/stock-tokens">Stock Tokens</Link>
           <Link href="/portfolio">Portfolio</Link>
           <Link href="/watchlists">Watchlists</Link>
           <Link href="/alerts">Alerts</Link>

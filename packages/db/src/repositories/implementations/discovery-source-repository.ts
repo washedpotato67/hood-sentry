@@ -32,8 +32,6 @@ function bigintOrNull(value: string | null): bigint | null {
 }
 
 function tokenType(value: string): DiscoveryCandidate['tokenType'] {
-  if (value === 'stock_token') return 'stockToken';
-  if (value === 'etf_token') return 'etfToken';
   if (value === 'erc20') return 'erc20';
   return 'unknown';
 }
@@ -456,8 +454,6 @@ export class DrizzleDiscoverySourceRepository {
       tokenType: tokenType(token.token_type),
       canonicalState: 'unknown',
       canonicalTicker: null,
-      stockTokenCategory: null,
-      etfCategory: null,
       projectName: project?.projectName ?? null,
       projectSlug: project?.slug ?? null,
       projectVerified: project?.verified ?? false,

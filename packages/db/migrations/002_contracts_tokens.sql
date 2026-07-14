@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS tokens (
   symbol TEXT,
   decimals INTEGER,
   total_supply_raw NUMERIC(78,0),
-  token_type TEXT NOT NULL CHECK (token_type IN ('erc20', 'erc721', 'erc1155', 'stock_token', 'etf_token', 'unknown')),
+  token_type TEXT NOT NULL CHECK (token_type IN ('erc20', 'erc721', 'erc1155', 'unknown')),
   canonical_asset_key TEXT,
   logo_uri TEXT,
   metadata_status TEXT NOT NULL CHECK (metadata_status IN ('pending', 'complete', 'failed')) DEFAULT 'pending',
@@ -98,30 +98,6 @@ CREATE INDEX idx_tokens_chain_symbol ON tokens(chain_id, symbol);
 CREATE INDEX idx_tokens_chain_type ON tokens(chain_id, token_type);
 CREATE INDEX idx_tokens_chain_spam ON tokens(chain_id, spam_status);
 CREATE INDEX idx_tokens_created_at ON tokens(created_at);
-
--- Stock token metadata
-CREATE TABLE IF NOT EXISTS stock_token_metadata (
-  token_chain_id INTEGER NOT NULL,
-  token_address TEXT NOT NULL,
-  underlying_ticker TEXT NOT NULL,
-  official BOOLEAN NOT NULL DEFAULT false,
-  ui_multiplier_raw NUMERIC(78,0) NOT NULL DEFAULT 1,
-  pending_multiplier_raw NUMERIC(78,0),
-  multiplier_effective_at TIMESTAMPTZ,
-  oracle_paused BOOLEAN NOT NULL DEFAULT false,
-  feed_address TEXT,
-  feed_decimals INTEGER,
-  heartbeat_seconds INTEGER,
-  source_url TEXT,
-  verified_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (token_chain_id, token_address),
-  FOREIGN KEY (token_chain_id, token_address) REFERENCES tokens(chain_id, address) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_stock_token_metadata_ticker ON stock_token_metadata(underlying_ticker);
-CREATE INDEX idx_stock_token_metadata_official ON stock_token_metadata(official) WHERE official = true;
 
 -- Token transfers
 CREATE TABLE IF NOT EXISTS token_transfers (

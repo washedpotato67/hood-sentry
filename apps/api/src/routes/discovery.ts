@@ -47,8 +47,6 @@ function filtersFromQuery(query: z.infer<typeof discoveryQuerySchema>): Discover
     quoteAssetAddress: query.quoteAssetAddress,
     migrationStatus: query.migrationStatus,
     graduationStatus: query.graduationStatus,
-    stockTokenCategory: query.stockTokenCategory,
-    etfCategory: query.etfCategory,
     maximumDataAgeSeconds:
       query.maximumDataAgeSeconds === undefined ? undefined : BigInt(query.maximumDataAgeSeconds),
   };

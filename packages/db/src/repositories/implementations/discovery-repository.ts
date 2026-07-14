@@ -29,8 +29,6 @@ const discoveryFeedSchema = z.enum([
   'recentlyVerifiedProjects',
   'recentlyScanned',
   'recentCriticalRisk',
-  'canonicalStockTokens',
-  'canonicalEtfTokens',
   'mostWatched',
   'mostAlerted',
 ]);

@@ -146,7 +146,6 @@ const featureFlagsSchema = z.object({
   GAS_SPONSORSHIP_ENABLED: booleanStringSchema.default(false),
   AI_EXPLANATIONS_ENABLED: booleanStringSchema.default(false),
   WEBHOOKS_ENABLED: booleanStringSchema.default(false),
-  STOCK_TOKEN_MODULE_ENABLED: booleanStringSchema.default(false),
   MAINNET_WRITES_ENABLED: booleanStringSchema.default(false),
   PROJECT_CLAIMS_ENABLED: booleanStringSchema.default(false),
   COMMUNITY_REPORTS_ENABLED: booleanStringSchema.default(false),
@@ -241,7 +240,6 @@ const PUBLIC_KEYS = new Set([
   'TOKEN_GATE_ENABLED',
   'AI_EXPLANATIONS_ENABLED',
   'WEBHOOKS_ENABLED',
-  'STOCK_TOKEN_MODULE_ENABLED',
   'PROJECT_CLAIMS_ENABLED',
   'COMMUNITY_REPORTS_ENABLED',
 ]);
@@ -262,7 +260,6 @@ export type PublicEnv = {
   TOKEN_GATE_ENABLED: boolean;
   AI_EXPLANATIONS_ENABLED: boolean;
   WEBHOOKS_ENABLED: boolean;
-  STOCK_TOKEN_MODULE_ENABLED: boolean;
   PROJECT_CLAIMS_ENABLED: boolean;
   COMMUNITY_REPORTS_ENABLED: boolean;
 };

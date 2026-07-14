@@ -45,7 +45,6 @@ describe('Configuration Schema', () => {
     GAS_SPONSORSHIP_ENABLED: 'false',
     AI_EXPLANATIONS_ENABLED: 'false',
     WEBHOOKS_ENABLED: 'false',
-    STOCK_TOKEN_MODULE_ENABLED: 'false',
     MAINNET_WRITES_ENABLED: 'false',
     PROJECT_CLAIMS_ENABLED: 'false',
     COMMUNITY_REPORTS_ENABLED: 'false',
@@ -469,7 +468,6 @@ describe('Configuration Schema', () => {
         expect(result.data.GAS_SPONSORSHIP_ENABLED).toBe(false);
         expect(result.data.AI_EXPLANATIONS_ENABLED).toBe(false);
         expect(result.data.WEBHOOKS_ENABLED).toBe(false);
-        expect(result.data.STOCK_TOKEN_MODULE_ENABLED).toBe(false);
         expect(result.data.MAINNET_WRITES_ENABLED).toBe(false);
         expect(result.data.PROJECT_CLAIMS_ENABLED).toBe(false);
         expect(result.data.COMMUNITY_REPORTS_ENABLED).toBe(false);

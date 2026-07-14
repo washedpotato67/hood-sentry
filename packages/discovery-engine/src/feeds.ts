@@ -32,10 +32,6 @@ export function isEligibleForFeed(item: DiscoveryItem, feed: DiscoveryFeed): boo
       return item.lastScannedAt !== null;
     case 'recentCriticalRisk':
       return item.latestCriticalFindingAt !== null;
-    case 'canonicalStockTokens':
-      return item.tokenType === 'stockToken' && item.canonicalState === 'canonical';
-    case 'canonicalEtfTokens':
-      return item.tokenType === 'etfToken' && item.canonicalState === 'canonical';
     default:
       return true;
   }
@@ -89,10 +85,6 @@ export function compareForFeed(
       break;
     case 'recentCriticalRisk':
       result = compareDate(left.latestCriticalFindingAt, right.latestCriticalFindingAt);
-      break;
-    case 'canonicalStockTokens':
-    case 'canonicalEtfTokens':
-      result = (left.canonicalTicker ?? '').localeCompare(right.canonicalTicker ?? '');
       break;
     case 'mostWatched':
       result = compareBigint(left.watchlistCount, right.watchlistCount);

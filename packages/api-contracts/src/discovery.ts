@@ -14,8 +14,6 @@ export const discoveryFeedSchema = z.enum([
   'recentlyVerifiedProjects',
   'recentlyScanned',
   'recentCriticalRisk',
-  'canonicalStockTokens',
-  'canonicalEtfTokens',
   'mostWatched',
   'mostAlerted',
 ]);
@@ -49,8 +47,6 @@ export const discoveryQuerySchema = z.object({
   quoteAssetAddress: evmAddressSchema.optional(),
   migrationStatus: z.enum(['migrated', 'notMigrated']).optional(),
   graduationStatus: z.enum(['graduated', 'notGraduated']).optional(),
-  stockTokenCategory: z.string().min(1).optional(),
-  etfCategory: z.string().min(1).optional(),
   maximumDataAgeSeconds: rawIntegerSchema.optional(),
 });
 
