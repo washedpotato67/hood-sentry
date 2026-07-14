@@ -133,6 +133,7 @@ export type RPCMethod =
   | 'eth_getTransactionReceipt'
   | 'eth_getLogs'
   | 'eth_getCode'
+  | 'eth_getStorageAt'
   | 'eth_call'
   | 'eth_estimateGas'
   | 'eth_gasPrice'

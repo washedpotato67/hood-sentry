@@ -1,93 +1,113 @@
 import type { Address } from 'viem';
-import {
-  DuplicatePoolEventError,
-  MalformedProtocolLogError,
-  UnknownFactoryError,
-  UnknownPoolError,
-} from './errors.js';
-import { parseProtocolLog } from './log.js';
-import type { NormalizedPool, NormalizedProtocolEvent, ProtocolAdapter } from './types.js';
+import { DuplicateProtocolEventError, UnknownPoolError, UnknownProtocolError } from './errors.js';
+import { parseRawChainLog } from './log.js';
+import type {
+  DecodedProtocolEvent,
+  DexAdapter,
+  LaunchpadAdapter,
+  NormalizedProtocolEvent,
+  ProtocolAdapter,
+  RawChainLog,
+} from './types.js';
 
-interface RegisteredPool {
-  pool: NormalizedPool;
+export interface RoutedProtocolEvent {
   adapter: ProtocolAdapter;
+  decoded: DecodedProtocolEvent;
+  normalized: NormalizedProtocolEvent | null;
 }
 
 export class ProtocolAdapterManager {
-  private readonly adaptersByFactory = new Map<string, ProtocolAdapter>();
   private readonly adaptersByKey = new Map<string, ProtocolAdapter>();
-  private readonly pools = new Map<string, RegisteredPool>();
-  private readonly poolEventKeys = new Set<string>();
+  private readonly adapters: ProtocolAdapter[] = [];
+  private readonly processedEventKeys = new Set<string>();
 
   constructor(adapters: readonly ProtocolAdapter[]) {
     for (const adapter of adapters) {
-      const factoryKey = this.addressKey(
-        adapter.manifest.chainId,
-        adapter.manifest.factory.address,
-      );
-      const adapterKey = this.adapterKey(
-        adapter.manifest.chainId,
-        adapter.manifest.protocol,
-        adapter.manifest.version,
-      );
-      if (this.adaptersByFactory.has(factoryKey) || this.adaptersByKey.has(adapterKey)) {
-        throw new Error(`Duplicate protocol adapter registration for ${adapterKey}`);
+      const key = this.key(adapter.chainId, adapter.protocolKey, adapter.version);
+      if (this.adaptersByKey.has(key)) {
+        throw new Error(`Duplicate active protocol adapter ${key}`);
       }
-      this.adaptersByFactory.set(factoryKey, adapter);
-      this.adaptersByKey.set(adapterKey, adapter);
+      this.adaptersByKey.set(key, adapter);
+      this.adapters.push(adapter);
     }
   }
 
-  discoverPool(value: unknown): NormalizedPool {
-    const log = parseProtocolLog(value);
-    const adapter = this.adaptersByFactory.get(this.addressKey(log.chainId, log.address));
-    if (adapter === undefined) throw new UnknownFactoryError(log.address);
-    const pool = adapter.discoverPool(log);
-    if (pool === null) {
-      throw new MalformedProtocolLogError('Factory log does not match the pool creation event');
-    }
-    const eventKey = `${pool.provenance.chainId}:${pool.provenance.transactionHash}:${pool.provenance.logIndex}`;
-    const poolKey = this.addressKey(pool.provenance.chainId, pool.address);
-    if (this.poolEventKeys.has(eventKey) || this.pools.has(poolKey)) {
-      throw new DuplicatePoolEventError(pool.address);
-    }
-    this.poolEventKeys.add(eventKey);
-    this.pools.set(poolKey, { pool, adapter });
-    return pool;
+  getActiveAdapters(): readonly ProtocolAdapter[] {
+    return [...this.adapters];
   }
 
-  registerPool(pool: NormalizedPool): void {
-    const adapter = this.adaptersByKey.get(
-      this.adapterKey(pool.provenance.chainId, pool.protocol, pool.version),
+  getAdapter(protocolKey: string, protocolVersion: string, chainId: number): ProtocolAdapter {
+    const adapter = this.adaptersByKey.get(this.key(chainId, protocolKey, protocolVersion));
+    if (adapter === undefined) throw new UnknownProtocolError(protocolKey);
+    return adapter;
+  }
+
+  registerPool(pool: Parameters<DexAdapter['registerPool']>[0]): void {
+    const adapter = this.getAdapter(pool.protocolKey, pool.protocolVersion, pool.chainId);
+    if (!this.isDexAdapter(adapter)) throw new UnknownPoolError(pool.poolAddress);
+    adapter.registerPool(pool);
+  }
+
+  async routeLog(value: unknown): Promise<RoutedProtocolEvent | null> {
+    const log = parseRawChainLog(value);
+    const adapter = this.adapters.find(
+      (candidate) => candidate.chainId === log.chainId && candidate.supportsAddress(log.address),
     );
-    if (adapter === undefined) throw new UnknownFactoryError(pool.factory);
-    adapter.assertSupportedFeeTier(pool.fee);
-    if (adapter.manifest.factory.address.toLowerCase() !== pool.factory.toLowerCase()) {
-      throw new UnknownFactoryError(pool.factory);
+    if (adapter === undefined) return null;
+    const decoded = await adapter.decodeLog(log);
+    if (decoded === null) return null;
+    const normalized = await this.normalize(adapter, decoded, log);
+    if (normalized !== null) this.assertUnique(decoded);
+    return { adapter, decoded, normalized };
+  }
+
+  private async normalize(
+    adapter: ProtocolAdapter,
+    decoded: DecodedProtocolEvent,
+    log: RawChainLog,
+  ): Promise<NormalizedProtocolEvent | null> {
+    if (this.isDexAdapter(adapter)) {
+      if (decoded.kind === 'poolCreated') return adapter.discoverPool(decoded);
+      if (decoded.kind === 'swap') return adapter.decodeSwap(log);
+      return adapter.decodeLiquidityEvent(log);
     }
-    this.pools.set(this.addressKey(pool.provenance.chainId, pool.address), { pool, adapter });
+    if (this.isLaunchpadAdapter(adapter)) {
+      if (decoded.kind === 'launchpadTokenCreated') return adapter.decodeTokenCreation(log);
+      if (decoded.kind === 'bondingCurveBuy' || decoded.kind === 'bondingCurveSell') {
+        return adapter.decodeBondingCurveTrade(log);
+      }
+      if (decoded.kind === 'launchpadGraduated') return adapter.decodeGraduation(log);
+      if (decoded.kind === 'launchpadMigrated') return adapter.decodeMigration(log);
+    }
+    return null;
   }
 
-  decodePoolEvent(value: unknown): NormalizedProtocolEvent | null {
-    const log = parseProtocolLog(value);
-    const registered = this.pools.get(this.addressKey(log.chainId, log.address));
-    if (registered === undefined) throw new UnknownPoolError(log.address);
-    const swap = registered.adapter.decodeSwap(log, registered.pool);
-    if (swap !== null) return swap;
-    const addition = registered.adapter.decodeLiquidityAddition(log, registered.pool);
-    if (addition !== null) return addition;
-    return registered.adapter.decodeLiquidityRemoval(log, registered.pool);
+  private assertUnique(event: DecodedProtocolEvent): void {
+    const provenance = event.provenance;
+    const key = `${provenance.chainId}:${provenance.blockHash}:${provenance.transactionHash}:${provenance.logIndex}`;
+    if (this.processedEventKeys.has(key)) {
+      throw new DuplicateProtocolEventError(
+        event.kind,
+        provenance.transactionHash,
+        provenance.logIndex,
+      );
+    }
+    this.processedEventKeys.add(key);
   }
 
-  getRegisteredPool(chainId: number, address: Address): NormalizedPool | null {
-    return this.pools.get(this.addressKey(chainId, address))?.pool ?? null;
+  private isDexAdapter(adapter: ProtocolAdapter): adapter is DexAdapter {
+    return adapter.kind === 'dex';
   }
 
-  private addressKey(chainId: number, address: Address): string {
-    return `${chainId}:${address.toLowerCase()}`;
+  private isLaunchpadAdapter(adapter: ProtocolAdapter): adapter is LaunchpadAdapter {
+    return adapter.kind === 'launchpad';
   }
 
-  private adapterKey(chainId: number, protocol: string, version: string): string {
-    return `${chainId}:${protocol}:${version}`;
+  private key(chainId: number, protocolKey: string, protocolVersion: string): string {
+    return `${chainId}:${protocolKey}:${protocolVersion}`;
   }
+}
+
+export function addressIdentity(chainId: number, address: Address): string {
+  return `${chainId}:${address.toLowerCase()}`;
 }

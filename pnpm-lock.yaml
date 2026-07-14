@@ -57,9 +57,15 @@ importers:
       '@fastify/rate-limit':
         specifier: ^10.2.1
         version: 10.3.0
+      '@hood-sentry/api-contracts':
+        specifier: workspace:*
+        version: link:../../packages/api-contracts
       '@hood-sentry/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@hood-sentry/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@hood-sentry/feature-flags':
         specifier: workspace:*
         version: link:../../packages/feature-flags
@@ -76,6 +82,9 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@hood-sentry/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
       '@types/node':
         specifier: ^22.10.5
         version: 22.20.1
@@ -184,9 +193,15 @@ importers:
 
   apps/worker:
     dependencies:
+      '@hood-sentry/chain':
+        specifier: workspace:*
+        version: link:../../packages/chain
       '@hood-sentry/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@hood-sentry/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@hood-sentry/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -234,6 +249,9 @@ importers:
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.24.1
         version: 3.25.76

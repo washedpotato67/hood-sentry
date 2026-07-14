@@ -5,6 +5,7 @@ import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
 import type { CheckpointManager } from './checkpoint-manager.js';
 import type { GapScanner } from './gap-scanner.js';
+import type { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import type { ReorgDetector } from './reorg-detector.js';
 import { TokenDiscoveryHandler } from './token-discovery-handler.js';
 import type {
@@ -50,6 +51,7 @@ export class BlockIndexer {
     private readonly gapScanner: GapScanner,
     private readonly config: IndexerConfig,
     private readonly logger: Logger,
+    private readonly protocolEventsHandler?: ProtocolEventsHandler,
   ) {
     this.drizzle = database.db;
     this.tokenDiscoveryHandler = new TokenDiscoveryHandler(this.config, this.logger);
@@ -507,6 +509,19 @@ export class BlockIndexer {
       };
 
       await this.publishJob(job);
+      await this.protocolEventsHandler?.handle({
+        chainId: Number(this.config.chainId),
+        blockNumber: block.number,
+        blockHash: block.hash,
+        transactionHash: log.transactionHash,
+        transactionIndex: log.transactionIndex,
+        logIndex: log.logIndex,
+        address: log.address,
+        topics: log.topics,
+        data: log.data,
+        removed: log.removed,
+        canonical: !log.removed,
+      });
     }
 
     // Use token discovery handler to detect contracts and tokens

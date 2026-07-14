@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-14
 
-Current phase: Foundation, indexer hardening, explorer enrichment, and protocol adapters
+Current phase: Foundation, indexer hardening, explorer enrichment, and external protocol adapters
 
 Release readiness: Not ready for production
 
@@ -30,12 +30,23 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Persistent explorer metadata cache separated from direct chain facts
 - Proxy metadata reconciliation which keeps chain implementation and admin values authoritative,
   preserves Blockscout values, and records data-quality conflicts
-- Generic liquidity-venue adapter interfaces, normalized pool and event models, and protocol-neutral
-  adapter manager
-- Verified Uniswap v2 Robinhood Chain mainnet adapter with registry-only contract loading, runtime
-  bytecode gates, normalized event decoding, quoting, price impact, and simulated transaction intent
+- Versioned DEX and launchpad adapter interfaces, normalized pool and event models, and a
+  protocol-neutral adapter manager
+- Startup protocol validation with chain ID checks, runtime bytecode hashes, proxy reconciliation,
+  cached validation state, stale refresh, periodic revalidation, and operational alerts
+- Verified Uniswap v2 Robinhood Chain mainnet adapter with registry-only contract loading,
+  factory-event pool discovery, normalized swap and liquidity decoding, quotes, integer price
+  impact, selector allowlists, and simulated transaction intent
+- Protocol, contract-verification, pool, pool-token, swap, liquidity, quote, launchpad-token,
+  bonding-curve trade, graduation, and migration persistence
+- Raw-log-first protocol event routing with malformed-log isolation, deterministic derived jobs,
+  duplicate protection, and reorg invalidation
+- Read APIs for supported DEX protocols, disabled launchpads, verification state, pools, swaps,
+  liquidity history, launch state, graduation, and migration
+- Worker job implementations for protocol revalidation, pool state refresh, and quote freshness
 - Fastify API shell with health routes and security headers
-- Fixed-supply SentryToken contract with ERC-20 Permit
+- A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
+  adapter runtime does not deploy, maintain, or reference its contracts.
 - Minimal Next.js landing page
 
 ### Partial
@@ -43,10 +54,12 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Derived indexer jobs only reach structured logs. No Redis or BullMQ publisher connects the indexer to a worker.
 - Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment exists as a typed
   client and database adapter, but no durable worker queue invokes the enrichment job yet. Token
-  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, durable DEX
-  pool and swap persistence, pool-state refresh, and worker execution are absent.
-- The database schema and repositories are broad. Live PostgreSQL integration validation is pending.
-- The API exposes health routes only.
+  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, and worker
+  queue execution are absent. Protocol pool, swap, liquidity, launchpad, and reorg persistence paths
+  now exist.
+- Live PostgreSQL migration and repository validation is pending. Deterministic adapter and indexer
+  integration tests cover protocol behavior without a database service.
+- The API exposes health and external protocol read routes. Most product routes remain absent.
 - The web app exposes a static product title only.
 - The risk engine defines schemas only.
 
@@ -88,21 +101,31 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added pool creation, swap, liquidity add and remove, malformed log, unsupported fee, unknown
   factory, duplicate pool, wrong address, canonical factory mapping, and verified and unverified
   quote and transaction tests.
+- Expanded the adapter contract for launchpad creation, curve trades, graduation, and migration.
+- Added versioned contract-role validation, runtime and proxy checks, cached activation state,
+  periodic refresh, adapter initialization isolation, and operational failure records.
+- Added protocol persistence migration 010 with an explicit legacy market-data backfill stop.
+- Connected raw-log-first pool, swap, liquidity, and launchpad routing to the indexer.
+- Added derived record invalidation for swap and migration reorg replacement.
+- Added protocol read routes and worker jobs for protocol refresh, pool refresh, and quote checks.
+- Added fixture coverage for launchpad creation, buys, sells, graduation, migration, duplicate
+  migration, provider outage, bytecode changes, failed initialization, and API serialization.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 417 Vitest tests and 6 Forge tests executed
-- `pnpm test:integration`: command passed, but all 10 database cases returned early because PostgreSQL was unavailable
+- `pnpm test`: passed, 459 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test:integration`: passed. One deterministic migration-shape case ran. Ten database
+  service cases returned early because PostgreSQL was unavailable.
 - `pnpm build`: passed for all 19 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
 
-Docker Desktop was not running, so clean migration and repository integration validation remains
-pending, including live application of migration 009. The indexer decoding and Blockscout enrichment
-paths have deterministic unit coverage.
+PostgreSQL was unavailable, so clean migration and repository integration validation remains
+pending, including live application of migrations 009 and 010. The indexer, adapter, API, worker,
+and Blockscout paths have deterministic local coverage.
 
 ## Active release blockers
 

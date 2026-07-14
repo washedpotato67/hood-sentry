@@ -3,6 +3,7 @@
 Verify these again immediately before production deployment.
 
 - Robinhood Chain overview: https://docs.robinhood.com/chain/
+- Uniswap v2 Robinhood Chain deployments: https://developers.uniswap.org/docs/protocols/v2/deployments
 - Connection details: https://docs.robinhood.com/chain/connecting/
 - Contract deployment: https://docs.robinhood.com/chain/deploy-smart-contracts/
 - Token contracts: https://docs.robinhood.com/chain/contracts/

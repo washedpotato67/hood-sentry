@@ -54,6 +54,21 @@ Public wallet responses must be rate-limited and must not imply identity.
 - `GET /projects/:slug/history`
 - `GET /projects/:slug/reports`
 
+### External protocols
+
+- `GET /protocols?chainId=`
+- `GET /launchpads?chainId=`
+- `GET /protocols/verification?chainId=`
+- `GET /pools/by-token/:tokenAddress?chainId=`
+- `GET /pools/:poolAddress/swaps?chainId=`
+- `GET /pools/:poolAddress/liquidity?chainId=`
+- `GET /launchpads/tokens/:tokenAddress/state?chainId=`
+- `GET /launchpads/tokens/:tokenAddress/graduation?chainId=`
+- `GET /launchpads/tokens/:tokenAddress/migration?chainId=`
+
+These routes expose active and disabled states. They exclude internal registry notes and provider
+credentials. Raw integer values use decimal strings in JSON.
+
 ## Authenticated endpoints
 
 ### Auth

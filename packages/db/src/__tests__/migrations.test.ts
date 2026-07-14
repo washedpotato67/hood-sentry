@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -27,6 +30,25 @@ describe('Database Migrations', () => {
     if (dbAvailable) {
       await sql.end();
     }
+  });
+
+  it('defines external protocol tables and blocks unsafe legacy conversion', () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'migrations',
+        '010_external_protocol_adapters.sql',
+      ),
+      'utf8',
+    );
+    expect(migration).toContain('requires an explicit market-data backfill');
+    expect(migration).toContain('CREATE TABLE protocol_contract_verifications');
+    expect(migration).toContain('CREATE TABLE launchpad_creator_fee_events');
+    expect(migration).toContain('CREATE TABLE launchpad_migrations');
+    expect(migration).toContain('ALTER TABLE pool_tokens RENAME COLUMN pool_chain_id TO chain_id');
+    expect(migration).toContain('protocol_id BIGINT NOT NULL REFERENCES dex_protocols(id)');
   });
 
   it('should apply all migrations successfully', async () => {

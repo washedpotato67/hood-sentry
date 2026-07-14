@@ -60,6 +60,10 @@ Fastify API with Zod schemas and OpenAPI generation. It owns authentication, aut
 
 Long-running TypeScript service. It ingests blocks, transactions, receipts, logs, contract creation, ERC-20 transfers, known DEX events, protocol events, and application-contract events.
 
+The service validates the versioned external protocol registry at startup. Only adapters with a
+matching chain ID, runtime bytecode hash, and proxy state enter the routing manager. Raw logs persist
+before adapter decoding. Adapter failures do not alter raw chain facts.
+
 Modes:
 - live WebSocket ingestion;
 - gap repair;
@@ -81,6 +85,9 @@ BullMQ consumers for:
 - alert evaluation;
 - webhook delivery;
 - notification delivery.
+- protocol contract revalidation
+- pool state refresh
+- quote freshness validation
 
 ### `apps/telegram-bot`
 

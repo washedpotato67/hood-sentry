@@ -1,178 +1,103 @@
 import type { Abi, Address, Hash, Hex } from 'viem';
 
+export const PROTOCOL_REGISTRY_VERSION = '2.0.0';
 export const FEE_DENOMINATOR = 1_000_000n;
 
-export type ProtocolContractRole = 'factory' | 'router' | 'quoter' | 'position-manager' | 'permit2';
+export type ProtocolContractRole =
+  | 'factory'
+  | 'router'
+  | 'quoter'
+  | 'positionManager'
+  | 'permit2'
+  | 'bondingCurve'
+  | 'tokenFactory'
+  | 'migration'
+  | 'feeCollector';
 
-export interface VerifiedProtocolContract {
-  role: ProtocolContractRole;
+export type ProtocolKind = 'dex' | 'launchpad';
+
+export interface ProtocolContractConfig {
+  protocolKey: string;
+  protocolName: string;
+  protocolVersion: string;
+  chainId: number;
+  contractRole: ProtocolContractRole;
   address: Address;
-  runtimeBytecodeHash: Hash;
-  source: string;
+  officialSourceUrl: string;
+  explorerUrl: string;
   verifiedAt: string;
+  runtimeBytecodeHash: Hash;
+  proxyType?: string;
+  implementationAddress?: Address;
+  adminAddress?: Address;
+  enabled: boolean;
+  notes?: string;
 }
 
-export interface ProtocolEventSignatures {
-  poolCreated: string;
-  swap: string;
-  liquidityAdded: string;
-  liquidityRemoved: string;
-}
-
-export interface ProtocolAdapterManifest {
+export interface ProtocolDefinition {
+  protocolKey: string;
+  protocolName: string;
+  protocolVersion: string;
   chainId: number;
-  protocol: string;
-  version: string;
-  factory: VerifiedProtocolContract;
-  router: VerifiedProtocolContract | null;
-  quoter: VerifiedProtocolContract | null;
-  positionManager: VerifiedProtocolContract | null;
-  permit2: VerifiedProtocolContract | null;
-  supportedFeeTiers: readonly number[];
-  eventSignatures: ProtocolEventSignatures;
-  source: string;
-  bytecodeHashes: Readonly<Record<ProtocolContractRole, Hash | null>>;
+  kind: ProtocolKind;
+  enabled: boolean;
+  contracts: readonly ProtocolContractConfig[];
 }
 
-export interface BlockProvenance {
+export interface VersionedProtocolRegistry {
+  name: string;
+  version: string;
+  createdAt: string;
+  protocols: readonly ProtocolDefinition[];
+}
+
+export type ProtocolValidationFailureCode =
+  | 'invalid-configuration'
+  | 'wrong-chain'
+  | 'provider-outage'
+  | 'missing-bytecode'
+  | 'bytecode-mismatch'
+  | 'proxy-mismatch'
+  | 'duplicate-role'
+  | 'unsupported-adapter';
+
+export interface ProtocolContractValidation {
+  config: ProtocolContractConfig;
+  valid: boolean;
+  observedRuntimeBytecodeHash: Hash | null;
+  observedImplementationAddress: Address | null;
+  observedAdminAddress: Address | null;
+  errors: readonly string[];
+}
+
+export interface ProtocolValidationResult {
+  protocolKey: string;
+  protocolName: string;
+  protocolVersion: string;
   chainId: number;
-  blockNumber: bigint;
-  blockHash: Hash;
-  transactionHash: Hash;
-  logIndex: number;
+  kind: ProtocolKind;
+  active: boolean;
+  checkedAt: string;
+  expiresAt: string;
+  failureCode: ProtocolValidationFailureCode | null;
+  errors: readonly string[];
+  contracts: readonly ProtocolContractValidation[];
 }
 
-export interface ProtocolLog extends BlockProvenance {
-  address: Address;
-  topics: readonly Hex[];
-  data: Hex;
-}
-
-export interface ConstantProductState {
-  model: 'constant-product';
-  reserve0: bigint;
-  reserve1: bigint;
-  totalSupply: bigint;
-}
-
-export interface ConcentratedLiquidityState {
-  model: 'concentrated-liquidity';
-  sqrtPriceX96: bigint;
-  tick: number;
-  activeLiquidity: bigint;
-}
-
-export type NormalizedPoolState = ConstantProductState | ConcentratedLiquidityState;
-
-export interface NormalizedPool {
-  protocol: string;
-  version: string;
-  factory: Address;
-  address: Address;
-  token0: Address;
-  token1: Address;
-  fee: number;
-  liquidity: bigint;
-  state: NormalizedPoolState;
-  provenance: BlockProvenance;
-}
-
-export type SwapDirection = 'token0-to-token1' | 'token1-to-token0';
-
-export interface NormalizedSwap {
-  kind: 'swap';
-  protocol: string;
-  version: string;
-  poolAddress: Address;
-  token0: Address;
-  token1: Address;
-  fee: number;
-  direction: SwapDirection;
-  amountIn: bigint;
-  amountOut: bigint;
-  sender: Address;
-  recipient: Address;
-  provenance: BlockProvenance;
-}
-
-export interface NormalizedLiquidityChange {
-  kind: 'liquidity-addition' | 'liquidity-removal';
-  protocol: string;
-  version: string;
-  poolAddress: Address;
-  token0: Address;
-  token1: Address;
-  amount0: bigint;
-  amount1: bigint;
-  sender: Address;
-  recipient: Address | null;
-  provenance: BlockProvenance;
-}
-
-export interface RouteLeg {
-  protocol: string;
-  version: string;
-  poolAddress: Address;
-  tokenIn: Address;
-  tokenOut: Address;
-  fee: number;
-}
-
-export interface ProtocolRoute {
+export interface ProtocolOperationalAlert {
+  severity: 'warning' | 'critical';
+  code: ProtocolValidationFailureCode;
+  protocolKey: string;
+  protocolVersion: string;
   chainId: number;
-  tokenIn: Address;
-  tokenOut: Address;
-  legs: readonly RouteLeg[];
+  message: string;
+  observedAt: string;
 }
 
-export interface QuoteRequest {
-  route: ProtocolRoute;
-  amountIn: bigint;
-}
-
-export interface ProtocolQuote {
-  route: ProtocolRoute;
-  amountIn: bigint;
-  amountOut: bigint;
-  blockNumber: bigint;
-  provider: string;
-}
-
-export interface PriceImpactRequest {
-  amountIn: bigint;
-  amountOut: bigint;
-  reserveIn: bigint;
-  reserveOut: bigint;
-}
-
-export interface PriceImpactResult {
-  impactBps: bigint;
-}
-
-export interface TransactionPreparationRequest {
-  sender: Address;
-  recipient: Address;
-  route: ProtocolRoute;
-  amountIn: bigint;
-  minimumAmountOut: bigint;
-  deadline: bigint;
-}
-
-export interface PreparedProtocolTransaction {
-  chainId: number;
-  to: Address;
-  data: Hex;
-  value: bigint;
-  deadline: bigint;
-  intent: {
-    protocol: string;
-    version: string;
-    tokenIn: Address;
-    tokenOut: Address;
-    amountIn: bigint;
-    minimumAmountOut: bigint;
-    recipient: Address;
-  };
+export interface ProtocolValidationClient {
+  getChainId(): Promise<number>;
+  getBytecode(address: Address, blockNumber?: bigint): Promise<Hex | undefined>;
+  getStorageAt(address: Address, slot: Hash, blockNumber?: bigint): Promise<Hex | undefined>;
 }
 
 export interface ProtocolReadRequest {
@@ -190,79 +115,405 @@ export interface ProtocolSimulationRequest {
   value: bigint;
 }
 
-export interface ProtocolReadClient {
-  getChainId(): Promise<number>;
-  getBytecode(address: Address): Promise<Hex | undefined>;
+export interface ProtocolReadClient extends ProtocolValidationClient {
   getBlockNumber(): Promise<bigint>;
   getBlockTimestamp(): Promise<bigint>;
   readContract(request: ProtocolReadRequest): Promise<unknown>;
 }
 
 export interface ProtocolExecutionClient extends ProtocolReadClient {
-  simulateTransaction(
-    request: ProtocolSimulationRequest,
-  ): Promise<{ success: boolean; error?: string }>;
+  simulateTransaction(request: ProtocolSimulationRequest): Promise<ProtocolSimulationResult>;
 }
 
-export interface FactoryEventDiscovery {
-  discoverPool(log: ProtocolLog): NormalizedPool | null;
+export interface ProtocolSimulationResult {
+  success: boolean;
+  gasUsed: bigint;
+  returnValue: Hex;
+  error?: string;
 }
 
-export interface PoolMetadataReader {
-  readPoolMetadata(
-    client: ProtocolReadClient,
-    poolAddress: Address,
-    provenance: BlockProvenance,
-  ): Promise<NormalizedPool>;
+export interface RawChainLog {
+  chainId: number;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  transactionIndex: number;
+  logIndex: number;
+  address: Address;
+  topics: readonly Hex[];
+  data: Hex;
+  removed: boolean;
+  canonical: boolean;
 }
 
-export interface PoolStateReader {
-  readPoolState(
-    client: ProtocolReadClient,
-    poolAddress: Address,
-    blockNumber?: bigint,
-  ): Promise<NormalizedPoolState>;
+export interface BlockProvenance {
+  chainId: number;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  transactionIndex: number;
+  logIndex: number;
+  canonical: boolean;
 }
 
-export interface SwapEventDecoder {
-  decodeSwap(log: ProtocolLog, pool: NormalizedPool): NormalizedSwap | null;
+export type ProtocolEventKind =
+  | 'poolCreated'
+  | 'swap'
+  | 'liquidityAdded'
+  | 'liquidityRemoved'
+  | 'lpMinted'
+  | 'lpBurned'
+  | 'positionCreated'
+  | 'positionIncreased'
+  | 'positionDecreased'
+  | 'feesCollected'
+  | 'launchpadTokenCreated'
+  | 'bondingCurveBuy'
+  | 'bondingCurveSell'
+  | 'launchpadGraduated'
+  | 'launchpadMigrated';
+
+export interface ProtocolEventDefinition {
+  kind: ProtocolEventKind;
+  contractRole: ProtocolContractRole | 'pool';
+  signature: string;
+  topic0: Hash;
 }
 
-export interface LiquidityAdditionDecoder {
-  decodeLiquidityAddition(log: ProtocolLog, pool: NormalizedPool): NormalizedLiquidityChange | null;
+export interface DecodedProtocolEvent {
+  protocolKey: string;
+  protocolName: string;
+  protocolVersion: string;
+  kind: ProtocolEventKind;
+  emitterAddress: Address;
+  provenance: BlockProvenance;
+  fields: Readonly<
+    Record<string, Address | Hash | Hex | bigint | number | string | boolean | null>
+  >;
 }
 
-export interface LiquidityRemovalDecoder {
-  decodeLiquidityRemoval(log: ProtocolLog, pool: NormalizedPool): NormalizedLiquidityChange | null;
+export type PoolType =
+  | 'constantProduct'
+  | 'concentratedLiquidity'
+  | 'stableSwap'
+  | 'bondingCurve'
+  | 'rfq'
+  | 'unknown';
+
+export interface NormalizedPool {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  poolAddress: Address;
+  factoryAddress: Address;
+  token0Address: Address;
+  token1Address: Address;
+  feeTier?: bigint;
+  tickSpacing?: number;
+  poolType: PoolType;
+  createdBlockNumber: bigint;
+  createdBlockHash: Hash;
+  creationTransactionHash: Hash;
+  creationLogIndex: number;
+  canonical: boolean;
 }
 
-export interface QuoteProvider {
-  quote(client: ProtocolReadClient, request: QuoteRequest): Promise<ProtocolQuote>;
+export interface ConstantProductPoolState {
+  poolType: 'constantProduct';
+  reserve0Raw: bigint;
+  reserve1Raw: bigint;
+  lpTotalSupplyRaw: bigint;
 }
 
-export interface TransactionPreparer {
-  prepareTransaction(
-    client: ProtocolExecutionClient,
-    request: TransactionPreparationRequest,
+export interface ConcentratedLiquidityPoolState {
+  poolType: 'concentratedLiquidity';
+  sqrtPriceX96: bigint;
+  currentTick: number;
+  activeLiquidityRaw: bigint;
+}
+
+export interface GenericPoolState {
+  poolType: Exclude<PoolType, 'constantProduct' | 'concentratedLiquidity'>;
+  liquidityRaw: bigint;
+  state: Readonly<Record<string, string>>;
+}
+
+export type NormalizedPoolState =
+  | ConstantProductPoolState
+  | ConcentratedLiquidityPoolState
+  | GenericPoolState;
+
+export interface NormalizedSwap {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  poolAddress: Address;
+  transactionHash: Hash;
+  blockNumber: bigint;
+  blockHash: Hash;
+  logIndex: number;
+  senderAddress?: Address;
+  recipientAddress?: Address;
+  tokenInAddress: Address;
+  tokenOutAddress: Address;
+  amountInRaw: bigint;
+  amountOutRaw: bigint;
+  feeRaw?: bigint;
+  canonical: boolean;
+}
+
+export type NormalizedLiquidityEventType =
+  | 'liquidityAdded'
+  | 'liquidityRemoved'
+  | 'lpMinted'
+  | 'lpBurned'
+  | 'positionCreated'
+  | 'positionIncreased'
+  | 'positionDecreased'
+  | 'feesCollected'
+  | 'bondingCurveLiquidity'
+  | 'migrationLiquidity';
+
+export interface NormalizedLiquidityEvent {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  eventType: NormalizedLiquidityEventType;
+  poolAddress: Address;
+  ownerAddress?: Address;
+  providerAddress?: Address;
+  recipientAddress?: Address;
+  token0Address: Address;
+  token1Address: Address;
+  amount0Raw: bigint;
+  amount1Raw: bigint;
+  positionId?: bigint;
+  tickLower?: number;
+  tickUpper?: number;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  logIndex: number;
+  canonical: boolean;
+}
+
+export interface NormalizedRouteStep {
+  protocolKey: string;
+  protocolVersion: string;
+  poolAddress: Address;
+  inputTokenAddress: Address;
+  outputTokenAddress: Address;
+  feeTier?: bigint;
+}
+
+export interface QuoteWarning {
+  code: string;
+  message: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
+export interface QuoteRequest {
+  chainId: number;
+  protocolKey: string;
+  inputTokenAddress: Address;
+  outputTokenAddress: Address;
+  amountInRaw: bigint;
+  minimumAmountOutRaw: bigint;
+  route: readonly NormalizedRouteStep[];
+  ttlSeconds?: number;
+}
+
+export interface NormalizedQuote {
+  quoteId: string;
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  inputTokenAddress: Address;
+  outputTokenAddress: Address;
+  amountInRaw: bigint;
+  expectedAmountOutRaw: bigint;
+  minimumAmountOutRaw: bigint;
+  estimatedGas?: bigint;
+  priceImpactBps?: bigint;
+  protocolFeeRaw?: bigint;
+  route: readonly NormalizedRouteStep[];
+  spenderAddress?: Address;
+  transactionTarget: Address;
+  transactionSelector: Hex;
+  sourceBlockNumber: bigint;
+  createdAt: string;
+  expiresAt: string;
+  warnings: readonly QuoteWarning[];
+}
+
+export interface ExpectedStateChange {
+  assetAddress: Address;
+  accountAddress: Address;
+  direction: 'increase' | 'decrease';
+  amountRaw: bigint;
+}
+
+export interface PreparedProtocolTransaction {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  to: Address;
+  data: Hex;
+  value: bigint;
+  spenderAddress?: Address;
+  functionSelector: Hex;
+  deadline: bigint;
+  quoteId: string;
+  simulation: ProtocolSimulationResult;
+  warnings: readonly QuoteWarning[];
+  expectedStateChanges: readonly ExpectedStateChange[];
+  intent: {
+    inputTokenAddress: Address;
+    outputTokenAddress: Address;
+    amountInRaw: bigint;
+    minimumAmountOutRaw: bigint;
+    recipientAddress: Address;
+    route: readonly NormalizedRouteStep[];
+  };
+}
+
+export interface PriceImpactRequest {
+  amountInRaw: bigint;
+  amountOutRaw: bigint;
+  reserveInRaw: bigint;
+  reserveOutRaw: bigint;
+}
+
+export interface PriceImpactResult {
+  priceImpactBps: bigint;
+}
+
+export interface LaunchpadTokenCreated {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  tokenAddress: Address;
+  creatorAddress: Address;
+  tokenImplementationAddress?: Address;
+  initialSupplyRaw: bigint;
+  bondingCurveAddress?: Address;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  logIndex: number;
+  canonical: boolean;
+}
+
+export interface LaunchpadTrade {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  tokenAddress: Address;
+  bondingCurveAddress: Address;
+  traderAddress: Address;
+  side: 'buy' | 'sell';
+  tokenAmountRaw: bigint;
+  paymentAmountRaw: bigint;
+  creatorFeeRaw?: bigint;
+  protocolFeeRaw?: bigint;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  logIndex: number;
+  canonical: boolean;
+}
+
+export interface LaunchpadGraduation {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  tokenAddress: Address;
+  bondingCurveAddress: Address;
+  graduationThresholdRaw?: bigint;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  logIndex: number;
+  canonical: boolean;
+}
+
+export interface LaunchpadMigration {
+  chainId: number;
+  protocolKey: string;
+  protocolVersion: string;
+  tokenAddress: Address;
+  migrationAddress: Address;
+  destinationProtocolKey: string;
+  destinationPoolAddress: Address;
+  tokenLiquidityRaw?: bigint;
+  pairedLiquidityRaw?: bigint;
+  blockNumber: bigint;
+  blockHash: Hash;
+  transactionHash: Hash;
+  logIndex: number;
+  canonical: boolean;
+}
+
+export interface LaunchpadTokenState {
+  tokenAddress: Address;
+  bondingCurveAddress?: Address;
+  curveProgressBps?: bigint;
+  graduationThresholdRaw?: bigint;
+  graduated: boolean;
+  destinationPoolAddress?: Address;
+  sourceBlockNumber: bigint;
+  available: boolean;
+  unavailableReason?: string;
+}
+
+export type NormalizedProtocolEvent =
+  | NormalizedPool
+  | NormalizedSwap
+  | NormalizedLiquidityEvent
+  | LaunchpadTokenCreated
+  | LaunchpadTrade
+  | LaunchpadGraduation
+  | LaunchpadMigration;
+
+export interface ProtocolAdapter {
+  readonly protocolKey: string;
+  readonly protocolName: string;
+  readonly version: string;
+  readonly chainId: number;
+  readonly kind: ProtocolKind;
+
+  validateConfiguration(): Promise<ProtocolValidationResult>;
+  getEventDefinitions(): readonly ProtocolEventDefinition[];
+  supportsAddress(address: Address): boolean;
+  decodeLog(log: RawChainLog): Promise<DecodedProtocolEvent | null>;
+}
+
+export interface DexAdapter extends ProtocolAdapter {
+  readonly kind: 'dex';
+
+  discoverPool(event: DecodedProtocolEvent): Promise<NormalizedPool | null>;
+  readPoolState(poolAddress: Address, blockNumber?: bigint): Promise<NormalizedPoolState>;
+  decodeSwap(log: RawChainLog): Promise<NormalizedSwap | null>;
+  decodeLiquidityEvent(log: RawChainLog): Promise<NormalizedLiquidityEvent | null>;
+  getQuote(request: QuoteRequest): Promise<NormalizedQuote>;
+  prepareSwapTransaction(
+    quote: NormalizedQuote,
+    userAddress: Address,
   ): Promise<PreparedProtocolTransaction>;
-}
-
-export interface PriceImpactCalculator {
   calculatePriceImpact(request: PriceImpactRequest): PriceImpactResult;
+  registerPool(pool: NormalizedPool): void;
 }
 
-export interface ProtocolAdapter
-  extends FactoryEventDiscovery,
-    PoolMetadataReader,
-    PoolStateReader,
-    SwapEventDecoder,
-    LiquidityAdditionDecoder,
-    LiquidityRemovalDecoder,
-    QuoteProvider,
-    TransactionPreparer,
-    PriceImpactCalculator {
-  readonly manifest: ProtocolAdapterManifest;
-  assertSupportedFeeTier(fee: number): void;
+export interface LaunchpadAdapter extends ProtocolAdapter {
+  readonly kind: 'launchpad';
+
+  decodeTokenCreation(log: RawChainLog): Promise<LaunchpadTokenCreated | null>;
+  decodeBondingCurveTrade(log: RawChainLog): Promise<LaunchpadTrade | null>;
+  decodeGraduation(log: RawChainLog): Promise<LaunchpadGraduation | null>;
+  decodeMigration(log: RawChainLog): Promise<LaunchpadMigration | null>;
+  readLaunchState(tokenAddress: Address, blockNumber?: bigint): Promise<LaunchpadTokenState>;
 }
 
-export type NormalizedProtocolEvent = NormalizedSwap | NormalizedLiquidityChange;
+export interface TransactionFeaturePolicy {
+  assertTradingEnabled(chainId: number): Promise<void>;
+}

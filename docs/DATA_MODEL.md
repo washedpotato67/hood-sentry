@@ -149,26 +149,48 @@ always come from direct chain reads.
 
 ### `dex_protocols`
 - protocol key and version
-- factory, router, quoter, position-manager, and Permit2 roles where applicable
-- supported fee tiers and canonical event signatures
-- official verification source and date
-- expected runtime bytecode hash for every configured contract
+- protocol kind, registry version, and enabled state
+- latest validation status, validation time, and cache expiry
+- factory, router, and quoter summaries where applicable
 
-Only enabled registry entries populate this table. A protocol name without official addresses and
-direct runtime verification does not qualify as a supported venue.
+Disabled registry entries remain visible for operational review. Only entries with successful
+direct runtime verification produce an active adapter.
+
+### `protocol_contracts`
+- contract role and checksummed registry address
+- official source and explorer URL
+- independent verification date
+- expected runtime bytecode hash
+- expected proxy type, implementation, and admin where applicable
+- enabled state
+
+### `protocol_contract_verifications`
+- observed runtime bytecode hash
+- observed proxy implementation and admin
+- valid state and failure code
+- errors, check time, and cache expiry
 
 ### `pools`
 - `chain_id`
 - `address`
 - `protocol`
+- `protocol_version`
+- `factory_address`
 - `token0`
 - `token1`
 - `fee_tier`
+- pool type and tick spacing where applicable
 - `created_block`
+- `created_block_hash`
 - `created_tx_hash`
+- creation log index
+- canonical state
 - `active`
-- normalized state model, either constant product or concentrated liquidity
-- creation block hash and log index
+- normalized integer state with its source block
+
+### `pool_tokens`
+- chain ID, pool address, and token address identity
+- raw reserve and optional weight
 
 ### `swaps`
 - chain provenance columns
@@ -176,16 +198,26 @@ direct runtime verification does not qualify as a supported venue.
 - `sender`
 - `recipient`
 - normalized direction, amount in, and amount out
-- normalized USD value when available
-- price impact estimate when available
+- raw fee when emitted or derived by the adapter
+- protocol version and canonical state
 
 ### `liquidity_events`
-- mint/burn/add/remove classification
-- provider
-- owner
-- token amounts
-- USD estimate
-- chain provenance
+- add, remove, LP mint, LP burn, position, fee collection, curve, and migration classifications
+- provider, owner, recipient, pool, and token addresses
+- raw token amounts, optional position ID, and optional tick range
+- chain provenance, protocol version, and canonical state
+
+### `protocol_quotes`
+- quote ID, protocol version, route, and source block
+- raw input, expected output, and minimum output
+- target, selector, spender, warnings, and expiry
+
+### Launchpad event tables
+
+`launchpad_tokens`, `launchpad_trades`, `launchpad_creator_fee_events`, `launchpad_graduations`, and
+`launchpad_migrations` preserve token creation, creator, implementation, supply, bonding curve, buy
+or sell direction, raw trade and fee values, graduation threshold, migration contract, destination
+protocol, destination pool, protocol version, and full chain provenance.
 
 ### `token_metrics_1m`, `token_metrics_1h`, `token_metrics_1d`
 - OHLC integer prices
