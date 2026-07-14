@@ -272,6 +272,9 @@ importers:
       viem:
         specifier: ^2.22.8
         version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -303,6 +306,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@hood-sentry/chain':
+        specifier: workspace:*
+        version: link:../chain
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../shared
@@ -312,6 +318,9 @@ importers:
       postgres:
         specifier: ^3.4.5
         version: 3.4.9
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.24.1
         version: 3.25.76

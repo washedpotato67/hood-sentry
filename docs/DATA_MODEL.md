@@ -64,6 +64,12 @@ Use PostgreSQL. Token quantities and prices use `numeric(78,0)` integer represen
 
 ## Contracts and tokens
 
+Explorer enrichment lives in `explorer_contract_metadata`, separate from the `contracts` chain-fact
+record. Each row includes its provider URL, provider endpoints, fetch time, expiry time, source hash,
+raw bounded response, and normalized metadata. `data_quality_warnings` stores explorer and chain
+values when proxy implementation or admin claims disagree. Current implementation and admin values
+always come from direct chain reads.
+
 ### `contracts`
 - `chain_id`
 - `address`

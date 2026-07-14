@@ -2,7 +2,7 @@
 
 Last updated: 2026-07-14
 
-Current phase: Foundation and indexer hardening
+Current phase: Foundation, indexer hardening, and explorer enrichment
 
 Release readiness: Not ready for production
 
@@ -25,6 +25,11 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Raw block, transaction, receipt, and log persistence
 - Indexer checkpoints, leases, gap scanning, reorg handling, and historical modes
 - Contract creation, ERC-20 Transfer, and ERC-20 Approval discovery jobs
+- Typed Blockscout contract enrichment with bounded responses, ABI validation, source hashing,
+  provenance, retries, request timeouts, rate limiting, and stale cache fallback
+- Persistent explorer metadata cache separated from direct chain facts
+- Proxy metadata reconciliation which keeps chain implementation and admin values authoritative,
+  preserves Blockscout values, and records data-quality conflicts
 - Fastify API shell with health routes and security headers
 - Fixed-supply SentryToken contract with ERC-20 Permit
 - Minimal Next.js landing page
@@ -32,7 +37,10 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 ### Partial
 
 - Derived indexer jobs only reach structured logs. No Redis or BullMQ publisher connects the indexer to a worker.
-- Token discovery emits contract and ERC-20 event jobs. Token metadata calls, bytecode analysis, proxy analysis, holder snapshots, verified DEX adapters, pool discovery, and swap decoding are absent.
+- Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment exists as a typed
+  client and database adapter, but no durable worker queue invokes the enrichment job yet. Token
+  metadata calls, bytecode analysis, chain-derived proxy analysis, holder snapshots, verified DEX
+  adapters, pool discovery, and swap decoding are absent.
 - The database schema and repositories are broad. Live PostgreSQL integration validation is pending.
 - The API exposes health routes only.
 - The web app exposes a static product title only.
@@ -68,19 +76,24 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Rejected provider responses whose transaction hash does not match the signed payload.
 - Removed full RPC and Redis URLs from startup log fields.
 - Added four indexer discovery tests and one transaction hash regression test.
+- Added isolated Blockscout enrichment storage so explorer claims never replace direct chain facts.
+- Added verified, unverified, malformed ABI, rate limit, outage, timeout, proxy disagreement, large
+  response, and stale refresh coverage.
 
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 392 Vitest tests and 6 Forge tests executed
+- `pnpm test`: passed, 402 Vitest tests and 6 Forge tests executed
 - `pnpm test:integration`: command passed, but all 10 database cases returned early because PostgreSQL was unavailable
 - `pnpm build`: passed for all 19 workspaces
 - `pnpm --filter contracts forge:test`: passed, 6 tests
 - `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch coverage for SentryToken
 
-Docker Desktop was not running, so clean migration and repository integration validation remains pending. The changed indexer decoding path has deterministic unit coverage.
+Docker Desktop was not running, so clean migration and repository integration validation remains
+pending, including live application of migration 009. The indexer decoding and Blockscout enrichment
+paths have deterministic unit coverage.
 
 ## Active release blockers
 
