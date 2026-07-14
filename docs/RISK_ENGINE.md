@@ -10,18 +10,93 @@ Each rule returns:
 type RiskFinding = {
   ruleId: string;
   ruleVersion: string;
-  status: "pass" | "warn" | "fail" | "unknown";
+  status: "pass" | "warning" | "fail" | "unknown" | "not_applicable";
+  category: RiskCategory;
   severity: "info" | "low" | "medium" | "high" | "critical";
-  confidence: number;
+  confidence: {
+    level: "unknown" | "low" | "medium" | "high" | "confirmed";
+    basisPoints: number;
+    rationale: string;
+  };
   title: string;
   explanation: string;
-  evidence: Evidence[];
-  remediation?: string;
+  evidence: RiskEvidence[];
+  remediation: string | null;
   sourceBlock: bigint;
+  sourceBlockHash: `0x${string}`;
+  dataProvenance: RiskDataSource[];
+  fingerprint: `0x${string}`;
+  suppressed: boolean;
+  suppressionReason: string | null;
 };
 ```
 
 Unknown is not pass. Missing source, unavailable simulation, or inaccessible holder data reduces completeness.
+
+## Framework
+
+The deterministic framework lives in `packages/risk-engine`. The framework does not contain AI
+scoring or AI-generated findings.
+
+- `RiskRuleRegistry` stores immutable rule ID and version pairs and rejects duplicates.
+- A ruleset names exact rule versions, a methodology version, and integer category penalty caps.
+- The orchestrator resolves exact versions, sorts rules by category, rule ID, and version, and pins
+  every finding to one source block and block hash.
+- Each required data source includes provider attribution, availability, source block, source block
+  hash, fetch time, and failure reason.
+- Missing, stale, or failed required data produces `unknown`. The result loses completeness.
+- Rule exceptions and timeouts produce isolated `unknown` findings. Other rules continue.
+- Scan timeouts preserve completed findings and mark remaining findings `unknown`.
+- An `AbortSignal` stops a scan. Cancellation preserves partial evidence.
+- Fingerprints use the target, rule ID, rule version, and rule-owned stable condition key. A rescan at
+  another block keeps the same fingerprint for the same condition.
+- Suppressions require a fingerprint or rule ID and a written reason. Suppression never deletes the
+  finding, changes its severity, or changes its score.
+
+Risk score arithmetic uses integer basis points. Unknown findings do not add a risk penalty because
+missing evidence does not prove risk. Unknown findings reduce completeness and add an unresolved-data
+warning. The API must present score and completeness together.
+
+## Persistence and jobs
+
+Migration 013 extends risk storage with:
+
+- source block hashes and canonical state
+- finding statuses and pinned source provenance
+- immutable ruleset versions
+- reasoned suppressions and revocation state
+- scan and rescan idempotency keys
+- cancellation request state
+- completeness detail
+- all supported rescan trigger types
+- reorg invalidation without historical deletion.
+
+`RiskScanJob` claims a unique engine, ruleset, methodology, target, and source-block job before
+execution. A duplicate claim returns the existing scan ID. `RiskRescanTriggerJob` stores trigger
+provenance before queue execution. `RiskReorgJob` marks affected scan and request history
+noncanonical.
+
+The following events request a rescan:
+
+- new token
+- source verification
+- proxy implementation change
+- ownership change
+- role change
+- mint
+- supply change
+- pool creation
+- liquidity removal
+- holder concentration change
+- launchpad graduation
+- launchpad migration
+- token code change
+- manual analyst request
+- methodology version change.
+
+The event producer supplies a stable event ID, target, source block, source block hash, ruleset
+version, methodology version, and requester. The durable queue integration remains part of the
+shared indexer-to-worker queue blocker.
 
 ## Analysis stages
 
@@ -146,10 +221,11 @@ Labels from external vendors must identify their source and should not be treate
 - Liquidity
 - Holder distribution
 - Deployer history
-- Identity/impersonation
+- Identity and impersonation
 - Market integrity
-- Oracle and RWA behavior
+- Oracle behavior
 - Metadata quality
+- Launchpad behavior
 
 ## Score methodology
 

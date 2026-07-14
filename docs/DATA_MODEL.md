@@ -277,25 +277,32 @@ protocol, destination pool, protocol version, and full chain provenance.
 
 ### `risk_scan_runs`
 - `id`
-- target chain/address
+- target type, chain, and address
 - engine version
 - ruleset version
-- source block
-- status
+- methodology version
+- source block and block hash
+- trigger and idempotency key
+- canonical and partial state
+- pending, running, completed, partial, failed, or cancelled status
+- cancellation request time
 - started/completed
 - error code
 
 ### `risk_findings`
 - scan ID
 - rule ID/version
+- pass, warning, fail, unknown, or not-applicable status
 - category
 - severity
 - confidence
+- confidence level, basis points, and rationale
 - title
 - explanation
 - evidence JSON
 - remediation
 - source provenance
+- source block and block hash
 - fingerprint
 - suppressed status plus reason
 
@@ -307,6 +314,33 @@ protocol, destination pool, protocol version, and full chain provenance.
 - methodology version
 - completeness percentage
 - unresolved-data warnings
+- structured completeness detail
+
+### `risk_rule_versions`
+- immutable rule ID and version
+- category and description
+- integer-safe weight and maximum penalty configuration
+- enabled state
+
+### `risk_ruleset_versions`
+- immutable ruleset version
+- methodology and engine versions
+- exact rule references
+- category penalty caps in basis points
+
+### `risk_rescan_requests`
+- target type, chain, and address
+- trigger type and source event ID
+- source block and block hash
+- ruleset and methodology versions
+- requester and idempotency key
+- queue status, linked scan, and canonical state
+
+### `risk_suppressions`
+- target chain and address
+- rule ID/version or stable finding fingerprint
+- reason and analyst identity
+- creation, expiration, and revocation state
 
 ## Wallet and portfolio
 

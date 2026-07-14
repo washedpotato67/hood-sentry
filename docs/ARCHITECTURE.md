@@ -40,6 +40,11 @@ Token, AccessStaking, ProjectRegistry, ProjectBondVault,
 ReportRegistry, TimelockController
 ```
 
+Risk workers load indexed facts at one canonical block hash. The deterministic orchestrator runs
+exact rule versions from an immutable ruleset, isolates failed rules, stores partial results, and
+records completeness separately from score. Rescan requests use event-derived idempotency keys.
+Reorg jobs retain history and mark affected scans noncanonical.
+
 ## Monorepo services
 
 ### `apps/web`

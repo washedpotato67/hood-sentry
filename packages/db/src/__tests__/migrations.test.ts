@@ -88,6 +88,25 @@ describe('Database Migrations', () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS sponsored_placement_audit');
   });
 
+  it('defines deterministic risk history, rescan triggers, and reorg state', () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'migrations',
+        '013_deterministic_risk_engine.sql',
+      ),
+      'utf8',
+    );
+    expect(migration).toContain('source_block_hash TEXT');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS risk_ruleset_versions');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS risk_rescan_requests');
+    expect(migration).toContain('idempotency_key TEXT NOT NULL UNIQUE');
+    expect(migration).toContain("'methodology_version_change'");
+    expect(migration).toContain('canonical BOOLEAN NOT NULL DEFAULT true');
+  });
+
   it('should apply all migrations successfully', async () => {
     if (!dbAvailable) {
       // biome-ignore lint/suspicious/noConsole: test output

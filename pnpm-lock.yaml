@@ -217,6 +217,9 @@ importers:
       '@hood-sentry/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@hood-sentry/risk-engine':
+        specifier: workspace:*
+        version: link:../../packages/risk-engine
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -489,10 +492,16 @@ importers:
       '@hood-sentry/shared':
         specifier: workspace:*
         version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
