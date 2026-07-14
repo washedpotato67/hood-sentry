@@ -517,11 +517,11 @@ describe('Startup Validation', () => {
     expect(stockTokens?.enabledCount).toBe(25);
   });
 
-  it('empty registries report zero entries', () => {
+  it('verified DEX registry reports enabled entries', () => {
     const results = validateAllRegistries();
     const dex = results.find((r) => r.registryName === 'Supported DEX Contracts');
-    expect(dex?.entryCount).toBe(0);
-    expect(dex?.enabledCount).toBe(0);
+    expect(dex?.entryCount).toBe(2);
+    expect(dex?.enabledCount).toBe(2);
     expect(dex?.valid).toBe(true);
   });
 });
@@ -569,8 +569,11 @@ describe('Pending Registries Documentation', () => {
     expect(applicationContractRegistry.entries).toHaveLength(0);
   });
 
-  it('DEX registry is empty with pending documentation', () => {
-    expect(dexRegistry.entries).toHaveLength(0);
+  it('DEX registry contains only the verified Uniswap v2 deployment', () => {
+    expect(dexRegistry.entries).toHaveLength(2);
+    expect(dexRegistry.entries.every((entry) => entry.protocol === 'uniswap')).toBe(true);
+    expect(dexRegistry.entries.every((entry) => entry.protocolVersion === 'v2')).toBe(true);
+    expect(dexRegistry.entries.every((entry) => entry.runtimeBytecodeHash !== null)).toBe(true);
   });
 
   it('quote provider registry is empty with pending documentation', () => {

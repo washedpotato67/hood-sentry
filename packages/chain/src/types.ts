@@ -73,6 +73,7 @@ export interface ApplicationContractEntry extends RegistryEntry {
 
 export interface DexContractEntry extends RegistryEntry {
   protocol: string;
+  protocolVersion: string;
   dexType: 'factory' | 'router' | 'quoter' | 'pool' | 'permit2' | 'position-manager';
 }
 
