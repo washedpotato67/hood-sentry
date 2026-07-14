@@ -252,6 +252,50 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
 
+  packages/admin-core:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/ai:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
   packages/alert-engine:
     dependencies:
       '@hood-sentry/shared':
@@ -299,6 +343,9 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -408,6 +455,28 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
 
+  packages/entitlements:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
   packages/feature-flags:
     dependencies:
       '@hood-sentry/shared':
@@ -417,6 +486,28 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/launchpad:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -490,6 +581,50 @@ importers:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
 
+  packages/projects:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/reports:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
   packages/risk-engine:
     dependencies:
       '@hood-sentry/shared':
@@ -514,6 +649,28 @@ importers:
 
   packages/shared:
     dependencies:
+      viem:
+        specifier: ^2.22.8
+        version: 2.55.1(typescript@5.9.3)(zod@3.25.76)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.1)(tsx@4.23.1)(yaml@2.9.0)
+
+  packages/trading:
+    dependencies:
+      '@hood-sentry/shared':
+        specifier: workspace:*
+        version: link:../shared
       viem:
         specifier: ^2.22.8
         version: 2.55.1(typescript@5.9.3)(zod@3.25.76)

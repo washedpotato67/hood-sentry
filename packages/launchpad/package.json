@@ -1,5 +1,5 @@
 {
-  "name": "@hood-sentry/auth",
+  "name": "@hood-sentry/launchpad",
   "version": "0.1.0",
   "private": true,
   "type": "module",
