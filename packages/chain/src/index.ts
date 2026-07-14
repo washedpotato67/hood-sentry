@@ -130,3 +130,5 @@ export {
   TimeoutError,
   ContractRevertError,
 } from './rpc/index.js';
+
+export * from './blockscout/index.js';
