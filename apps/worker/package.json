@@ -21,7 +21,9 @@
     "@hood-sentry/observability": "workspace:*",
     "@hood-sentry/shared": "workspace:*",
     "bullmq": "^5.34.8",
-    "ioredis": "^5.4.2"
+    "ioredis": "^5.4.2",
+    "viem": "^2.22.8",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

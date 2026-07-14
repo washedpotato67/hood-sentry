@@ -66,4 +66,5 @@ export {
   DrizzleFeatureFlagRepository,
   DrizzleAuditRepository,
   DrizzleDiscoveryRepository,
+  DrizzleDiscoverySourceRepository,
 } from './implementations/index.js';

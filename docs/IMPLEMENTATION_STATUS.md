@@ -70,6 +70,9 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Separate sponsored placement rank, required disclosure, active dates, and append-only audit history
   without organic score or risk mutation
 - Immutable discovery snapshots, current canonical projections, refresh jobs, and reorg invalidation
+- Database-backed discovery source loading across canonical blocks, verified protocols, prices,
+  market metrics, holders, swaps, launchpad trades, projects, risk, watchlists, alerts, deployer
+  evidence, duplicate symbols, and data-quality records
 - Read APIs for every discovery feed and cross-field token search
 - Fastify API shell with health routes and security headers
 - A legacy fixed-supply SentryToken test package remains in the repository. The external protocol
@@ -157,7 +160,7 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - `pnpm format:check`: passed
 - `pnpm lint`: passed with three existing indexer complexity warnings
 - `pnpm typecheck`: passed
-- `pnpm test`: passed, 508 Vitest cases reported passing and 6 Forge tests passed
+- `pnpm test`: passed, 509 Vitest cases reported passing and 6 Forge tests passed
 - `pnpm test:integration`: passed. Three deterministic migration-shape cases ran. Ten database
   service cases returned early because PostgreSQL was unavailable.
 - `pnpm build`: passed for all 21 workspaces
