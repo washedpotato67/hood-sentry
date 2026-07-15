@@ -56,13 +56,13 @@ describe('Repository Layer', () => {
     // Insert same block twice (idempotent operation)
     await sql`
       INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-      VALUES (2, 100, '0xabc', '0x000', NOW(), 'confirmed', true)
+      VALUES (2, 100, '0xabc', '0x000', NOW(), 'soft_confirmed', true)
       ON CONFLICT (chain_id, number, hash) DO NOTHING
     `;
 
     await sql`
       INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-      VALUES (2, 100, '0xabc', '0x000', NOW(), 'confirmed', true)
+      VALUES (2, 100, '0xabc', '0x000', NOW(), 'soft_confirmed', true)
       ON CONFLICT (chain_id, number, hash) DO NOTHING
     `;
 
@@ -98,11 +98,11 @@ describe('Repository Layer', () => {
     // Insert canonical and non-canonical blocks
     await sql`
       INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-      VALUES (4, 1, '0x1', '0x0', NOW(), 'confirmed', true)
+      VALUES (4, 1, '0x1', '0x0', NOW(), 'soft_confirmed', true)
     `;
     await sql`
       INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-      VALUES (4, 1, '0x2', '0x0', NOW(), 'confirmed', false)
+      VALUES (4, 1, '0x2', '0x0', NOW(), 'soft_confirmed', false)
     `;
 
     const canonical = await sql`SELECT * FROM blocks WHERE chain_id = 4 AND canonical = true`;

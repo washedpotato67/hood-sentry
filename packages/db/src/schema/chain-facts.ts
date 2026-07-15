@@ -148,7 +148,9 @@ export const indexerLeases = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: now(),
   },
-  (t) => [primaryKey({ columns: [t.chainId, t.stream, t.workerId] })],
+  // One lease per stream: the lease is the indexer's mutual-exclusion token, so
+  // worker_id must not widen the key.
+  (t) => [primaryKey({ columns: [t.chainId, t.stream] })],
 );
 
 export const reorgEvents = pgTable(

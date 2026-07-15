@@ -21,24 +21,9 @@ export class BlockFetcher {
         return null;
       }
 
-      const transactions = block.transactions as Transaction[];
-      const receipts: TransactionReceipt[] = [];
-      const logs: Log[] = [];
+      this.assertWellFormed(block, blockNumber.toString());
 
-      for (const tx of transactions) {
-        try {
-          const receipt = await this.rpcClient.getTransactionReceipt(tx.hash);
-          if (receipt) {
-            receipts.push(receipt);
-            logs.push(...receipt.logs);
-          }
-        } catch (error) {
-          this.logger.error('Failed to fetch receipt', {
-            txHash: tx.hash,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      const { transactions, receipts, logs } = await this.fetchBlockBodies(block);
 
       return {
         block,
@@ -56,6 +41,51 @@ export class BlockFetcher {
     }
   }
 
+  /**
+   * A response missing its identity fields is a provider defect, not an empty block.
+   * Rejecting it here keeps callers from persisting nothing and advancing past the height.
+   */
+  private assertWellFormed(block: Block, reference: string): void {
+    if (block.number === null || block.hash === null) {
+      throw new Error(`Malformed RPC response for block ${reference}: missing number or hash`);
+    }
+  }
+
+  /**
+   * Receipts carry the logs, so a receipt that fails to load would silently yield a
+   * block with missing logs. Fail the whole fetch instead and let the caller retry.
+   */
+  private async fetchBlockBodies(block: Block): Promise<{
+    transactions: Transaction[];
+    receipts: TransactionReceipt[];
+    logs: Log[];
+  }> {
+    const transactions = block.transactions as Transaction[];
+    const receipts: TransactionReceipt[] = [];
+    const logs: Log[] = [];
+
+    for (const tx of transactions) {
+      try {
+        const receipt = await this.rpcClient.getTransactionReceipt(tx.hash);
+        if (!receipt) {
+          throw new Error('receipt not found');
+        }
+        receipts.push(receipt);
+        logs.push(...receipt.logs);
+      } catch (error) {
+        this.logger.error('Failed to fetch receipt', {
+          txHash: tx.hash,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw new Error(
+          `Failed to fetch receipt for ${tx.hash}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    return { transactions, receipts, logs };
+  }
+
   async fetchBlockByHash(blockHash: Hash): Promise<BlockData | null> {
     try {
       this.logger.debug('Fetching block by hash', { blockHash });
@@ -67,24 +97,9 @@ export class BlockFetcher {
         return null;
       }
 
-      const transactions = block.transactions as Transaction[];
-      const receipts: TransactionReceipt[] = [];
-      const logs: Log[] = [];
+      this.assertWellFormed(block, blockHash);
 
-      for (const tx of transactions) {
-        try {
-          const receipt = await this.rpcClient.getTransactionReceipt(tx.hash);
-          if (receipt) {
-            receipts.push(receipt);
-            logs.push(...receipt.logs);
-          }
-        } catch (error) {
-          this.logger.error('Failed to fetch receipt', {
-            txHash: tx.hash,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      const { transactions, receipts, logs } = await this.fetchBlockBodies(block);
 
       return {
         block,
