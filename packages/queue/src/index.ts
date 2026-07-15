@@ -1,4 +1,5 @@
 export * from './constants.js';
+export * from './job-types.js';
 export * from './types.js';
 export * from './serialization.js';
 export * from './job-id.js';

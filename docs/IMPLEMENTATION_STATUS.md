@@ -13,6 +13,22 @@ Release readiness: Not ready for production
 
 ## Recent changes (2026-07-15)
 
+- Made the derived job type list a closed union (`DERIVED_JOB_TYPES`) exported from
+  `@hood-sentry/queue` and used by both the indexer's `DerivedJob` and the worker's router. The
+  router previously matched on invented names (`contract`, `token`, `pool`, `swap`, `liquidity`,
+  `launchpad`) that no producer emits: of the 18 types the indexer actually publishes, only
+  `transaction` and `log` matched, so the other 16 were logged as unknown and silently dropped.
+  A type with no processor is now a compile error rather than a runtime no-op.
+- The router now throws on an unrecognised type so it dead-letters for inspection instead of being
+  acknowledged away, and lists deliberately-unimplemented types in `PENDING_JOB_TYPES` so "not
+  built yet" is distinguishable from "dropped".
+- Implemented the first three processors against the live database, each idempotent under
+  at-least-once delivery: `contract-creation` (insert-only, so replays never clobber later
+  enrichment), `token-transfer` (collapses on the log's natural key), and `token-approval`
+  (applies only when strictly newer in `(block, log_index)` order). Migration 015 adds
+  `token_approvals.last_updated_log_index`, without which two approvals in one block have no
+  deterministic order and a redelivered stale job can roll an allowance backwards.
+
 - Added indexer integration tests driving the real indexer against live PostgreSQL over a
   deterministic synthetic chain: reorg (orphaning the abandoned fork and reindexing the winning
   one), restart (checkpoint resume with no refetch or duplication), lease contention, gap repair,
@@ -283,7 +299,7 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 ## Active release blockers
 
 1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
-2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Remaining: implement the per-type job processors behind the router.
+2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Job types are a closed union (`DERIVED_JOB_TYPES`) shared by producer and consumer, so an unroutable type cannot compile. Processors exist for `contract-creation`, `token-transfer`, and `token-approval`, each idempotent under at-least-once delivery. Remaining: the 15 job types still listed in `PENDING_JOB_TYPES`, which depend on blockers 4 and 5.
 3. Done: `apps/indexer/src/__tests__/indexer.integration.test.ts` drives the indexer against live PostgreSQL over a synthetic chain (`synthetic-chain.ts`) covering reorg, restart, lease contention, gap repair, and malformed RPC responses. These found and fixed four real defects: the `blocks.finality_state` check rejected every state the indexer emits except `pending`/`finalized`, `transactions.status` and `transaction_receipts.status` were text while all code writes integers, the `indexer_leases` primary key included `worker_id` so leases granted no mutual exclusion, and a malformed block or failed receipt fetch was silently skipped while the checkpoint advanced past it. See migration 014.
 4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
    metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.

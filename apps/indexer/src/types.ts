@@ -1,3 +1,4 @@
+import type { DerivedJobType } from '@hood-sentry/queue';
 import type { Block, Hash, Hex, Log, Transaction, TransactionReceipt } from 'viem';
 
 export type IndexerMode =
@@ -122,7 +123,7 @@ export interface GapRange {
 }
 
 export interface DerivedJob {
-  type: string;
+  type: DerivedJobType;
   chainId: bigint;
   blockNumber: bigint;
   blockHash: Hash;
