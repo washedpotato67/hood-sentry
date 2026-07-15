@@ -13,6 +13,19 @@ Release readiness: Not ready for production
 
 ## Recent changes (2026-07-15)
 
+- Added the Liquidity and Holder distribution deterministic rule families over the existing
+  `analyzeLiquidityRisk` and `analyzeHolders` analyzers, following the proxy/privilege rule pattern.
+  Liquidity covers unrecognised protocol, unverifiable lock, creator-held LP, abrupt removal, single
+  provider, unexpected migration venue, and provider concentration. Holder distribution covers top-1
+  and top-10 concentration of adjusted supply, Gini inequality, holder count, and circulating supply
+  availability. Both are proven end to end through the real orchestrator and scoring, including
+  category penalty caps and pinned provenance on every finding.
+- Two honesty rules are enforced by tests rather than convention: a rule that withholds a conclusion
+  (unverifiable lock, incomplete holder history, underivable circulating supply) reports `unknown`
+  with zero confidence and carries a `maxPenaltyBps` of 0, so absence of evidence never moves the
+  score; and unverified holder classifications never shrink measured concentration, so a
+  self-reported treasury label cannot dilute a real insider position.
+
 - Made the derived job type list a closed union (`DERIVED_JOB_TYPES`) exported from
   `@hood-sentry/queue` and used by both the indexer's `DerivedJob` and the worker's router. The
   router previously matched on invented names (`contract`, `token`, `pool`, `swap`, `liquidity`,
@@ -301,8 +314,13 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
 2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Job types are a closed union (`DERIVED_JOB_TYPES`) shared by producer and consumer, so an unroutable type cannot compile. Processors exist for `contract-creation`, `token-transfer`, and `token-approval`, each idempotent under at-least-once delivery. Remaining: the 15 job types still listed in `PENDING_JOB_TYPES`, which depend on blockers 4 and 5.
 3. Done: `apps/indexer/src/__tests__/indexer.integration.test.ts` drives the indexer against live PostgreSQL over a synthetic chain (`synthetic-chain.ts`) covering reorg, restart, lease contention, gap repair, and malformed RPC responses. These found and fixed four real defects: the `blocks.finality_state` check rejected every state the indexer emits except `pending`/`finalized`, `transactions.status` and `transaction_receipts.status` were text while all code writes integers, the `indexer_leases` primary key included `worker_id` so leases granted no mutual exclusion, and a malformed block or failed receipt fetch was silently skipped while the checkpoint advanced past it. See migration 014.
-4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
-   metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
+4. In progress. Liquidity (7 rules) and Holder distribution (5 rules) are implemented over the
+   existing deterministic analyzers, registered, and proven end to end through the orchestrator.
+   Still absent: deployer, identity, market, oracle, metadata, and launchpad rules, which have no
+   analysis layer yet, and the evidence-backed report APIs. The two new families are also not yet
+   reachable in production: `contract-analysis-context.ts` only loads proxy and privilege data, so
+   it must supply `holderAnalysis`, `liquidityAnalysis`, and their pinned data sources before a
+   real scan can evaluate them. Risk scores stay unexposed until this blocker closes.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
