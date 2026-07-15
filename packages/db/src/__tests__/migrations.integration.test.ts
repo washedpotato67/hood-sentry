@@ -134,7 +134,7 @@ describe('Database Migrations', () => {
 
     await sql`
       INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-      VALUES (1, ${testValue}, '0x123', '0x000', NOW(), 'confirmed', true)
+      VALUES (1, ${testValue}, '0x123', '0x000', NOW(), 'soft_confirmed', true)
     `;
 
     const result = await sql`SELECT number FROM blocks WHERE chain_id = 1`;
@@ -150,7 +150,7 @@ describe('Database Migrations', () => {
 
     await expect(
       sql`INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
-          VALUES (999, 1, '0x456', '0x000', NOW(), 'confirmed', true)`,
+          VALUES (999, 1, '0x456', '0x000', NOW(), 'soft_confirmed', true)`,
     ).rejects.toThrow();
   });
 

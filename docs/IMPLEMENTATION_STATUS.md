@@ -11,6 +11,23 @@ write, launchpad, token-gating, sponsorship, and notification paths remain disab
 
 Release readiness: Not ready for production
 
+## Recent changes (2026-07-15)
+
+- Added indexer integration tests driving the real indexer against live PostgreSQL over a
+  deterministic synthetic chain: reorg (orphaning the abandoned fork and reindexing the winning
+  one), restart (checkpoint resume with no refetch or duplication), lease contention, gap repair,
+  and malformed RPC responses (provider outage, missing block, receipt failure, malformed payload).
+- Those tests exposed four defects that only a live database could reveal, all fixed in migration
+  014 and `block-fetcher.ts`: the `blocks.finality_state` check allowed `confirmed` (which nothing
+  emits) but rejected `soft_confirmed`, `safe`, and `orphaned`, so the indexer could not persist
+  most blocks or complete a reorg; `transactions.status` and `transaction_receipts.status` were
+  text with a `success`/`failed` check while the schema and every writer use integers; the
+  `indexer_leases` primary key included `worker_id`, so two workers could hold a lease on the same
+  stream and index it concurrently; and a malformed block or a failed receipt fetch was swallowed,
+  persisting nothing (or a block missing its logs) while the checkpoint advanced past the height.
+- Exposed the db migration helpers as `@hood-sentry/db/testing` so suites outside the db package
+  can provision a clean, migrated database.
+
 ## Recent changes (2026-07-14)
 
 - Decomposed the risk-engine monolith into focused domain packages (auth, portfolio-engine,
@@ -267,7 +284,7 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 
 1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
 2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Remaining: implement the per-type job processors behind the router.
-3. Add synthetic reorg, restart, lease contention, gap repair, and malformed RPC response integration tests.
+3. Done: `apps/indexer/src/__tests__/indexer.integration.test.ts` drives the indexer against live PostgreSQL over a synthetic chain (`synthetic-chain.ts`) covering reorg, restart, lease contention, gap repair, and malformed RPC responses. These found and fixed four real defects: the `blocks.finality_state` check rejected every state the indexer emits except `pending`/`finalized`, `transactions.status` and `transaction_receipts.status` were text while all code writes integers, the `indexer_leases` primary key included `worker_id` so leases granted no mutual exclusion, and a malformed block or failed receipt fetch was silently skipped while the checkpoint advanced past it. See migration 014.
 4. Implement the remaining deterministic liquidity, holder, deployer, identity, market, oracle,
    metadata, and launchpad rules plus evidence-backed report APIs before exposing risk scores.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
