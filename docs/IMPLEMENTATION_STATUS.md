@@ -13,6 +13,19 @@ Release readiness: Not ready for production
 
 ## Recent changes (2026-07-15)
 
+- Made `token_transfers` reorg-aware (migration 016) and wired it into the indexer reorg path, which
+  previously orphaned blocks, transactions, and logs but left the transfers derived from them
+  counting as real. Because transfers are written asynchronously by the worker, the processor also
+  derives canonicality from the emitting block at insert time, so a job published before a reorg and
+  consumed after it does not re-enter as canonical.
+- Added the `token_balances` projection behind the `token-transfer` processor. Balances are
+  recomputed from canonical transfer history rather than adjusted by a delta, which is what makes
+  them safe under at-least-once delivery: a redelivered job recomputes the same sum instead of
+  double-counting, and a reorg is shed on the next projection with no compensating write. The zero
+  address is never recorded as a holder, since mints would otherwise leave it holding a negative
+  balance. `as_of_block` records the highest canonical transfer block behind each balance, which is
+  what lets a scan decide whether the balance is pinned to its block.
+
 - Added `HolderDistributionContextLoader`, which supplies the pinned holder snapshot the holder
   rules consume. `token_balances` holds current state rather than history, so the loader only marks
   it available when the recorded balances demonstrably describe the token at the scan block:
@@ -331,19 +344,14 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
    `HolderDistributionContextLoader` supplies the pinned holder snapshot, deciding availability from
    the recorded balances rather than assuming them, and classifying indexed pools and burn sinks so
    pool-held supply is not mistaken for insider concentration.
+   `token_balances` is now populated: the `token-transfer` processor projects balances from
+   canonical transfer history (migration 016 made `token_transfers` reorg-aware), so holder data can
+   reach `available` once a token has been indexed.
    Still absent: deployer, identity, market, oracle, metadata, and launchpad rules, which have no
-   analysis layer yet, and the evidence-backed report APIs. Two gaps block the holder rules from
-   ever reaching `available` in production, and both must close before holder findings mean
-   anything:
-   - Nothing writes `token_balances`. `upsertBalance` and `insertBalance` have no callers, so every
-     holder scan currently reports `HOLDER_BALANCES_NOT_INDEXED`. A balance projection over
-     `token_transfers` is the missing piece.
-   - `token_transfers` has no `canonical` column and the reorg path does not touch it, so a balance
-     projection built on it today would silently include orphaned transfers. The table needs to
-     become reorg-aware first.
-   There is also no composition root: `RiskScanJob` and `ContractAnalysisContextLoader` are never
-   constructed, so no risk scan runs. Wiring one now would expose scores drawn from 2 of 8 rule
-   families. Risk scores stay unexposed until this blocker closes.
+   analysis layer yet, and the evidence-backed report APIs. There is also no composition root:
+   `RiskScanJob` and `ContractAnalysisContextLoader` are never constructed, so no risk scan runs.
+   Wiring one now would expose scores drawn from 2 of 8 rule families. Risk scores stay unexposed
+   until this blocker closes.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation

@@ -128,6 +128,8 @@ export const tokenTransfers = pgTable(
     to_address: varchar('to_address', { length: 42 }).notNull(),
     amount_raw: numeric('amount_raw', { precision: 78, scale: 0 }).notNull(),
     ui_amount_raw: numeric('ui_amount_raw', { precision: 78, scale: 0 }),
+    // False once a reorg orphans the emitting block, so derived balances can exclude it.
+    canonical: boolean('canonical').notNull().default(true),
     ...timestamps,
   },
   (table) => [

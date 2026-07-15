@@ -78,6 +78,23 @@ describe('indexer synthetic reorg', () => {
     const beforeReorg = await blockRows();
     expect(beforeReorg).toHaveLength(6);
 
+    // ERC-20 transfers are derived from these blocks by the worker, so they must be
+    // invalidated along with the fork they came from.
+    for (const height of [2n, 3n, 4n, 5n]) {
+      await database.client`
+        INSERT INTO token_transfers (
+          chain_id, block_number, block_hash, transaction_hash, log_index,
+          token_address, from_address, to_address, amount_raw
+        ) VALUES (
+          ${CHAIN_ID_SQL}, ${Number(height)}, ${syntheticHash(`a-block-${height}`)},
+          ${syntheticHash(`a-tx-${height}-0`)}, 0,
+          '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          '0xcccccccccccccccccccccccccccccccccccccccc', 1000
+        )
+      `;
+    }
+
     // The chain rewrites heights 3-5 onto a new fork and extends to 6.
     chain.reorgFrom(3n, 6n, 'b');
 
@@ -137,6 +154,19 @@ describe('indexer synthetic reorg', () => {
         AND block_hash = ANY(${winningHashes}) AND canonical = true
     `;
     expect(winningTxs[0]?.count).toBe(4);
+
+    // Transfers from the abandoned fork must stop counting; the one below the common
+    // ancestor is untouched.
+    const transfers = await database.client`
+      SELECT block_number::text, canonical FROM token_transfers
+      WHERE chain_id = ${CHAIN_ID_SQL} ORDER BY block_number
+    `;
+    expect(transfers.map((row) => [row.block_number, row.canonical])).toEqual([
+      ['2', true],
+      ['3', false],
+      ['4', false],
+      ['5', false],
+    ]);
   });
 });
 

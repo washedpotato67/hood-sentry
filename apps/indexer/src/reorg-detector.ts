@@ -113,6 +113,7 @@ export class ReorgDetector {
     await this.markBlocksOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markTransactionsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markLogsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
+    await this.markTokenTransfersOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.protocolRepository?.markDerivedNonCanonical(
       Number(this.config.chainId),
       reorgEvent.fromBlock,
@@ -168,6 +169,25 @@ export class ReorgDetector {
           gte(schema.logs.blockNumber, fromBlock),
           lte(schema.logs.blockNumber, toBlock),
           eq(schema.logs.canonical, true),
+        ),
+      );
+  }
+
+  /**
+   * ERC-20 transfers are derived from logs by the worker, so they outlive the logs
+   * being orphaned and must be invalidated in their own right. Balances projected
+   * from this table would otherwise keep counting an abandoned fork's transfers.
+   */
+  private async markTokenTransfersOrphaned(fromBlock: bigint, toBlock: bigint): Promise<void> {
+    await this.drizzle
+      .update(schema.tokenTransfers)
+      .set({ canonical: false, updated_at: new Date() })
+      .where(
+        and(
+          eq(schema.tokenTransfers.chain_id, Number(this.config.chainId)),
+          gte(schema.tokenTransfers.block_number, fromBlock),
+          lte(schema.tokenTransfers.block_number, toBlock),
+          eq(schema.tokenTransfers.canonical, true),
         ),
       );
   }
