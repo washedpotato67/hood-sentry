@@ -13,6 +13,18 @@ Release readiness: Not ready for production
 
 ## Recent changes (2026-07-15)
 
+- Added `HolderDistributionContextLoader`, which supplies the pinned holder snapshot the holder
+  rules consume. `token_balances` holds current state rather than history, so the loader only marks
+  it available when the recorded balances demonstrably describe the token at the scan block:
+  unindexed reports `HOLDER_BALANCES_NOT_INDEXED`, balances written past the scan block report
+  `HOLDER_BALANCES_AHEAD_OF_SCAN_BLOCK`, and a transfer landing after the last balance write reports
+  `HOLDER_BALANCES_BEHIND_SCAN_BLOCK`. Only the last case where nothing moved in between is
+  available. The orchestrator treats any non-available source as a dependency failure, so these all
+  produce unknown findings and an incomplete scan rather than a score.
+- The loader classifies indexed canonical pools and the zero/dead burn sinks as verified exclusions.
+  Without this, a token's own liquidity pool would read as an insider position and false-fail
+  concentration on essentially every token that trades.
+
 - Added the Liquidity and Holder distribution deterministic rule families over the existing
   `analyzeLiquidityRisk` and `analyzeHolders` analyzers, following the proxy/privilege rule pattern.
   Liquidity covers unrecognised protocol, unverifiable lock, creator-held LP, abrupt removal, single
@@ -316,11 +328,22 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
 3. Done: `apps/indexer/src/__tests__/indexer.integration.test.ts` drives the indexer against live PostgreSQL over a synthetic chain (`synthetic-chain.ts`) covering reorg, restart, lease contention, gap repair, and malformed RPC responses. These found and fixed four real defects: the `blocks.finality_state` check rejected every state the indexer emits except `pending`/`finalized`, `transactions.status` and `transaction_receipts.status` were text while all code writes integers, the `indexer_leases` primary key included `worker_id` so leases granted no mutual exclusion, and a malformed block or failed receipt fetch was silently skipped while the checkpoint advanced past it. See migration 014.
 4. In progress. Liquidity (7 rules) and Holder distribution (5 rules) are implemented over the
    existing deterministic analyzers, registered, and proven end to end through the orchestrator.
+   `HolderDistributionContextLoader` supplies the pinned holder snapshot, deciding availability from
+   the recorded balances rather than assuming them, and classifying indexed pools and burn sinks so
+   pool-held supply is not mistaken for insider concentration.
    Still absent: deployer, identity, market, oracle, metadata, and launchpad rules, which have no
-   analysis layer yet, and the evidence-backed report APIs. The two new families are also not yet
-   reachable in production: `contract-analysis-context.ts` only loads proxy and privilege data, so
-   it must supply `holderAnalysis`, `liquidityAnalysis`, and their pinned data sources before a
-   real scan can evaluate them. Risk scores stay unexposed until this blocker closes.
+   analysis layer yet, and the evidence-backed report APIs. Two gaps block the holder rules from
+   ever reaching `available` in production, and both must close before holder findings mean
+   anything:
+   - Nothing writes `token_balances`. `upsertBalance` and `insertBalance` have no callers, so every
+     holder scan currently reports `HOLDER_BALANCES_NOT_INDEXED`. A balance projection over
+     `token_transfers` is the missing piece.
+   - `token_transfers` has no `canonical` column and the reorg path does not touch it, so a balance
+     projection built on it today would silently include orphaned transfers. The table needs to
+     become reorg-aware first.
+   There is also no composition root: `RiskScanJob` and `ContractAnalysisContextLoader` are never
+   constructed, so no risk scan runs. Wiring one now would expose scores drawn from 2 of 8 rule
+   families. Risk scores stay unexposed until this blocker closes.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
