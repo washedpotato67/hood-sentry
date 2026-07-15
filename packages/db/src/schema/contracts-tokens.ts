@@ -148,6 +148,9 @@ export const tokenApprovals = pgTable(
     spender_address: varchar('spender_address', { length: 42 }).notNull(),
     allowance_raw: numeric('allowance_raw', { precision: 78, scale: 0 }).notNull(),
     last_updated_block: bigint('last_updated_block', { mode: 'bigint' }).notNull(),
+    // (block, log_index) totally orders the emitting logs, so allowance state does
+    // not depend on the order jobs happen to be processed in.
+    last_updated_log_index: integer('last_updated_log_index').notNull().default(0),
     ...timestamps,
   },
   (table) => [

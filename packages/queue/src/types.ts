@@ -1,13 +1,19 @@
+import type { DerivedJobType } from './job-types.js';
+
 /** A derived job as produced by the indexer, before serialization. */
 export interface DerivedJobInput {
-  type: string;
+  type: DerivedJobType;
   chainId: bigint;
   blockNumber: bigint;
   blockHash: string;
   data: Record<string, unknown>;
 }
 
-/** The JSON-safe shape stored in Redis (bigints rendered as decimal strings). */
+/**
+ * The JSON-safe shape stored in Redis (bigints rendered as decimal strings).
+ * `type` stays a string here: a payload read back from Redis is untrusted input
+ * and must be narrowed with `isDerivedJobType` before routing.
+ */
 export interface DerivedJobPayload {
   type: string;
   chainId: string;

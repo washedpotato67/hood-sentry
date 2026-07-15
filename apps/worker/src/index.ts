@@ -1,4 +1,5 @@
 import { getEnv } from '@hood-sentry/config';
+import { createDatabase } from '@hood-sentry/db';
 import { createLogger } from '@hood-sentry/observability';
 import { createDerivedJobWorker, createQueueConnection } from '@hood-sentry/queue';
 import { createDerivedJobRouter } from './derived-job-router.js';
@@ -9,13 +10,14 @@ async function main() {
 
   let isShuttingDown = false;
 
+  const database = createDatabase(env.DATABASE_URL);
   const workerConnection = createQueueConnection(env.REDIS_URL);
   const deadLetterConnection = createQueueConnection(env.REDIS_URL);
 
   const runner = createDerivedJobWorker({
     connection: workerConnection,
     deadLetterConnection,
-    handler: createDerivedJobRouter(logger),
+    handler: createDerivedJobRouter(logger, database),
     onDeadLetter: (record) => {
       logger.error('Derived job dead-lettered after exhausting retries', {
         type: record.payload.type,
@@ -37,6 +39,7 @@ async function main() {
     await runner.close();
     await workerConnection.quit();
     await deadLetterConnection.quit();
+    await database.close();
     logger.info('Worker stopped gracefully');
     process.exit(0);
   };
