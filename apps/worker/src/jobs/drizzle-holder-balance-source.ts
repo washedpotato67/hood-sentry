@@ -42,6 +42,9 @@ export class DrizzleHolderBalanceSource implements HolderBalanceSource {
           eq(schema.tokenTransfers.chain_id, chainId),
           eq(schema.tokenTransfers.token_address, tokenAddress.toLowerCase()),
           lte(schema.tokenTransfers.block_number, atBlock),
+          // An orphaned transfer never moved anything, so it must not make the
+          // recorded balances look stale for the rest of time.
+          eq(schema.tokenTransfers.canonical, true),
         ),
       )
       .orderBy(desc(schema.tokenTransfers.block_number))
