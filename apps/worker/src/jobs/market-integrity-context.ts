@@ -55,6 +55,9 @@ export function buildMarketIntegrityResult(input: MarketIntegrityInputs): Market
   const observedSignalCodes = input.manipulation.signals
     .filter((s) => s.status === 'observed' && SIGNAL_CODE_SET.has(s.code))
     .map((s) => s.code);
+  const insufficientSignalCodes = input.manipulation.signals
+    .filter((s) => s.status === 'insufficientData' && SIGNAL_CODE_SET.has(s.code))
+    .map((s) => s.code);
   return {
     priceReliability: {
       available: input.priceAvailable,
@@ -68,6 +71,7 @@ export function buildMarketIntegrityResult(input: MarketIntegrityInputs): Market
       tradeCount: input.tradeCount,
       minTradesForAssessment: MARKET_MIN_TRADES_FOR_MANIPULATION,
       observedSignalCodes,
+      insufficientSignalCodes,
       methodologyVersion: input.manipulation.methodologyVersion,
     },
     sourceBlock: input.sourceBlock,

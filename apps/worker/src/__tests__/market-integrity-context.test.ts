@@ -89,4 +89,28 @@ describe('buildMarketIntegrityResult', () => {
     });
     expect(result.tradeManipulation.observedSignalCodes).toEqual(['REPEATED_WALLET_PAIR']);
   });
+
+  it('carries signals the analyzer could not assess as insufficient, not passing', () => {
+    const result = buildMarketIntegrityResult({
+      sourceBlock: 200n,
+      priceAvailable: false,
+      activeSourceCount: 0,
+      disagreementWarnings: [],
+      outlierReasons: [],
+      primaryReasons: [],
+      tradesAvailable: true,
+      tradeCount: 30,
+      manipulation: {
+        methodologyVersion: 'manipulation-v1',
+        signals: [
+          { code: 'THIN_POOL_PRICE_MANIPULATION', status: 'insufficientData' },
+          { code: 'SELF_TRADING', status: 'notObserved' },
+        ],
+      },
+    });
+    expect(result.tradeManipulation.insufficientSignalCodes).toEqual([
+      'THIN_POOL_PRICE_MANIPULATION',
+    ]);
+    expect(result.tradeManipulation.observedSignalCodes).toEqual([]);
+  });
 });

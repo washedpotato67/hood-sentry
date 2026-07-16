@@ -27,6 +27,7 @@ const schema = z.object({
     tradeCount: z.number().int().nonnegative(),
     minTradesForAssessment: z.number().int().nonnegative(),
     observedSignalCodes: z.array(z.string()),
+    insufficientSignalCodes: z.array(z.string()),
     methodologyVersion: z.string(),
   }),
   sourceBlock: z.string().regex(/^\d+$/),
@@ -47,6 +48,13 @@ export interface MarketIntegrityResult {
     readonly tradeCount: number;
     readonly minTradesForAssessment: number;
     readonly observedSignalCodes: readonly string[];
+    /**
+     * Signal codes the manipulation analyzer could not assess at this block
+     * (its required inputs were missing — e.g. thin-pool with no liquidity
+     * reading). The rules map these to `unknown` rather than reporting a
+     * confident `pass` on a check that never actually ran.
+     */
+    readonly insufficientSignalCodes: readonly string[];
     readonly methodologyVersion: string;
   };
   readonly sourceBlock: bigint;
@@ -68,6 +76,7 @@ export function serializeMarketIntegrityResult(
       tradeCount: r.tradeManipulation.tradeCount,
       minTradesForAssessment: r.tradeManipulation.minTradesForAssessment,
       observedSignalCodes: [...r.tradeManipulation.observedSignalCodes],
+      insufficientSignalCodes: [...r.tradeManipulation.insufficientSignalCodes],
       methodologyVersion: r.tradeManipulation.methodologyVersion,
     },
     sourceBlock: r.sourceBlock.toString(),
