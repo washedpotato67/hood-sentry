@@ -16,6 +16,7 @@ export * from './holder-rules.js';
 export * from './holder-types.js';
 export * from './liquidity-risk.js';
 export * from './liquidity-rules.js';
+export * from './oracle-types.js';
 export * from './relationships.js';
 export * from './deterministic-score.js';
 export * from './solidity-parser.js';
