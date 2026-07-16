@@ -206,6 +206,9 @@ const featureFlagsSchema = z.object({
   MAINNET_WRITES_ENABLED: booleanStringSchema.default(false),
   PROJECT_CLAIMS_ENABLED: booleanStringSchema.default(false),
   COMMUNITY_REPORTS_ENABLED: booleanStringSchema.default(false),
+  // Publishes the aggregate risk score and grade. Stays false until blocker 4 closes:
+  // completeness measures the rules that ran, so a partial ruleset still grades a token.
+  RISK_SCORES_ENABLED: booleanStringSchema.default(false),
 });
 
 const observabilitySchema = z.object({
@@ -367,6 +370,7 @@ const PUBLIC_KEYS = new Set([
   'WEBHOOKS_ENABLED',
   'PROJECT_CLAIMS_ENABLED',
   'COMMUNITY_REPORTS_ENABLED',
+  'RISK_SCORES_ENABLED',
 ]);
 
 export type PublicEnv = {
@@ -387,6 +391,7 @@ export type PublicEnv = {
   WEBHOOKS_ENABLED: boolean;
   PROJECT_CLAIMS_ENABLED: boolean;
   COMMUNITY_REPORTS_ENABLED: boolean;
+  RISK_SCORES_ENABLED: boolean;
 };
 
 export function getPublicEnv(env: Env): PublicEnv {

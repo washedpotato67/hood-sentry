@@ -7,6 +7,7 @@ export const FLAG_NAMES = [
   'MAINNET_WRITES_ENABLED',
   'PROJECT_CLAIMS_ENABLED',
   'COMMUNITY_REPORTS_ENABLED',
+  'RISK_SCORES_ENABLED',
 ] as const;
 
 export type FlagName = (typeof FLAG_NAMES)[number];

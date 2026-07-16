@@ -14,6 +14,7 @@ import {
   rankSponsored,
   searchDiscovery,
 } from '@hood-sentry/discovery-engine';
+import { AppError } from '@hood-sentry/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -52,6 +53,25 @@ function filtersFromQuery(query: z.infer<typeof discoveryQuerySchema>): Discover
   };
 }
 
+const RISK_SCORING_KEYS = new Set(['riskGrade', 'riskCompletenessBps']);
+
+/**
+ * Blocker 4 keeps aggregate risk scoring unpublished. The feed item carries a grade, so a
+ * response would leak one even though the token page withholds it. Per-rule evidence
+ * (dataQualityWarnings, suspiciousDeployerEvidence, lastScannedAt) is not scoring and stays.
+ */
+export function redactRiskScoring(value: unknown, riskScoresEnabled: boolean): unknown {
+  if (riskScoresEnabled) return value;
+  if (Array.isArray(value)) return value.map((entry) => redactRiskScoring(entry, false));
+  if (value === null || typeof value !== 'object') return value;
+  const result: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (RISK_SCORING_KEYS.has(key)) continue;
+    result[key] = redactRiskScoring(entry, false);
+  }
+  return result;
+}
+
 function serialize(value: unknown): unknown {
   return JSON.parse(
     JSON.stringify(value, (_key, item: unknown) =>
@@ -68,13 +88,33 @@ function snapshotFingerprint(values: readonly string[]): string {
 
 export async function discoveryRoutes(
   app: FastifyInstance,
-  options: { repository: DiscoveryReadRepository; now?: () => string },
+  options: {
+    repository: DiscoveryReadRepository;
+    now?: () => string;
+    riskScoresEnabled: boolean;
+  },
 ) {
   const now = options.now ?? (() => new Date().toISOString());
+  // Filtering by grade leaks the grade even once the field is stripped: ?riskGrades=A
+  // returns exactly the tokens the engine currently calls safe.
+  const rejectScoringFilters = (query: {
+    riskGrades?: unknown;
+    minimumRiskCompletenessBps?: unknown;
+  }) => {
+    if (options.riskScoresEnabled) return;
+    if (query.riskGrades !== undefined || query.minimumRiskCompletenessBps !== undefined) {
+      throw new AppError(
+        'RISK_SCORING_UNAVAILABLE',
+        'Risk scoring filters are unavailable until rule coverage is complete.',
+        503,
+      );
+    }
+  };
 
   app.get('/discovery/:feed', async (request) => {
     const { feed } = feedParamsSchema.parse(request.params);
     const query = discoveryQuerySchema.parse(request.query);
+    rejectScoringFilters(query);
     const observedAt = now();
     const [items, placements] = await Promise.all([
       options.repository.listCurrent(query.chainId, TRENDING_METHODOLOGY_VERSION),
@@ -95,20 +135,23 @@ export async function discoveryRoutes(
       ),
     );
     return {
-      data: serialize({
-        organic: paginate(
-          organic,
-          query.limit,
-          query.cursor,
-          `organic:${queryFingerprint}:${organicFingerprint}`,
-        ),
-        sponsored: paginate(
-          sponsored,
-          query.limit,
-          query.sponsoredCursor,
-          `sponsored:${queryFingerprint}:${sponsoredFingerprint}`,
-        ),
-      }),
+      data: redactRiskScoring(
+        serialize({
+          organic: paginate(
+            organic,
+            query.limit,
+            query.cursor,
+            `organic:${queryFingerprint}:${organicFingerprint}`,
+          ),
+          sponsored: paginate(
+            sponsored,
+            query.limit,
+            query.sponsoredCursor,
+            `sponsored:${queryFingerprint}:${sponsoredFingerprint}`,
+          ),
+        }),
+        options.riskScoresEnabled,
+      ),
     };
   });
 
@@ -128,6 +171,6 @@ export async function discoveryRoutes(
       query.cursor,
       `search:${query.chainId}:${query.query.toLowerCase()}:${resultFingerprint}`,
     );
-    return { data: serialize(page) };
+    return { data: redactRiskScoring(serialize(page), options.riskScoresEnabled) };
   });
 }

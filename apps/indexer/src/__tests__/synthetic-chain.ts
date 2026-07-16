@@ -24,6 +24,20 @@ export function syntheticAddress(label: string): Address {
 
 export const GENESIS_PARENT_HASH = syntheticHash('genesis-parent');
 
+/** keccak256('Transfer(address,address,uint256)'), the topic the indexer routes on. */
+export const ERC20_TRANSFER_TOPIC =
+  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' as Hex;
+
+/** Left-pads an address into a 32-byte indexed topic word. */
+function addressTopic(address: Address): Hex {
+  return `0x${address.slice(2).toLowerCase().padStart(64, '0')}` as Hex;
+}
+
+/** Encodes a uint256 into a 32-byte data word. */
+function uint256Word(value: bigint): Hex {
+  return `0x${value.toString(16).padStart(64, '0')}` as Hex;
+}
+
 export interface SyntheticBlockOptions {
   /** Fork label. Blocks at the same height on different forks get different hashes. */
   fork: string;
@@ -67,14 +81,20 @@ function buildBlockData(options: SyntheticBlockOptions): BlockData {
       s: '0x' as Hex,
     } as unknown as Transaction;
 
+    // A well-formed ERC-20 Transfer. The indexer only publishes derived jobs for logs it
+    // recognises, so an opaque topic would make every publishing assertion vacuous.
     const log = {
       address: to,
       blockHash,
       blockNumber: number,
-      data: '0x' as Hex,
+      data: uint256Word(1000n),
       logIndex: i,
       removed: false,
-      topics: [syntheticHash(`${fork}-topic-${number}-${i}`)],
+      topics: [
+        ERC20_TRANSFER_TOPIC,
+        addressTopic(from),
+        addressTopic(syntheticAddress(`${fork}-recipient-${number}-${i}`)),
+      ],
       transactionHash,
       transactionIndex: i,
     } as unknown as Log;

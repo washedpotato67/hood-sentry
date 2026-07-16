@@ -441,6 +441,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     risk: riskRepository,
     intelligence: intelligenceRepository,
     nativeBalance: (address) => chainClient.getBalance({ address }),
+    riskScoresEnabled: env.RISK_SCORES_ENABLED,
   });
   await app.register(riskCommentaryRoutes, {
     prefix: '/v1',
@@ -550,6 +551,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   await app.register(discoveryRoutes, {
     prefix: '/v1',
     repository: discoveryRepository,
+    riskScoresEnabled: env.RISK_SCORES_ENABLED,
   });
 
   app.addHook('onClose', async () => {

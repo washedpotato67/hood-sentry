@@ -21,6 +21,7 @@ type Risk = {
     completenessPercent: number;
     unresolvedDataWarnings: readonly string[];
   } | null;
+  scoreStatus?: string;
   findings?: readonly Finding[];
   reason?: string;
 };
@@ -103,15 +104,23 @@ export default async function Token({ params }: { params: Promise<{ address: str
           label="Indexed holders"
           value={holders.ok ? holders.data.holders.length.toString() : undefined}
         />
-        <Stat label="Risk grade" value={score?.grade} />
-        <Stat
-          label="Completeness"
-          value={score === null ? undefined : `${score.completenessPercent}%`}
-        />
+        {score === null ? null : (
+          <>
+            <Stat label="Risk grade" value={score.grade} />
+            <Stat label="Completeness" value={`${score.completenessPercent}%`} />
+          </>
+        )}
         <Stat label="Contract source" value={data.contract?.verified ? 'Verified' : 'Unverified'} />
       </div>
       <section className="panel">
         <h2>Evidence-backed risk report</h2>
+        {risk.scoreStatus === 'WITHHELD_PENDING_RULE_COVERAGE' ? (
+          <p className="muted">
+            No overall grade is published yet. Rule coverage is still incomplete, so an aggregate
+            score would imply checks this scan did not perform. The signals below each report a rule
+            that did run, with its evidence.
+          </p>
+        ) : null}
         {risk.status === 'unavailable' ? (
           <Unavailable label={risk.reason ?? 'Completed scan'} />
         ) : (

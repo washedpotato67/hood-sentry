@@ -49,7 +49,10 @@
       "out",
       "packages/contracts/out",
       "packages/contracts/cache",
-      "packages/contracts/lib"
+      "packages/contracts/lib",
+      "apps/e2e/test-results",
+      "apps/e2e/playwright-report",
+      "apps/e2e/blob-report"
     ]
   }
 }
