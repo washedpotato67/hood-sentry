@@ -33,12 +33,19 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:integration
+pnpm test:e2e
 pnpm build
 pnpm --filter contracts forge:test
 pnpm --filter contracts forge:coverage
 ```
 
 If a command does not exist yet, create it. If an external service prevents a test, provide a deterministic local substitute and document the missing live validation.
+
+`pnpm test` covers unit tests only. Browser end-to-end runs separately through `pnpm test:e2e`,
+because it needs a Playwright browser binary that a unit-test run has no reason to require. It is
+excluded from the sweep, not optional: the `Browser E2E` CI job installs the browser and runs it,
+and it is the only automated check that the public pages render. If it cannot run locally, say so
+rather than reporting a green `pnpm test` as full coverage.
 
 ## Security stop conditions
 
