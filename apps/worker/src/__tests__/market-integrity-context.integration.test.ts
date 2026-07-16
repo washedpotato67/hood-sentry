@@ -82,7 +82,11 @@ async function seedChainAndBlock(): Promise<void> {
   `;
 }
 
-async function seedSourceConfig(sourceKey: string, priority: number): Promise<void> {
+async function seedSourceConfig(
+  sourceKey: string,
+  priority: number,
+  minimumLiquidityRaw = 1n,
+): Promise<void> {
   await database.client`
     INSERT INTO price_source_configs (
       source_key, source_type, asset_class, chain_id, source_asset_address,
@@ -92,7 +96,7 @@ async function seedSourceConfig(sourceKey: string, priority: number): Promise<vo
     ) VALUES (
       ${sourceKey}, 'directDex', 'erc20', ${CHAIN_ID}, ${TOKEN.toLowerCase()},
       ${QUOTE.toLowerCase()}, 'https://pricing.example/verified',
-      '2026-07-15T00:00:00.000Z', 1, 18, 3600, true, ${priority},
+      '2026-07-15T00:00:00.000Z', ${minimumLiquidityRaw.toString()}, 18, 3600, true, ${priority},
       ${JSON.stringify(PERMISSIVE_CONFIDENCE_RULES)}::jsonb, '[]'::jsonb, 'pricing-v1'
     )
   `;
@@ -102,19 +106,26 @@ async function seedObservation(input: {
   observationKey: string;
   sourceKey: string;
   priceRaw: bigint;
+  liquidityDepthRaw?: bigint;
+  priceImpactBps?: bigint;
 }): Promise<void> {
+  const liquidityDepthRaw =
+    input.liquidityDepthRaw === undefined ? null : input.liquidityDepthRaw.toString();
+  const priceImpactBps =
+    input.priceImpactBps === undefined ? null : input.priceImpactBps.toString();
   await database.client`
     INSERT INTO deterministic_price_observations (
       observation_key, chain_id, token_address, quote_asset_address, source_key,
       source_type, route, price_raw, price_decimals, source_block_number,
       source_block_hash, source_timestamp, observed_at, confidence_bps, stale,
-      status, authoritative, reasons, canonical, methodology_version
+      status, authoritative, reasons, canonical, methodology_version,
+      liquidity_depth_raw, liquidity_depth_decimals, price_impact_bps
     ) VALUES (
       ${input.observationKey}, ${CHAIN_ID}, ${TOKEN.toLowerCase()}, ${QUOTE.toLowerCase()},
       ${input.sourceKey}, 'directDex', '[]'::jsonb, ${input.priceRaw.toString()}, 18,
       ${BLOCK.toString()}, ${BLOCK_HASH}, '2026-07-15T10:00:00.000Z',
       '2026-07-15T10:00:00.000Z', 9500, false, 'available', true, '[]'::jsonb, true,
-      'pricing-v1'
+      'pricing-v1', ${liquidityDepthRaw}, 18, ${priceImpactBps}
     )
   `;
 }
@@ -234,5 +245,61 @@ describe('DrizzleMarketDataSource (live DB)', () => {
     expect(result.tradeCount).toBeGreaterThanOrEqual(20);
     const selfTrading = result.manipulation.signals.find((s) => s.code === 'SELF_TRADING');
     expect(selfTrading?.status).toBe('observed');
+  });
+
+  it('observes thin-pool manipulation when the selected source liquidity is below its configured minimum', async () => {
+    await seedSourceConfig('dex-a', 1, 5_000n);
+    await seedObservation({
+      observationKey: 'a-at-100',
+      sourceKey: 'dex-a',
+      priceRaw: 2n * 10n ** 18n,
+      liquidityDepthRaw: 1_000n,
+      priceImpactBps: 1_500n,
+    });
+    for (let index = 0; index < 20; index += 1) {
+      await insertSwap({
+        logIndex: index,
+        senderAddress: ROUTER,
+        recipientAddress: index % 2 === 0 ? WALLET_A : WALLET_B,
+        side: index % 2 === 0 ? 'buy' : 'sell',
+      });
+    }
+
+    const result = await loadMarket();
+
+    expect(result.tradeCount).toBeGreaterThanOrEqual(20);
+    expect(result.priceAvailable).toBe(true);
+    const thinPool = result.manipulation.signals.find(
+      (s) => s.code === 'THIN_POOL_PRICE_MANIPULATION',
+    );
+    expect(thinPool?.status).toBe('observed');
+  });
+
+  it('does not observe thin-pool manipulation when the selected source liquidity is above its configured minimum', async () => {
+    await seedSourceConfig('dex-a', 1, 5_000n);
+    await seedObservation({
+      observationKey: 'a-at-100',
+      sourceKey: 'dex-a',
+      priceRaw: 2n * 10n ** 18n,
+      liquidityDepthRaw: 50_000n,
+      priceImpactBps: 1_500n,
+    });
+    for (let index = 0; index < 20; index += 1) {
+      await insertSwap({
+        logIndex: index,
+        senderAddress: ROUTER,
+        recipientAddress: index % 2 === 0 ? WALLET_A : WALLET_B,
+        side: index % 2 === 0 ? 'buy' : 'sell',
+      });
+    }
+
+    const result = await loadMarket();
+
+    expect(result.tradeCount).toBeGreaterThanOrEqual(20);
+    expect(result.priceAvailable).toBe(true);
+    const thinPool = result.manipulation.signals.find(
+      (s) => s.code === 'THIN_POOL_PRICE_MANIPULATION',
+    );
+    expect(thinPool?.status).toBe('notObserved');
   });
 });

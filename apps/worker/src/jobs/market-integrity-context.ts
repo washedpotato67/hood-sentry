@@ -220,13 +220,18 @@ function toPriceObservation(row: ObservationRow): PriceObservation {
  * selectPriceSource + detectOutliers over them, and separately reads pinned
  * swaps for the token and runs analyzeManipulation.
  *
- * Scope notes (documented rather than guessed): pool liquidity depth and
- * sybil wallet clustering are not recomputed here -- they belong to the
- * liquidity and discovery pipelines respectively. detectThinPool and
- * detectSybilClusters therefore always report `insufficientData` from this
- * loader (liquidityRaw: null, sybilClusterWallets: []), which is safe: it
- * never fabricates an "observed" manipulation signal, and the risk rules
- * already resolve missing-data cases to `unknown`/`not_applicable`.
+ * detectThinPool is fed the selected observation's real `liquidityDepthRaw`
+ * and the matching source config's `minimumLiquidityRaw`, so it is assessable
+ * whenever a price source was selected. When no observation is selected at
+ * all (`priceAvailable` is false), liquidityRaw stays null and the signal
+ * legitimately reports `insufficientData`.
+ *
+ * Scope notes (documented rather than guessed): sybil wallet clustering is
+ * not recomputed here -- it belongs to the discovery pipeline.
+ * detectSybilClusters therefore always reports `insufficientData` from this
+ * loader (sybilClusterWallets: []), which is safe: it never fabricates an
+ * "observed" manipulation signal, and the risk rules already resolve
+ * missing-data cases to `unknown`/`not_applicable`.
  */
 export class DrizzleMarketDataSource implements MarketDataSource {
   constructor(private readonly database: Database) {}
@@ -259,12 +264,20 @@ export class DrizzleMarketDataSource implements MarketDataSource {
     let outlierReasons: readonly string[] = [];
     let primaryReasons: readonly string[] = [];
     let priceImpactBps: bigint | null = null;
+    let liquidityRaw: bigint | null = null;
+    let minimumHealthyLiquidityRaw = 0n;
 
     if (priceAvailable) {
       const selection = selectPriceSource(enabledConfigs, observations, observedAt);
       disagreementWarnings = selection.disagreementWarnings;
       primaryReasons = selection.selected.reasons;
       priceImpactBps = selection.selected.priceImpactBps;
+      liquidityRaw = selection.selected.liquidityDepthRaw;
+      const selectedConfig = enabledConfigs.find(
+        (config) => config.sourceKey === selection.selected.sourceKey,
+      );
+      if (selectedConfig !== undefined)
+        minimumHealthyLiquidityRaw = selectedConfig.minimumLiquidityRaw;
       const outlierInput: OutlierInput = {
         observation: selection.selected,
         previousPriceRaw: null,
@@ -279,8 +292,8 @@ export class DrizzleMarketDataSource implements MarketDataSource {
 
     const trades = await this.pinnedTrades(input.chainId, tokenAddress, input.sourceBlock);
     const manipulationContext: ManipulationContext = {
-      liquidityRaw: null,
-      minimumHealthyLiquidityRaw: 0n,
+      liquidityRaw,
+      minimumHealthyLiquidityRaw,
       tinyTradeThresholdRaw: 0n,
       priceImpactBps,
       sybilClusterWallets: [],
