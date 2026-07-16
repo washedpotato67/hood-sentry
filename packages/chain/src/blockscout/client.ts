@@ -326,6 +326,7 @@ function buildMetadata(input: MetadataInput): BlockscoutContractMetadata {
 
 export class BlockscoutClient {
   private readonly apiRoot: string;
+  private readonly apiKey: string | null;
   private readonly cache: BlockscoutCache;
   private readonly cacheTtlMs: number;
   private readonly fetchImplementation: typeof globalThis.fetch;
@@ -339,6 +340,7 @@ export class BlockscoutClient {
 
   constructor(options: BlockscoutClientOptions) {
     this.apiRoot = normalizeApiRoot(options.apiBaseUrl);
+    this.apiKey = options.apiKey?.trim() || null;
     this.cache = options.cache ?? new InMemoryBlockscoutCache();
     this.cacheTtlMs = options.cacheTtlMs ?? 6 * 60 * 60 * 1000;
     this.fetchImplementation = options.fetch ?? globalThis.fetch;
@@ -461,7 +463,9 @@ export class BlockscoutClient {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
-      const response = await this.fetchImplementation(`${this.apiRoot}${endpoint}`, {
+      const url = new URL(`${this.apiRoot}${endpoint}`);
+      if (this.apiKey !== null) url.searchParams.set('apikey', this.apiKey);
+      const response = await this.fetchImplementation(url, {
         headers: { accept: 'application/json' },
         signal: controller.signal,
       });
@@ -523,10 +527,16 @@ export class BlockscoutClient {
         provider: 'blockscout',
       };
     }
+    let message =
+      error instanceof Error ? sanitizeText(error.message, 512) : 'Blockscout request failed';
+    if (this.apiKey !== null) {
+      message = message
+        .replaceAll(this.apiKey, '[REDACTED]')
+        .replaceAll(encodeURIComponent(this.apiKey), '[REDACTED]');
+    }
     return {
       code: 'PROVIDER_UNAVAILABLE',
-      message:
-        error instanceof Error ? sanitizeText(error.message, 512) : 'Blockscout request failed',
+      message,
       provider: 'blockscout',
     };
   }

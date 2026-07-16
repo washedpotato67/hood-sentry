@@ -173,7 +173,7 @@ export interface RiskRepository {
   claimScanRun(
     scanRun: Omit<RiskScanRun, 'id' | 'createdAt' | 'updatedAt'>,
     tx?: TransactionContext,
-  ): Promise<{ scanRun: RiskScanRun; created: boolean }>;
+  ): Promise<{ scanRun: RiskScanRun; claimed: boolean }>;
 
   updateScanRun(
     id: string,

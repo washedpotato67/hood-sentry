@@ -1,6 +1,7 @@
 import { resetEnvCache } from '@hood-sentry/config';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
+import type { HealthProbes } from '../health-probes.js';
 
 const testEnv = {
   NODE_ENV: 'test',
@@ -26,6 +27,29 @@ const testEnv = {
 };
 
 let originalEnv: NodeJS.ProcessEnv;
+
+function healthProbes(status: 'ok' | 'error' = 'ok'): HealthProbes {
+  return {
+    database: async () => ({ status, latencyMs: 1 }),
+    redis: async () => ({ status, latencyMs: 2 }),
+    rpc: async () => ({ status, latencyMs: 3 }),
+    providers: [
+      {
+        providerId: 'fixture-rpc',
+        capability: 'rpc',
+        required: true,
+        configured: true,
+        probe: async () => ({ status, latencyMs: 3 }),
+      },
+      {
+        providerId: 'optional-market-data',
+        capability: 'marketData',
+        required: false,
+        configured: false,
+      },
+    ],
+  };
+}
 
 beforeAll(() => {
   originalEnv = { ...process.env };
@@ -53,7 +77,7 @@ describe('API Health Endpoints', () => {
   });
 
   it('GET /health/ready returns ready when dependencies are ok', async () => {
-    const app = await buildApp();
+    const app = await buildApp({ healthProbes: healthProbes() });
     const response = await app.inject({
       method: 'GET',
       url: '/health/ready',
@@ -66,8 +90,8 @@ describe('API Health Endpoints', () => {
     await app.close();
   });
 
-  it('GET /health/dependencies returns configured dependencies', async () => {
-    const app = await buildApp();
+  it('GET /health/dependencies returns measured dependencies', async () => {
+    const app = await buildApp({ healthProbes: healthProbes() });
     const response = await app.inject({
       method: 'GET',
       url: '/health/dependencies',
@@ -75,9 +99,59 @@ describe('API Health Endpoints', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.database).toBeDefined();
-    expect(body.redis).toBeDefined();
-    expect(body.rpc).toBeDefined();
+    expect(body.status).toBe('ready');
+    expect(body.checks.database.status).toBe('ok');
+    expect(body.checks.redis.status).toBe('ok');
+    expect(body.checks.rpc.status).toBe('ok');
+    await app.close();
+  });
+
+  it('GET /health/providers reports healthy and disabled adapters', async () => {
+    const app = await buildApp({ healthProbes: healthProbes() });
+    const response = await app.inject({ method: 'GET', url: '/health/providers' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      status: 'healthy',
+      providers: {
+        'fixture-rpc': { status: 'healthy', required: true, configured: true },
+        'optional-market-data': { status: 'disabled', required: false, configured: false },
+      },
+    });
+    await app.close();
+  });
+
+  it('GET /health/ready reports degraded dependencies', async () => {
+    const probes = healthProbes();
+    probes.redis = async () => ({
+      status: 'error',
+      latencyMs: 4,
+      code: 'REDIS_UNAVAILABLE',
+    });
+    const app = await buildApp({ healthProbes: probes });
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      status: 'degraded',
+      checks: { redis: { status: 'error', code: 'REDIS_UNAVAILABLE' } },
+    });
+    await app.close();
+  });
+
+  it('GET /health/ready contains thrown probe failures', async () => {
+    const probes = healthProbes();
+    probes.rpc = async () => {
+      throw new Error('provider URL must stay private');
+    };
+    const app = await buildApp({ healthProbes: probes });
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({
+      checks: { rpc: { status: 'error', code: 'RPC_PROBE_FAILED' } },
+    });
+    expect(response.body).not.toContain('provider URL');
     await app.close();
   });
 });
@@ -122,6 +196,35 @@ describe('API Startup', () => {
   it('closes gracefully', async () => {
     const app = await buildApp();
     await expect(app.close()).resolves.toBeUndefined();
+  });
+
+  it('starts from an Alchemy key without an explicit primary RPC URL', async () => {
+    const primary = process.env.ROBINHOOD_RPC_PRIMARY;
+    const alchemyKey = process.env.ALCHEMY_API_KEY;
+    // biome-ignore lint/performance/noDelete: testing key-driven startup
+    delete process.env.ROBINHOOD_RPC_PRIMARY;
+    process.env.ALCHEMY_API_KEY = 'startup-key';
+    resetEnvCache();
+
+    try {
+      const app = await buildApp({ healthProbes: healthProbes() });
+      expect(app).toBeDefined();
+      await app.close();
+    } finally {
+      if (primary === undefined) {
+        // biome-ignore lint/performance/noDelete: restoring the process environment
+        delete process.env.ROBINHOOD_RPC_PRIMARY;
+      } else {
+        process.env.ROBINHOOD_RPC_PRIMARY = primary;
+      }
+      if (alchemyKey === undefined) {
+        // biome-ignore lint/performance/noDelete: restoring the process environment
+        delete process.env.ALCHEMY_API_KEY;
+      } else {
+        process.env.ALCHEMY_API_KEY = alchemyKey;
+      }
+      resetEnvCache();
+    }
   });
 });
 

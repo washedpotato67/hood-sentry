@@ -11,6 +11,8 @@ export function poolInitializationJobs(pool: NormalizedPool): readonly DerivedJo
     protocolKey: pool.protocolKey,
     protocolVersion: pool.protocolVersion,
     poolAddress: pool.poolAddress,
+    token0Address: pool.token0Address,
+    token1Address: pool.token1Address,
     transactionHash: pool.creationTransactionHash,
     logIndex: pool.creationLogIndex,
   };
@@ -26,7 +28,6 @@ export function poolInitializationJobs(pool: NormalizedPool): readonly DerivedJo
       ...shared,
       data: { ...identity, tokenAddress: pool.token1Address },
     },
-    { type: 'liquidity-analysis', ...shared, data: identity },
     { type: 'risk-analysis', ...shared, data: identity },
   ];
 }

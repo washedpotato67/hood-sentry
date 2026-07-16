@@ -58,10 +58,7 @@ export class TokenDiscoveryHandler {
     const jobs = this.createContractDiscoveryJobs(blockData, blockNumber, blockHash);
 
     for (const log of blockData.logs) {
-      const job = this.createTokenEventJob(log, blockNumber, blockHash);
-      if (job !== null) {
-        jobs.push(job);
-      }
+      jobs.push(...this.createTokenEventJobs(log, blockNumber, blockHash));
     }
 
     return jobs;
@@ -108,31 +105,31 @@ export class TokenDiscoveryHandler {
     return jobs;
   }
 
-  private createTokenEventJob(
+  private createTokenEventJobs(
     log: DiscoveryLog,
     blockNumber: bigint,
     blockHash: Hash,
-  ): DerivedJob | null {
+  ): DerivedJob[] {
     const topic0 = log.topics[0]?.toLowerCase();
     if (topic0 !== ERC20_TRANSFER_TOPIC && topic0 !== ERC20_APPROVAL_TOPIC) {
-      return null;
+      return [];
     }
 
     if (log.transactionHash === null || log.logIndex === null) {
       this.warnMalformedEvent(log, 'missing transaction provenance');
-      return null;
+      return [];
     }
 
     if (log.topics.length !== 3 || !WORD_HEX_PATTERN.test(log.data)) {
       this.warnMalformedEvent(log, 'invalid ERC-20 event shape');
-      return null;
+      return [];
     }
 
     const firstAddress = this.addressFromTopic(log.topics[1]);
     const secondAddress = this.addressFromTopic(log.topics[2]);
     if (firstAddress === null || secondAddress === null) {
       this.warnMalformedEvent(log, 'invalid indexed address');
-      return null;
+      return [];
     }
 
     const sharedData = {
@@ -143,30 +140,57 @@ export class TokenDiscoveryHandler {
     };
 
     if (topic0 === ERC20_TRANSFER_TOPIC) {
-      return {
-        type: 'token-transfer',
+      const data = {
+        ...sharedData,
+        fromAddress: firstAddress,
+        toAddress: secondAddress,
+      };
+      return [
+        {
+          type: 'token-transfer',
+          chainId: this.config.chainId,
+          blockNumber,
+          blockHash,
+          data,
+        },
+        {
+          type: 'alert-evaluation',
+          chainId: this.config.chainId,
+          blockNumber,
+          blockHash,
+          data: { ...data, eventType: 'tokenTransfer' },
+        },
+        {
+          type: 'wallet-activity',
+          chainId: this.config.chainId,
+          blockNumber,
+          blockHash,
+          data: { ...data, eventType: 'tokenTransfer' },
+        },
+      ];
+    }
+
+    const data = {
+      ...sharedData,
+      ownerAddress: firstAddress,
+      spenderAddress: secondAddress,
+    };
+    return [
+      {
+        type: 'token-approval',
         chainId: this.config.chainId,
         blockNumber,
         blockHash,
-        data: {
-          ...sharedData,
-          fromAddress: firstAddress,
-          toAddress: secondAddress,
-        },
-      };
-    }
-
-    return {
-      type: 'token-approval',
-      chainId: this.config.chainId,
-      blockNumber,
-      blockHash,
-      data: {
-        ...sharedData,
-        ownerAddress: firstAddress,
-        spenderAddress: secondAddress,
+        data,
       },
-    };
+      {
+        type: 'alert-evaluation',
+        chainId: this.config.chainId,
+        blockNumber,
+        blockHash,
+        data: { ...data, eventType: 'tokenApproval' },
+      },
+    ];
   }
 
   private addressFromTopic(topic: Hex | undefined): Address | null {

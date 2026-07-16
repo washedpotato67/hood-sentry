@@ -1,41 +1,39 @@
 import postgres from 'postgres';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetAndMigrate } from './setup.js';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hood_sentry_test';
+const sql = postgres(TEST_DATABASE_URL, { connect_timeout: 2 });
 
 describe('Repository Layer', () => {
-  let sql: ReturnType<typeof postgres>;
   let dbAvailable = false;
 
   beforeAll(async () => {
     try {
-      sql = postgres(TEST_DATABASE_URL, { connect_timeout: 2 });
       await sql`SELECT 1`;
-      dbAvailable = true;
       // Provision a clean, migrated schema so this file is self-sufficient
       // regardless of test order or running in isolation.
       await resetAndMigrate(sql);
+      dbAvailable = true;
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: test output
-      console.warn('Database not available, skipping tests:', (error as Error).message);
+      console.warn(
+        'Database not available, skipping tests:',
+        error instanceof Error ? error.message : 'unknown error',
+      );
     }
   });
 
   afterAll(async () => {
-    if (dbAvailable) {
-      await sql.end();
-    }
+    await sql.end();
+  });
+
+  beforeEach(({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
   });
 
   it('should create and retrieve chain', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
     await sql`INSERT INTO chains (chain_id, name, native_symbol, enabled) VALUES (4663, 'Robinhood Mainnet', 'ETH', true)`;
 
     const result = await sql`SELECT * FROM chains WHERE chain_id = 4663`;
@@ -45,12 +43,6 @@ describe('Repository Layer', () => {
   });
 
   it('should handle duplicate chain log entries', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
     await sql`INSERT INTO chains (chain_id, name, native_symbol) VALUES (2, 'Test', 'TEST')`;
 
     // Insert same block twice (idempotent operation)
@@ -72,12 +64,6 @@ describe('Repository Layer', () => {
   });
 
   it('should preserve numeric precision for token amounts', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
     await sql`INSERT INTO chains (chain_id, name, native_symbol) VALUES (3, 'Test', 'TEST')`;
     await sql`INSERT INTO tokens (chain_id, address, symbol, token_type, total_supply_raw) VALUES (3, '0xtoken', 'TKN', 'erc20', 1000000000000000000000000)`;
 
@@ -87,12 +73,6 @@ describe('Repository Layer', () => {
   });
 
   it('should support partial indexes for canonical blocks', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
     await sql`INSERT INTO chains (chain_id, name, native_symbol) VALUES (4, 'Test', 'TEST')`;
 
     // Insert canonical and non-canonical blocks
@@ -111,12 +91,6 @@ describe('Repository Layer', () => {
   });
 
   it('should handle soft deletion for watchlists', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
     const userId = '00000000-0000-0000-0000-000000000001';
     const watchlistId = '00000000-0000-0000-0000-0000000000a1';
     await sql`INSERT INTO users (id, status) VALUES (${userId}, 'active')`;

@@ -18,6 +18,7 @@
     "@hood-sentry/config": "workspace:*",
     "@hood-sentry/db": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
+    "@hood-sentry/providers": "workspace:*",
     "@hood-sentry/queue": "workspace:*",
     "@hood-sentry/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",

@@ -11,8 +11,8 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:unit": "turbo run test",
-    "test:integration": "turbo run test:integration",
-    "test:e2e": "echo 'No e2e tests yet'",
+    "test:integration": "turbo run test:integration --concurrency=1",
+    "test:e2e": "pnpm --filter @hood-sentry/e2e test",
     "typecheck": "turbo run typecheck",
     "lint": "biome check . && ./scripts/check-process-env.sh",
     "lint:fix": "biome check --write .",
@@ -29,6 +29,9 @@
     "db:studio": "pnpm --filter @hood-sentry/db studio",
     "contracts:test": "pnpm --filter @hood-sentry/contracts forge:test",
     "contracts:coverage": "pnpm --filter @hood-sentry/contracts forge:coverage",
+    "env:init": "node packages/providers/scripts/init-env.mjs",
+    "release:check": "./infra/release.sh",
+    "smoke": "./infra/smoke-test.sh",
     "setup": "pnpm install && pnpm docker:up && pnpm db:migrate"
   },
   "devDependencies": {

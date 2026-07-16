@@ -93,8 +93,8 @@ afterAll(async () => {
   if (database) await database.close();
 });
 
-beforeEach(async () => {
-  if (!available) return;
+beforeEach(async ({ skip }) => {
+  skip(!available, 'PostgreSQL is unavailable');
   if (database) await database.close();
   database = createDatabase(TEST_DATABASE_URL);
   await resetAndMigrate(database.client);
@@ -106,6 +106,34 @@ beforeEach(async () => {
   route = createDerivedJobRouter(
     createLogger({ level: 'fatal', service: 'worker-test' }),
     database,
+    {
+      poolRefresh: {
+        async run() {
+          throw new Error('Pool refresh was not expected in this test');
+        },
+      },
+      riskAnalysis: {
+        async run() {
+          throw new Error('Risk analysis was not expected in this test');
+        },
+      },
+      riskAlerts: {
+        async evaluate() {},
+      },
+      chainReader: {
+        async getBytecode() {
+          throw new Error('Token metadata was not expected in this test');
+        },
+        async readContract() {
+          throw new Error('Token metadata was not expected in this test');
+        },
+      },
+      protocolEnrichment: {
+        async run() {
+          throw new Error('Protocol enrichment was not expected in this test');
+        },
+      },
+    },
   );
   source = new DrizzleHolderBalanceSource(database);
 });

@@ -99,8 +99,8 @@ export interface PoolPriceInput {
   protocolVerified: boolean;
   tokenAddressesVerified: boolean;
   poolStateFresh: boolean;
-  priceImpactBps: bigint;
-  singleTransactionVolumeBps: bigint;
+  priceImpactBps: bigint | null;
+  singleTransactionVolumeBps: bigint | null;
 }
 
 export interface ChainlinkPriceInput {

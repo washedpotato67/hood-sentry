@@ -52,7 +52,7 @@ Hood Sentry uses a comprehensive configuration system with strict validation to 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `ROBINHOOD_CHAIN_ID` | integer | `46630` | Chain ID (4663 for mainnet, 46630 for testnet) |
-| `ROBINHOOD_RPC_PRIMARY` | URL | (required) | Primary RPC endpoint |
+| `ROBINHOOD_RPC_PRIMARY` | URL | (optional) | Explicit primary RPC override |
 | `ROBINHOOD_RPC_SECONDARY` | URL | (optional) | Secondary RPC endpoint for failover |
 | `ROBINHOOD_WS_PRIMARY` | URL | (optional) | Primary WebSocket endpoint |
 | `ROBINHOOD_WS_SECONDARY` | URL | (optional) | Secondary WebSocket endpoint |
@@ -68,6 +68,29 @@ Hood Sentry uses a comprehensive configuration system with strict validation to 
 - **Production:** If `ROBINHOOD_RPC_PRIMARY` is a public rate-limited endpoint (e.g., `rpc.mainnet.chain.robinhood.com`), then `ROBINHOOD_RPC_SECONDARY` must be set to a managed provider
 
 **Recommendation:** Use managed RPC providers (Alchemy, QuickNode, Infura) in production for reliability and rate limits.
+
+## External providers
+
+The default provider profile stores public endpoints, chain mappings, timeouts, retry limits, trust
+classes, and verification sources in `@hood-sentry/providers`. Supply credentials through the
+environment or a secret manager. Explicit RPC and WebSocket URLs override derived Alchemy URLs.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `PROVIDER_PROFILE` | `default` | `default` | Versioned provider selection profile |
+| `ALCHEMY_API_KEY` | string | (optional) | Builds the matching mainnet or testnet RPC and WebSocket URLs |
+| `BLOCKSCOUT_API_KEY` | string | (optional) | Authenticates Blockscout enrichment and health requests |
+| `MARKET_DATA_API_KEY` | string | (optional) | Reserved for the selected external price comparison adapter |
+| `PORTFOLIO_DATA_API_KEY` | string | (optional) | Reserved for the selected portfolio enrichment adapter |
+| `SECURITY_FEED_API_KEY` | string | (optional) | Reserved for the selected address intelligence adapter |
+| `AI_PROVIDER_API_KEY` | string | (optional) | Reserved for AI commentary only |
+
+Set either `ALCHEMY_API_KEY` or `ROBINHOOD_RPC_PRIMARY`. When an Alchemy key is present, the runtime
+derives the chain-specific HTTP and WebSocket endpoints. Missing optional keys leave their adapters
+disabled. A configured key without an implemented adapter reports `PROVIDER_ADAPTER_UNAVAILABLE`.
+
+`GET /health/providers` reports provider readiness without returning credentials or secret-bearing
+URLs.
 
 ## Authentication
 
@@ -187,6 +210,9 @@ The following variables are safe to expose to client-side code:
 - `SESSION_SECRET`
 - `ROBINHOOD_RPC_PRIMARY`, `ROBINHOOD_RPC_SECONDARY`
 - `ROBINHOOD_WS_PRIMARY`, `ROBINHOOD_WS_SECONDARY`
+- `ALCHEMY_API_KEY`, `BLOCKSCOUT_API_KEY`
+- `MARKET_DATA_API_KEY`, `PORTFOLIO_DATA_API_KEY`, `SECURITY_FEED_API_KEY`
+- `AI_PROVIDER_API_KEY`
 - `OBJECT_STORAGE_*`
 - `TELEGRAM_BOT_TOKEN`, `EMAIL_PROVIDER_API_KEY`
 - `WEB_PUSH_PRIVATE_KEY`, `WEBHOOK_SIGNING_SECRET`
@@ -246,7 +272,7 @@ If you're migrating from the previous configuration schema, note these changes:
 | `S3_*` | `OBJECT_STORAGE_*` | Renamed for provider-agnostic naming |
 | `TELEGRAM_WEBHOOK_SECRET` | (removed) | Use `WEBHOOK_SIGNING_SECRET` instead |
 | `SMTP_*` | (removed) | Use `EMAIL_PROVIDER_API_KEY` instead |
-| `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | (removed) | Configure in application code |
+| `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | `AI_PROVIDER_API_KEY` | Provider identity and model remain in versioned server configuration |
 | `ADMIN_PASSKEY_RP_ID` | (removed) | Configure in application code |
 
 **New Variables:**

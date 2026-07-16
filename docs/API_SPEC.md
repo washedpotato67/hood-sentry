@@ -3,6 +3,17 @@
 Base path: `/v1`  
 Use JSON except exports. Generate OpenAPI from Zod schemas.
 
+## Service health endpoints
+
+- `GET /health/live`
+- `GET /health/ready`
+- `GET /health/dependencies`
+- `GET /health/providers`
+
+Provider health responses expose provider ID, capability, required state, configured state, health,
+latency, and stable error codes. They never expose API keys, secret-bearing URLs, or raw upstream
+responses. Optional provider failures degrade provider health without stopping the core API.
+
 ## Public endpoints
 
 ### Discovery

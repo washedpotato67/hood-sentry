@@ -6,19 +6,13 @@
  * processor handles cannot compile, instead of failing silently at runtime.
  */
 export const DERIVED_JOB_TYPES = [
-  // Block-level facts, published for every transaction and log.
-  'transaction',
-  'log',
   // Discovered from block bodies.
   'contract-creation',
   'token-transfer',
   'token-approval',
-  // Replay of previously indexed logs for a target contract.
-  'contract-replay',
   // Protocol events: pools.
   'pool-refresh',
   'token-metadata',
-  'liquidity-analysis',
   'risk-analysis',
   // Protocol events: swaps and launchpad trades.
   'new-price-observation',

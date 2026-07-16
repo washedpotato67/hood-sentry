@@ -56,6 +56,7 @@ export const transactions = pgTable(
   {
     chainId: bigint('chain_id', { mode: 'bigint' }).notNull(),
     hash: varchar('hash', { length: 66 }).notNull(),
+    transactionIndex: integer('transaction_index'),
     blockNumber: bigint('block_number', { mode: 'bigint' }).notNull(),
     blockHash: varchar('block_hash', { length: 66 }).notNull(),
     fromAddress: varchar('from_address', { length: 42 }).notNull(),
@@ -102,6 +103,7 @@ export const logs = pgTable(
   {
     chainId: bigint('chain_id', { mode: 'bigint' }).notNull(),
     transactionHash: varchar('transaction_hash', { length: 66 }).notNull(),
+    transactionIndex: integer('transaction_index'),
     logIndex: integer('log_index').notNull(),
     blockHash: varchar('block_hash', { length: 66 }).notNull(),
     blockNumber: bigint('block_number', { mode: 'bigint' }).notNull(),

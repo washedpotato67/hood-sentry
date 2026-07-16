@@ -20,7 +20,9 @@ export interface AlertEvent {
   alertRuleId: string;
   chainId: number;
   blockNumber: bigint;
+  blockHash: string | null;
   transactionHash: string | null;
+  logIndex: number | null;
   triggeredAt: Date;
   severity: string;
   metadata: unknown;

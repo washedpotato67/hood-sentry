@@ -14,7 +14,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-export const targetTypeEnum = pgEnum('target_type', ['token', 'wallet', 'contract']);
+export const targetTypeEnum = pgEnum('target_type', ['token', 'wallet', 'contract', 'project']);
 export const alertRuleTypeEnum = pgEnum('alert_rule_type', [
   'price_change',
   'volume_spike',
@@ -111,9 +111,9 @@ export const adminActionTypeEnum = pgEnum('admin_action_type', [
 ]);
 export const webhookDeliveryStatusEnum = pgEnum('webhook_delivery_status', [
   'pending',
-  'delivered',
+  'sent',
   'failed',
-  'retrying',
+  'delivered',
 ]);
 
 export const watchlists = pgTable(
@@ -186,7 +186,9 @@ export const alertEvents = pgTable(
       .references(() => alertRules.id, { onDelete: 'cascade' }),
     chainId: integer('chain_id').notNull(),
     blockNumber: bigint('block_number', { mode: 'bigint' }).notNull(),
+    blockHash: text('block_hash'),
     transactionHash: varchar('transaction_hash', { length: 66 }),
+    logIndex: integer('log_index'),
     triggeredAt: timestamp('triggered_at', { withTimezone: true }).notNull().defaultNow(),
     severity: severityEnum('severity').notNull(),
     metadata: jsonb('metadata').notNull(),
@@ -209,6 +211,10 @@ export const notificationChannels = pgTable(
     channelConfig: jsonb('channel_config').notNull(),
     verified: boolean('verified').notNull().default(false),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    verificationTokenHash: text('verification_token_hash'),
+    verificationExpiresAt: timestamp('verification_expires_at', { withTimezone: true }),
+    verificationSentAt: timestamp('verification_sent_at', { withTimezone: true }),
+    verificationAttempts: integer('verification_attempts').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -233,6 +239,8 @@ export const notificationDeliveries = pgTable(
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     errorMessage: text('error_message'),
     retryCount: integer('retry_count').notNull().default(0),
+    providerMessageId: text('provider_message_id'),
+    responseStatus: integer('response_status'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -250,6 +258,7 @@ export const webhookEndpoints = pgTable(
     userId: uuid('user_id').notNull(),
     url: text('url').notNull(),
     secretHash: varchar('secret_hash', { length: 255 }).notNull(),
+    secretVersion: integer('secret_version').notNull().default(1),
     events: jsonb('events').notNull(),
     enabled: boolean('enabled').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -269,6 +278,7 @@ export const webhookDeliveries = pgTable(
       .notNull()
       .references(() => webhookEndpoints.id, { onDelete: 'cascade' }),
     eventType: varchar('event_type', { length: 100 }).notNull(),
+    idempotencyKey: text('idempotency_key').notNull(),
     payload: jsonb('payload').notNull(),
     status: webhookDeliveryStatusEnum('status').notNull().default('pending'),
     responseStatus: integer('response_status'),
@@ -366,6 +376,7 @@ export const projectClaims = pgTable(
     status: claimStatusEnum('status').notNull().default('pending'),
     reviewedBy: uuid('reviewed_by'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewNotes: text('review_notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -453,6 +464,7 @@ export const reportAppeals = pgTable(
     submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     reviewedBy: uuid('reviewed_by'),
+    reviewNotes: text('review_notes'),
   },
   (table) => ({
     reportIdx: index('report_appeals_report_idx').on(table.reportId),
@@ -465,15 +477,27 @@ export const transactionIntents = pgTable(
   'transaction_intents',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    intentHash: text('intent_hash'),
     userId: uuid('user_id').notNull(),
     chainId: integer('chain_id').notNull(),
+    walletAddress: varchar('wallet_address', { length: 42 }),
     intentType: intentTypeEnum('intent_type').notNull(),
     targetAddress: varchar('target_address', { length: 42 }).notNull(),
+    functionSelector: varchar('function_selector', { length: 10 }),
+    functionName: text('function_name'),
+    decodedArguments: jsonb('decoded_arguments'),
     calldata: text('calldata'),
     valueRaw: numeric('value_raw', { precision: 78, scale: 0 }),
+    tokenAmounts: jsonb('token_amounts'),
+    spenderAddress: varchar('spender_address', { length: 42 }),
+    approvalAmountRaw: numeric('approval_amount_raw', { precision: 78, scale: 0 }),
+    expectedResult: text('expected_result'),
     deadline: timestamp('deadline', { withTimezone: true }),
     simulationResult: jsonb('simulation_result'),
     warnings: jsonb('warnings'),
+    featureFlag: text('feature_flag'),
+    configurationVersion: text('configuration_version'),
+    quoteId: text('quote_id'),
     status: txStatusEnum('status').notNull().default('draft'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     executedAt: timestamp('executed_at', { withTimezone: true }),
@@ -481,12 +505,37 @@ export const transactionIntents = pgTable(
   },
   (table) => ({
     userIdIdx: index('transaction_intents_user_id_idx').on(table.userId),
+    intentHashIdx: uniqueIndex('transaction_intents_intent_hash_idx').on(table.intentHash),
+    walletIdx: index('transaction_intents_wallet_idx').on(
+      table.chainId,
+      table.walletAddress,
+      table.createdAt,
+    ),
     chainTargetIdx: index('transaction_intents_chain_target_idx').on(
       table.chainId,
       table.targetAddress,
     ),
     statusIdx: index('transaction_intents_status_idx').on(table.status),
     createdIdx: index('transaction_intents_created_at_idx').on(table.createdAt),
+  }),
+);
+
+export const transactionIntentEvents = pgTable(
+  'transaction_intent_events',
+  {
+    id: bigint('id', { mode: 'bigint' }).primaryKey().generatedAlwaysAsIdentity(),
+    transactionIntentId: uuid('transaction_intent_id')
+      .notNull()
+      .references(() => transactionIntents.id, { onDelete: 'cascade' }),
+    action: text('action').notNull(),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    intentIdx: index('transaction_intent_events_intent_idx').on(
+      table.transactionIntentId,
+      table.createdAt,
+    ),
   }),
 );
 

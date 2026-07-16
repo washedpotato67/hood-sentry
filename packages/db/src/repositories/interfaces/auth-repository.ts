@@ -34,6 +34,21 @@ export interface Session {
   updatedAt: Date;
 }
 
+export interface SiweNonce {
+  id: string;
+  hashedNonce: string;
+  domain: string;
+  uri: string;
+  issuedAt: Date;
+  expiresAt: Date;
+  consumedAt: Date | null;
+}
+
+export interface UserWithWallet {
+  user: User;
+  wallet: UserWallet;
+}
+
 export interface AuthRepository {
   getUser(id: string, tx?: TransactionContext): Promise<User | null>;
 
@@ -66,6 +81,18 @@ export interface AuthRepository {
     tx?: TransactionContext,
   ): Promise<UserWallet | null>;
 
+  getUserWalletOwner(
+    chainId: number,
+    address: string,
+    tx?: TransactionContext,
+  ): Promise<UserWithWallet | null>;
+
+  provisionUserForWallet(
+    chainId: number,
+    address: string,
+    verifiedAt: Date,
+  ): Promise<UserWithWallet>;
+
   insertUserWallet(
     userWallet: Omit<UserWallet, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>,
     tx?: TransactionContext,
@@ -87,4 +114,19 @@ export interface AuthRepository {
   revokeSession(id: string, tx?: TransactionContext): Promise<Session | null>;
 
   revokeAllSessions(userId: string, tx?: TransactionContext): Promise<number>;
+
+  insertSiweNonce(
+    nonce: Omit<SiweNonce, 'id' | 'issuedAt' | 'consumedAt'>,
+    tx?: TransactionContext,
+  ): Promise<SiweNonce>;
+
+  getSiweNonce(hashedNonce: string, tx?: TransactionContext): Promise<SiweNonce | null>;
+
+  consumeSiweNonce(
+    hashedNonce: string,
+    domain: string,
+    uri: string,
+    now: Date,
+    tx?: TransactionContext,
+  ): Promise<SiweNonce | null>;
 }

@@ -1,8 +1,12 @@
 import { Page } from '../components';
+import { WatchlistDashboard } from './watchlist-dashboard';
 export default function Watchlists() {
   return (
     <Page title="Watchlists">
-      <p className="muted">Sign in to manage watchlists.</p>
+      <p className="lede">
+        Group tokens and wallets, then attach alert rules to the targets you track.
+      </p>
+      <WatchlistDashboard />
     </Page>
   );
 }

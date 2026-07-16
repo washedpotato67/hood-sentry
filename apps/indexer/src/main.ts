@@ -14,6 +14,7 @@ import {
   createDatabase,
 } from '@hood-sentry/db';
 import { type Logger, createLogger } from '@hood-sentry/observability';
+import { resolveRpcProviders } from '@hood-sentry/providers';
 import {
   type DerivedJobPublisher,
   QueueJobPublisher,
@@ -162,11 +163,20 @@ async function main() {
 
   try {
     const { mode, startBlock, endBlock, batchSize } = readArguments(process.argv.slice(2));
+    const rpcProviders = resolveRpcProviders({
+      chainId: env.ROBINHOOD_CHAIN_ID,
+      alchemyApiKey: env.ALCHEMY_API_KEY,
+      primaryRpcUrl: env.ROBINHOOD_RPC_PRIMARY,
+      secondaryRpcUrl: env.ROBINHOOD_RPC_SECONDARY,
+      primaryWebsocketUrl: env.ROBINHOOD_WS_PRIMARY,
+      secondaryWebsocketUrl: env.ROBINHOOD_WS_SECONDARY,
+    });
 
     logger.info('Indexer starting', {
       mode,
       chainId: env.ROBINHOOD_CHAIN_ID,
-      secondaryRpcConfigured: env.ROBINHOOD_RPC_SECONDARY !== undefined,
+      primaryRpcProvider: rpcProviders.primary.providerId,
+      secondaryRpcConfigured: rpcProviders.secondary !== null,
       startBlock,
       endBlock,
       batchSize,
@@ -178,14 +188,14 @@ async function main() {
     const rpcClient = new RPCClient(chain, {
       chainId: env.ROBINHOOD_CHAIN_ID,
       primary: {
-        url: env.ROBINHOOD_RPC_PRIMARY,
+        url: rpcProviders.primary.url,
         type: 'http',
         role: 'primary',
         timeout: 30000,
       },
-      secondary: env.ROBINHOOD_RPC_SECONDARY
+      secondary: rpcProviders.secondary
         ? {
-            url: env.ROBINHOOD_RPC_SECONDARY,
+            url: rpcProviders.secondary.url,
             type: 'http',
             role: 'secondary',
             timeout: 30000,

@@ -50,6 +50,15 @@ reserveQuoteRaw * 10^tokenDecimals * 10^priceDecimals
           reserveTokenRaw * 10^quoteDecimals
 ```
 
+Liquidity risk normalizes quote-side reserves into canonical USDG units. Direct USDG pools use an
+identity rate. Other quote assets require a fresh authoritative observation pinned at or before the
+risk block. The conversion source must not depend on a pool included in the same token scan.
+
+Standard buy sizes are 100, 1,000, and 10,000 USDG. Constant-product output applies the verified fee
+before reserve movement. Price impact compares execution output with the pre-trade spot ratio and
+includes the protocol fee. Cross-pool results retain every pool quote and select the highest token
+output for each size. No split-route claim is made.
+
 ## Bonding-curve transition
 
 A launchpad adapter supplies a verified formula key, parameter hash, state ratio, supply state,

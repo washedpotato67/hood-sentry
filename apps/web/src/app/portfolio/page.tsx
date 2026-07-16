@@ -1,18 +1,12 @@
-import { Page, Stat, Unavailable } from '../components';
+import { Page } from '../components';
+import { PortfolioDashboard } from './portfolio-dashboard';
 export default function Portfolio() {
   return (
     <Page title="Portfolio">
-      <div className="grid">
-        <Stat label="Total value" />
-        <Stat label="Exact value" />
-        <Stat label="Estimated value" />
-        <Stat label="Realized P&L" />
-        <Stat label="Unrealized P&L" />
-      </div>
-      <section className="panel">
-        <h2>Holdings</h2>
-        <Unavailable label="Wallet connection" />
-      </section>
+      <p className="lede">
+        Exact balances and evidence-labeled valuations for your signed-in wallet.
+      </p>
+      <PortfolioDashboard />
     </Page>
   );
 }

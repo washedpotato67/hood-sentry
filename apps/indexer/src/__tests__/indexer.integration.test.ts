@@ -34,8 +34,8 @@ afterAll(async () => {
   if (database) await database.close();
 });
 
-beforeEach(async () => {
-  if (!available) return;
+beforeEach(async ({ skip }) => {
+  skip(!available, 'PostgreSQL is unavailable');
   if (database) await database.close();
   database = await createTestDatabase();
 });

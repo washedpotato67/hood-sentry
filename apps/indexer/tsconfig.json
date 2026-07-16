@@ -8,6 +8,7 @@
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/observability" },
+    { "path": "../../packages/providers" },
     { "path": "../../packages/shared" }
   ]
 }

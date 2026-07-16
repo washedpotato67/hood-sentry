@@ -1,0 +1,32 @@
+FROM node:20.20.2-alpine3.22 AS build
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+
+ARG SENTRY_API_INTERNAL_URL=http://api:4000
+ARG NEXT_PUBLIC_ROBINHOOD_CHAIN_ID=46630
+ENV SENTRY_API_INTERNAL_URL=$SENTRY_API_INTERNAL_URL
+ENV NEXT_PUBLIC_ROBINHOOD_CHAIN_ID=$NEXT_PUBLIC_ROBINHOOD_CHAIN_ID
+
+RUN pnpm --filter @hood-sentry/web build
+
+FROM node:20.20.2-alpine3.22 AS runtime
+
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+WORKDIR /app
+COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
+COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
+COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
+
+USER node
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

@@ -277,7 +277,7 @@ export class DrizzleRiskRepository implements RiskRepository {
   async claimScanRun(
     scanRun: Omit<RiskScanRun, 'id' | 'createdAt' | 'updatedAt'>,
     tx?: TransactionContext,
-  ): Promise<{ scanRun: RiskScanRun; created: boolean }> {
+  ): Promise<{ scanRun: RiskScanRun; claimed: boolean }> {
     try {
       const rows = await this.executor(tx)
         .insert(riskScanRuns)
@@ -303,10 +303,31 @@ export class DrizzleRiskRepository implements RiskRepository {
         .onConflictDoNothing()
         .returning();
       const inserted = rows[0];
-      if (inserted) return { scanRun: toScanRun(inserted), created: true };
+      if (inserted) return { scanRun: toScanRun(inserted), claimed: true };
       if (scanRun.idempotencyKey !== null) {
+        const reclaimedRows = await this.executor(tx)
+          .update(riskScanRuns)
+          .set({
+            status: 'running',
+            partial: false,
+            startedAt: scanRun.startedAt,
+            completedAt: null,
+            errorCode: null,
+            cancellationRequestedAt: null,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(riskScanRuns.idempotencyKey, scanRun.idempotencyKey),
+              eq(riskScanRuns.status, 'failed'),
+            ),
+          )
+          .returning();
+        const reclaimed = reclaimedRows[0];
+        if (reclaimed) return { scanRun: toScanRun(reclaimed), claimed: true };
+
         const existing = await this.getScanByIdempotencyKey(scanRun.idempotencyKey, tx);
-        if (existing) return { scanRun: existing, created: false };
+        if (existing) return { scanRun: existing, claimed: false };
       }
       throw new Error('Invariant violation: insertScanRun returned no rows');
     } catch (error) {

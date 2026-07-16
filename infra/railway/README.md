@@ -1,19 +1,17 @@
-# Railway Configuration
+# Railway services
 
-This directory contains Railway deployment configurations.
+Create four Railway services from the same repository. Set each service's config file path in Railway:
 
-## Services
+| Service | Config path | Runtime |
+| --- | --- | --- |
+| API | `/infra/railway/api.railway.json` | Fastify and database migrations |
+| Indexer | `/infra/railway/indexer.railway.json` | Canonical chain ingestion |
+| Worker | `/infra/railway/worker.railway.json` | Analytics, alerts, and notifications |
+| Telegram bot | `/infra/railway/telegram-bot.railway.json` | Telegram polling |
 
-- API service
-- Indexer service
-- Worker service
-- Telegram bot service
-- Admin service
+Provision managed PostgreSQL and Redis in the same Railway project. Share `DATABASE_URL`, `REDIS_URL`, chain configuration, provider keys, and application configuration with the API, indexer, and worker. Set `SENTRY_API_INTERNAL_URL` on the Telegram service to the API's private Railway URL.
 
-## Environment Variables
+The API config runs `node packages/db/dist/migrate.js` before deployment and checks `/health/ready` before promotion. Background services use restart and drain policies but expose no public domains.
 
-All environment variables are managed through Railway's dashboard and secret management.
+Use separate Railway environments for testnet staging and mainnet production. Keep `MAINNET_WRITES_ENABLED=false` until the release gate records verified addresses, simulation evidence, and an approved rollback point.
 
-## Deployment
-
-Deployments are triggered through GitHub Actions on merge to main branch.

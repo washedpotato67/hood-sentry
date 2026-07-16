@@ -11,13 +11,20 @@ export function liquidityDerivedJobs(event: NormalizedLiquidityEvent): readonly 
     protocolKey: event.protocolKey,
     protocolVersion: event.protocolVersion,
     poolAddress: event.poolAddress,
+    token0Address: event.token0Address,
+    token1Address: event.token1Address,
     transactionHash: event.transactionHash,
     logIndex: event.logIndex,
     eventType: event.eventType,
   };
-  return [
+  const jobs: DerivedJob[] = [
+    { type: 'pool-refresh', ...shared, data },
     { type: 'source-reconciliation', ...shared, data },
     { type: 'liquidity-metric', ...shared, data },
     { type: 'alert-evaluation', ...shared, data },
   ];
+  if (['liquidityRemoved', 'lpBurned', 'positionDecreased'].includes(event.eventType)) {
+    jobs.push({ type: 'risk-analysis', ...shared, data });
+  }
+  return jobs;
 }

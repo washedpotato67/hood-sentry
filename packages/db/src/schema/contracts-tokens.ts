@@ -10,6 +10,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from 'drizzle-orm/pg-core';
 
@@ -138,6 +139,12 @@ export const tokenTransfers = pgTable(
     index('token_transfers_chain_to_idx').on(table.chain_id, table.to_address),
     index('token_transfers_chain_block_idx').on(table.chain_id, table.block_number),
     index('token_transfers_tx_hash_idx').on(table.transaction_hash),
+    uniqueIndex('token_transfers_chain_log_idx').on(
+      table.chain_id,
+      table.block_hash,
+      table.transaction_hash,
+      table.log_index,
+    ),
   ],
 );
 

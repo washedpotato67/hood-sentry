@@ -49,6 +49,7 @@ hood-sentry/
 │   ├── shared/
 │   ├── ui/
 │   ├── observability/
+│   ├── providers/
 │   └── config/
 ├── infra/
 │   ├── docker/
@@ -70,6 +71,7 @@ hood-sentry/
 - `api-contracts`: Zod request/response schemas shared by API and web.
 - `shared`: narrow primitives only; do not turn it into a dumping ground.
 - `observability`: logger, tracing, metrics, error normalization.
+- `providers`: external provider registry, endpoint resolution, transport, and readiness types.
 - `config`: validated environment loading.
 
 ## Dependency direction

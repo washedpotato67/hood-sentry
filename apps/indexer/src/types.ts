@@ -64,6 +64,7 @@ export interface PersistedBlock {
 export interface PersistedTransaction {
   chainId: bigint;
   hash: Hash;
+  transactionIndex: number;
   blockNumber: bigint;
   blockHash: Hash;
   fromAddress: string;
@@ -92,6 +93,7 @@ export interface PersistedReceipt {
 export interface PersistedLog {
   chainId: bigint;
   transactionHash: Hash;
+  transactionIndex: number;
   logIndex: number;
   blockHash: Hash;
   blockNumber: bigint;

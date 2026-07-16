@@ -184,6 +184,7 @@ export class ProviderSelector {
   }
 
   private isHistoricalMethod(method: string): boolean {
+    if (!this.config.requireArchiveForHistorical) return false;
     const historicalMethods = [
       'eth_getBlockByNumber',
       'eth_getBlockByHash',

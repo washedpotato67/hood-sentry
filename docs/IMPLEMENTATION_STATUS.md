@@ -1,10 +1,11 @@
 # Hood Sentry Implementation Status
 
-Last updated: 2026-07-14
+Last updated: 2026-07-15
 
-Current phase: Foundation, indexer hardening, protocol adapters, deterministic market data,
-discovery rankings, risk-engine framework, proxy analysis, source privilege analysis, fork
-simulation, package decomposition, and live database bring-up
+Current phase: Foundation, provider integration, indexer hardening, protocol adapters,
+deterministic market data, discovery rankings, risk-engine framework, proxy analysis, source
+privilege analysis, fork simulation, pinned liquidity context, package decomposition, and live
+database bring-up
 
 Launch audit status: local gates pass except production-backed integration and E2E evidence. All
 write, launchpad, token-gating, sponsorship, and notification paths remain disabled.
@@ -12,6 +13,74 @@ write, launchpad, token-gating, sponsorship, and notification paths remain disab
 Release readiness: Not ready for production
 
 ## Recent changes (2026-07-15)
+
+- Added a versioned provider foundation in `@hood-sentry/providers`. The registry records verified
+  Alchemy and Blockscout endpoints, capabilities, trust classes, limits, credential names, and
+  verification sources. One `ALCHEMY_API_KEY` now derives the correct Robinhood Chain HTTP and
+  WebSocket endpoints for API, indexer, and worker startup, while explicit URLs remain supported.
+  The shared HTTP client adds Zod response validation, response-size limits, retries with jitter,
+  rate limiting, circuit breaking, stable errors, and secret-redacted provenance.
+- Added authenticated Blockscout enrichment, key redaction from provider errors, and
+  `GET /health/providers`. Provider health distinguishes required, optional, healthy, degraded, and
+  disabled integrations without returning credentials. Configuration now accepts the planned
+  market-data, portfolio, security-feed, and AI credentials while reporting missing adapters.
+
+- Added quote-normalized multi-pool liquidity context to token risk scans. The worker reads every
+  active indexed constant-product pool at the requested block and normalizes quote-side reserves to
+  canonical USDG. Direct USDG pools use identity conversion. Other assets require a fresh,
+  authoritative deterministic observation from a canonical source block at or before the scan. A
+  conversion route which depends on a scanned pool is rejected, and one unnormalizable pool keeps
+  the full aggregate unavailable.
+- Added standard buy impact for 100, 1,000, and 10,000 USDG. Each pool quote applies its verified fee
+  with bigint constant-product arithmetic. The aggregate selects the highest token output at each
+  size, retains every per-pool quote, and uses 1,000 USDG for the risk rule. New versioned rules
+  report missing impact as unknown, warn at 10 percent impact, flag single-pool dependence, and flag
+  a pool holding at least 90 percent of normalized quote liquidity.
+- Added migration 017 with immutable `pool_state_snapshots`, `pools.state_block_hash`, and
+  versioned `liquidity_lock_evidence`. A lock only qualifies when the row identifies the lock
+  contract, beneficiary, unlock time, withdrawal conditions, verification source, expiry,
+  transaction hash, and log index, and the indexed LP balance still covers the claimed amount.
+  Missing or partial lock proof stays unknown.
+- LP ownership now comes from the pair token's full canonical Transfer history at the pinned block.
+  The loader compares every derived transfer with its raw indexed log before analysis, retries while
+  projection lags, checks the reconstructed balances against direct LP total supply, and preserves
+  creator, dead-address, zero-address minimum liquidity, and removal-event evidence. Provider
+  concentration uses total LP supply as its denominator, so burned LP does not inflate a live
+  provider's percentage.
+- Wired `pool-refresh` into the worker router. It reloads the indexed pool identity, registers it
+  with the verified adapter, reads at the job block, and persists both current reserves and an
+  immutable block-hash snapshot. Reorg handling invalidates affected snapshots and lock evidence
+  and clears current pool state sourced from the abandoned range. Migration 017 also adds the
+  natural Transfer log key and rebuilds balances after deduplicating older deliveries.
+
+- Wired `risk-analysis` into the worker composition root. Pool creation scans the pool and both
+  assets, launchpad creation scans the token, and liquidity removal requests a rescan. Every run
+  validates the configured chain ID and compares the indexed canonical block hash with the provider
+  before and after context loading. A reorg or provider mismatch fails the job for retry instead of
+  persisting mixed-fork evidence.
+- Constructed the deterministic orchestrator, versioned partial rulesets, contract context loader,
+  holder context loader, Blockscout cache, resilient RPC client, and risk repository in the live
+  worker. Partial scores remain internal. Missing liquidity context and unfinished rule families
+  produce unknown findings or stay outside the partial methodology, so no public report treats the
+  current coverage as final.
+- Made failed risk runs retry-safe. The repository now atomically reclaims a failed idempotency key,
+  while running or completed work stays exclusive. This prevents a transient persistence failure
+  from turning every BullMQ retry into a false duplicate.
+- Fixed the shared RPC provider selector so pinned reads use the configured primary or secondary
+  provider when no dedicated archive provider exists. When an archive provider is configured,
+  historical methods still require its verified archive capability. The prior policy rejected every
+  indexer and risk-worker block, bytecode, log, and call request in the normal two-provider setup.
+- Replaced the API readiness placeholders with live PostgreSQL, Redis, and RPC probes. Readiness now
+  validates the configured chain ID, compares the provider head with the latest canonical indexed
+  block, enforces a maximum lag, and returns stable error codes without exposing provider URLs or
+  connection errors. `/health/ready` returns 503 when any required dependency fails, while
+  `/health/dependencies` reports the same measured state for diagnosis.
+- Made unavailable integration services visible in Vitest results. PostgreSQL and Redis cases now
+  use named dynamic skips instead of returning from passing test bodies. The Redis availability
+  probe disables retries, closes immediately, and no longer turns an unavailable local service into
+  a ten-second hook timeout. A later live run against PostgreSQL 16 and Redis 7 passed every
+  integration case with no skips. The Compose PostgreSQL 17 image pull was interrupted after slow
+  download progress, so PostgreSQL 17 validation remains pending.
 
 - Made `token_transfers` reorg-aware (migration 016) and wired it into the indexer reorg path, which
   previously orphaned blocks, transactions, and logs but left the transfers derived from them
@@ -60,12 +129,14 @@ Release readiness: Not ready for production
 - The router now throws on an unrecognised type so it dead-letters for inspection instead of being
   acknowledged away, and lists deliberately-unimplemented types in `PENDING_JOB_TYPES` so "not
   built yet" is distinguishable from "dropped".
-- Implemented the first three processors against the live database, each idempotent under
+- Implemented the first processors against the live database, each idempotent under
   at-least-once delivery: `contract-creation` (insert-only, so replays never clobber later
   enrichment), `token-transfer` (collapses on the log's natural key), and `token-approval`
   (applies only when strictly newer in `(block, log_index)` order). Migration 015 adds
   `token_approvals.last_updated_log_index`, without which two approvals in one block have no
-  deterministic order and a redelivered stale job can roll an allowance backwards.
+  deterministic order and a redelivered stale job can roll an allowance backwards. The worker also
+  routes `risk-analysis` through the deterministic orchestrator and `pool-refresh` through the
+  verified protocol adapter.
 
 - Added indexer integration tests driving the real indexer against live PostgreSQL over a
   deterministic synthetic chain: reorg (orphaning the abandoned fork and reindexing the winning
@@ -101,7 +172,8 @@ Release readiness: Not ready for production
   publishing (idempotency key hashed to a colon-free BullMQ jobId), exponential-backoff retries, and
   a dead-letter path for exhausted jobs. Wired the indexer to publish (block-indexer transaction/log
   jobs and protocol-event jobs) and the worker to consume via a typed router. Verified against live
-  Redis (queue integration suite 9/9). Per-type job processors behind the router remain to be built.
+  Redis (queue integration suite 9/9). Most per-type job processors behind the router remain to be
+  built.
 
 ## Product goal
 
@@ -210,17 +282,18 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 
 ### Partial
 
-- Derived indexer jobs now publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys, retries, and a dead-letter path; the worker consumes them through a typed router. Per-type business processing is still a stub in the router.
-- Token discovery emits contract and ERC-20 event jobs. Blockscout enrichment and contract analysis
-  context loading exist, but no durable worker queue invokes them yet. Token metadata calls, holder
-  snapshots, and worker queue execution are absent. Protocol pool, swap, liquidity, launchpad, and
-  reorg persistence paths now exist.
-- Live PostgreSQL migration and repository validation is pending. Deterministic adapter and indexer
-  integration tests cover protocol behavior without a database service.
+- Derived indexer jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency
+  keys, retries, and a dead-letter path. The worker handles five types through a typed router, while
+  13 types remain explicitly pending.
+- Token discovery emits contract and ERC-20 event jobs. Protocol pool and launchpad events now invoke
+  the durable risk worker. Token metadata calls and historical holder snapshots remain absent.
+  Protocol pool, swap, liquidity, launchpad, and reorg persistence paths exist.
+- Live PostgreSQL migration and repository validation passes against PostgreSQL 16. Managed
+  production database validation and PostgreSQL 17 coverage remain pending.
 - The API exposes health, external protocol, price, candle, market-metric, discovery, and search
   read routes. Most authenticated product routes remain absent.
 - The web app exposes a static product title only.
-- Deterministic proxy and source privilege rules exist. Liquidity, holder, deployer, identity,
+- Deterministic proxy, source privilege, liquidity, and holder rules exist. Deployer, identity,
   market, oracle, and launchpad risk rules remain absent.
 
 ### Skeleton or absent
@@ -310,6 +383,22 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - Added oracle status validation for freshness, invalid answers, pauses, sequencer state, and grace
   periods, plus portfolio reconciliation outputs with exact and estimated values.
 
+## Verification on 2026-07-15
+
+- `pnpm format:check`: passed across 467 files
+- `pnpm lint`: passed with eight existing complexity warnings
+- `pnpm typecheck`: passed across 41 tasks
+- `pnpm test`: passed across 42 tasks, including 46 worker, 85 risk-engine, 22 market-engine, 225
+  chain, 29 API, 10 provider, and 6 Forge cases
+- `pnpm test:integration --force --concurrency=1`: passed across 16 tasks against live PostgreSQL 16
+  and Redis 7 with no skips. The live package results were 9 queue, 16 database, 23 indexer, and 71
+  worker tests. Sequential execution prevents package-level schema resets from racing on the shared
+  test database.
+- `pnpm build`: passed across 30 tasks
+- `pnpm --filter contracts forge:test`: passed, 6 tests
+- `pnpm --filter contracts forge:coverage`: passed, 100 percent line coverage and 50 percent branch
+  coverage for SentryToken
+
 ## Verification on 2026-07-14
 
 - `pnpm format:check`: passed
@@ -330,16 +419,17 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - TruffleHog and CodeQL are configured in CI. Their hosted scans were not executed locally because
   their runners are unavailable in this environment.
 
-PostgreSQL was unavailable, so clean migration and repository integration validation remains
-pending, including live application of migrations 009, 010, 011, 012, and 013. The indexer,
-adapter, API, worker, and Blockscout paths have deterministic local coverage.
+Clean migration and repository integration validation now passes on PostgreSQL 16, including live
+application of every migration in the current checkout. PostgreSQL 17 validation remains pending
+because its Compose image did not finish downloading. Production RPC, Blockscout, indexer, API,
+worker, and alert-path integration evidence also remains pending.
 
 ## Active release blockers
 
 1. Done locally: PostgreSQL and Redis run via docker-compose, all migrations apply on a clean database, and the db integration tests run without early returns. Still pending: the same on a production-backed managed database with backup/restore evidence.
-2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Job types are a closed union (`DERIVED_JOB_TYPES`) shared by producer and consumer, so an unroutable type cannot compile. Processors exist for `contract-creation`, `token-transfer`, and `token-approval`, each idempotent under at-least-once delivery. Remaining: the 15 job types still listed in `PENDING_JOB_TYPES`, which depend on blockers 4 and 5.
+2. Done: derived jobs publish to a durable BullMQ queue (`@hood-sentry/queue`) with idempotency keys (hashed to a colon-free BullMQ jobId), exponential-backoff retries, and a dead-letter path; the indexer publishes and the worker consumes via a typed router. Job types are a closed union (`DERIVED_JOB_TYPES`) shared by producer and consumer, so an unroutable type cannot compile. Processors exist for `contract-creation`, `token-transfer`, `token-approval`, `pool-refresh`, and `risk-analysis`, each idempotent under at-least-once delivery. Remaining: the 13 job types still listed in `PENDING_JOB_TYPES`, which depend on blockers 4 and 5.
 3. Done: `apps/indexer/src/__tests__/indexer.integration.test.ts` drives the indexer against live PostgreSQL over a synthetic chain (`synthetic-chain.ts`) covering reorg, restart, lease contention, gap repair, and malformed RPC responses. These found and fixed four real defects: the `blocks.finality_state` check rejected every state the indexer emits except `pending`/`finalized`, `transactions.status` and `transaction_receipts.status` were text while all code writes integers, the `indexer_leases` primary key included `worker_id` so leases granted no mutual exclusion, and a malformed block or failed receipt fetch was silently skipped while the checkpoint advanced past it. See migration 014.
-4. In progress. Liquidity (7 rules) and Holder distribution (5 rules) are implemented over the
+4. In progress. Liquidity (11 rules) and Holder distribution (5 rules) are implemented over the
    existing deterministic analyzers, registered, and proven end to end through the orchestrator.
    `HolderDistributionContextLoader` supplies the pinned holder snapshot, deciding availability from
    the recorded balances rather than assuming them, and classifying indexed pools and burn sinks so
@@ -347,11 +437,16 @@ adapter, API, worker, and Blockscout paths have deterministic local coverage.
    `token_balances` is now populated: the `token-transfer` processor projects balances from
    canonical transfer history (migration 016 made `token_transfers` reorg-aware), so holder data can
    reach `available` once a token has been indexed.
-   Still absent: deployer, identity, market, oracle, metadata, and launchpad rules, which have no
-   analysis layer yet, and the evidence-backed report APIs. There is also no composition root:
-   `RiskScanJob` and `ContractAnalysisContextLoader` are never constructed, so no risk scan runs.
-   Wiring one now would expose scores drawn from 2 of 8 rule families. Risk scores stay unexposed
-   until this blocker closes.
+   `LiquidityRiskContextLoader` now supplies verified Uniswap V2 reserves, LP total supply,
+   synchronized LP holder history, creator ownership, burned LP evidence, current-block removals,
+   independently verified lock evidence, quote-normalized cross-pool depth, pool concentration, and
+   price impact for 100, 1,000, and 10,000 USDG. Pool state snapshots, price conversions, and risk
+   evidence carry canonical source blocks, while reorg reconciliation invalidates affected state.
+   The worker now constructs `RiskScanJob`, `ContractAnalysisContextLoader`, holder context,
+   versioned partial rulesets, pinned chain validation, and persistent risk storage. Pool and token
+   events run this internal path. Still absent: deployer, identity, market, oracle, metadata, and
+   launchpad rules, verified lock adapters for production venues, and the evidence-backed report
+   APIs. Risk scores stay unexposed until this blocker closes.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation

@@ -236,6 +236,20 @@ class MemoryProtocolRepository implements ProtocolRepository {
   async getActivePools(): Promise<readonly NormalizedPool[]> {
     return this.pools.filter((pool) => pool.canonical);
   }
+  async getPool(
+    _chainId: number,
+    poolAddress: string,
+    atBlock?: bigint,
+  ): Promise<NormalizedPool | null> {
+    return (
+      this.pools.find(
+        (pool) =>
+          pool.canonical &&
+          pool.poolAddress.toLowerCase() === poolAddress.toLowerCase() &&
+          (atBlock === undefined || pool.createdBlockNumber <= atBlock),
+      ) ?? null
+    );
+  }
   async getPoolsByToken(): Promise<readonly NormalizedPool[]> {
     return this.pools.filter((pool) => pool.canonical);
   }

@@ -78,6 +78,20 @@ describe('Configuration Schema', () => {
   });
 
   describe('Missing Variables', () => {
+    it('requires an AI provider key when AI explanations are enabled', () => {
+      const result = envSchema.safeParse({
+        ...validBaseConfig,
+        AI_EXPLANATIONS_ENABLED: 'true',
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some((issue) => issue.path.includes('AI_PROVIDER_API_KEY')),
+        ).toBe(true);
+      }
+    });
+
     it('should reject missing required DATABASE_URL', () => {
       const config = { ...validBaseConfig };
       // biome-ignore lint/performance/noDelete: testing missing required field
@@ -118,7 +132,7 @@ describe('Configuration Schema', () => {
       }
     });
 
-    it('should reject missing required ROBINHOOD_RPC_PRIMARY', () => {
+    it('should reject a missing RPC URL and Alchemy key', () => {
       const config = { ...validBaseConfig };
       // biome-ignore lint/performance/noDelete: testing missing required field
       delete (config as Record<string, unknown>).ROBINHOOD_RPC_PRIMARY;
@@ -126,10 +140,21 @@ describe('Configuration Schema', () => {
       const result = envSchema.safeParse(config);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(
-          result.error.issues.some((i: ZodIssue) => i.path.includes('ROBINHOOD_RPC_PRIMARY')),
-        ).toBe(true);
+        expect(result.error.issues.some((i: ZodIssue) => i.path.includes('ALCHEMY_API_KEY'))).toBe(
+          true,
+        );
       }
+    });
+
+    it('should accept an Alchemy key without an explicit primary RPC URL', () => {
+      const config = { ...validBaseConfig, ALCHEMY_API_KEY: 'provider-key' };
+      // biome-ignore lint/performance/noDelete: testing key-driven provider setup
+      delete (config as Record<string, unknown>).ROBINHOOD_RPC_PRIMARY;
+
+      const result = envSchema.safeParse(config);
+
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data.ROBINHOOD_RPC_PRIMARY).toBeUndefined();
     });
   });
 
@@ -501,6 +526,9 @@ describe('Configuration Schema', () => {
       expect(isSecretKey('REDIS_URL')).toBe(true);
       expect(isSecretKey('TELEGRAM_BOT_TOKEN')).toBe(true);
       expect(isSecretKey('WEBHOOK_SIGNING_SECRET')).toBe(true);
+      expect(isSecretKey('ALCHEMY_API_KEY')).toBe(true);
+      expect(isSecretKey('BLOCKSCOUT_API_KEY')).toBe(true);
+      expect(isSecretKey('ROBINHOOD_RPC_PRIMARY')).toBe(true);
 
       expect(isSecretKey('NODE_ENV')).toBe(false);
       expect(isSecretKey('PRODUCT_NAME')).toBe(false);
@@ -529,6 +557,7 @@ describe('Configuration Schema', () => {
         const fingerprint = getConfigFingerprint(result.data);
         expect(fingerprint.WEBHOOK_SIGNING_SECRET).toBe('[unset]');
         expect(fingerprint.TELEGRAM_BOT_TOKEN).toBe('[unset]');
+        expect(fingerprint.ALCHEMY_API_KEY).toBe('[unset]');
       }
     });
   });

@@ -107,6 +107,13 @@ price arithmetic, source selection, confidence penalties, outlier reason codes, 
 market metrics, and market-capitalization rules. Chain clients supply verified state. Database and
 queue code stay outside the package.
 
+### `packages/providers`
+
+Versioned external-provider definitions, key-derived endpoint resolution, secret-safe HTTP
+transport, response limits, retries, rate limiting, circuit breaking, Zod validation, and request
+provenance. Provider identities and public endpoint templates live in code. Credentials stay in the
+server environment or secret manager.
+
 ### `packages/discovery-engine`
 
 Pure deterministic feed ranking, trending score, manipulation evidence, canonical asset matching,

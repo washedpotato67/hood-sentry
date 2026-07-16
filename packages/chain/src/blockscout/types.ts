@@ -98,6 +98,7 @@ export interface BlockscoutRateLimitGate {
 
 export interface BlockscoutClientOptions {
   apiBaseUrl: string;
+  apiKey?: string;
   cache?: BlockscoutCache;
   cacheTtlMs?: number;
   fetch?: typeof globalThis.fetch;

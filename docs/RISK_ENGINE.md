@@ -275,6 +275,22 @@ For each supported venue:
 
 Never call liquidity “locked” merely because LP tokens sit in a contract. Identify the lock contract, beneficiary, unlock time, and withdrawal conditions.
 
+For constant-product token scans, the liquidity loader reads every active indexed pool at the scan
+block. Quote reserves use the canonical USDG asset as the normalization unit. A direct USDG reserve
+uses identity conversion. Every other quote asset requires an authoritative deterministic price
+observation whose source block is canonical, no later than the scan block, still fresh under its
+enabled source configuration, and independent of every pool in the token scan. If any pool lacks
+valid normalization evidence, the cross-pool source stays unavailable instead of publishing a
+partial total.
+
+The loader reports quote-side depth per pool, total normalized quote depth, the largest pool share,
+and normalized provider exposure. Standard buy sizes are 100, 1,000, and 10,000 USDG. For each size,
+the loader applies the verified pool fee and constant-product formula, then selects the verified
+pool with the highest token output. The 1,000 USDG result drives the standard impact rule. A result
+at or above 1,000 basis points produces a warning. Missing impact evidence produces an unknown
+finding with no score penalty. This methodology compares single-pool execution and does not claim
+split-route execution.
+
 ### 7. Deployer graph
 
 - creator wallet history;

@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -156,6 +157,23 @@ export const apiKeys = pgTable(
     index('api_keys_user_id_idx').on(table.userId),
     uniqueIndex('api_keys_hashed_secret_idx').on(table.hashedSecret),
     index('api_keys_key_prefix_idx').on(table.keyPrefix),
+  ],
+);
+
+export const apiKeyUsageBuckets = pgTable(
+  'api_key_usage_buckets',
+  {
+    apiKeyId: uuid('api_key_id')
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: 'cascade' }),
+    periodKind: text('period_kind').notNull(),
+    bucketStart: timestamp('bucket_start', { withTimezone: true }).notNull(),
+    requestCount: integer('request_count').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.apiKeyId, table.periodKind, table.bucketStart] }),
+    index('api_key_usage_buckets_expiry_idx').on(table.periodKind, table.bucketStart),
   ],
 );
 

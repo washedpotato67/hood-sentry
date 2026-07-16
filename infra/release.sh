@@ -1,4 +1,14 @@
 #!/usr/bin/env sh
 set -eu
-echo "Release requires CI approval and environment-specific secret-store credentials."
-echo "Run migrations with the managed deployment command, then smoke tests before promotion."
+
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm test:integration
+pnpm test:e2e
+pnpm build
+pnpm --filter contracts forge:test
+pnpm --filter contracts forge:coverage
+
+echo "Release checks passed."

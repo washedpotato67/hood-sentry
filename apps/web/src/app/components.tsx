@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import { ChainStatus } from './chain-status';
+import { SearchBox } from './search-box';
+import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
@@ -11,21 +14,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/portfolio">Portfolio</Link>
           <Link href="/watchlists">Watchlists</Link>
           <Link href="/alerts">Alerts</Link>
+          <Link href="/projects">Projects</Link>
+          <Link href="/reports">Reports</Link>
+          <Link href="/trade">Trade</Link>
+          <Link href="/api">API</Link>
+          <Link href="/admin">Admin</Link>
           <Link href="/methodology">Methodology</Link>
         </div>
-        <input
-          className="search"
-          aria-label="Search addresses, tokens, and wallets"
-          placeholder="Search address or token"
-        />
-        <span className="badge">Chain status unavailable</span>
-        <button type="button" aria-label="Connect wallet">
-          Connect wallet
-        </button>
+        <SearchBox />
+        <ChainStatus />
+        <WalletConnect />
       </nav>
-      <div className="banner">
-        Indexer status and live market data are unavailable. Values are not shown as zero.
-      </div>
       <main className="main">{children}</main>
     </div>
   );
@@ -47,5 +46,14 @@ export function Page({ title, children }: { title: string; children: React.React
       <h1>{title}</h1>
       {children}
     </Shell>
+  );
+}
+
+export function ErrorPanel({ code, message }: { code: string; message: string }) {
+  return (
+    <section className="panel error-panel">
+      <strong>{code}</strong>
+      <p>{message}</p>
+    </section>
   );
 }

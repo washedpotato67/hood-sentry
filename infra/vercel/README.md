@@ -1,17 +1,13 @@
-# Vercel Configuration
+# Vercel web deployment
 
-This directory contains Vercel deployment configurations for the Next.js web application.
+Import the repository as one Vercel project with the repository root selected. Root `vercel.json` installs the frozen pnpm graph, builds `@hood-sentry/web`, and serves `apps/web/.next` as Next.js output.
 
-## Configuration
+Set these web environment values:
 
-- `vercel.json` - Vercel project configuration
-- Environment variables managed through Vercel dashboard
+- `SENTRY_API_INTERNAL_URL` points to the public HTTPS API origin.
+- `NEXT_PUBLIC_ROBINHOOD_CHAIN_ID` is `46630` for staging or `4663` for production.
 
-## Deployment
+Do not place database, RPC, provider, session, or signing secrets in `NEXT_PUBLIC_*` values.
 
-- Preview deployments on pull requests
-- Production deployment on merge to main branch
+Preview deployments must use testnet and an isolated API environment. Production uses the approved domain after API readiness passes.
 
-## Environment Variables
-
-All `NEXT_PUBLIC_*` variables are build-time only. Server secrets are never exposed to the client.
