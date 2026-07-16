@@ -14,6 +14,8 @@ import {
   RiskScanOrchestrator,
   createHolderDistributionRules,
   createLiquidityRiskRules,
+  createMarketIntegrityRiskRules,
+  createOracleRiskRules,
   createPrivilegeAnalysisRules,
   createProxyAnalysisRules,
 } from '@hood-sentry/risk-engine';
@@ -35,13 +37,19 @@ import {
 } from './pinned-risk-context.js';
 import { RiskScanJob, type RiskScanJobInput } from './risk-scan.js';
 
-export const RISK_ENGINE_VERSION = 'deterministic-risk-engine-1.2.0';
-export const RISK_METHODOLOGY_VERSION = 'risk-partial-1.2.0';
+export const RISK_ENGINE_VERSION = 'deterministic-risk-engine-1.3.0';
+export const RISK_METHODOLOGY_VERSION = 'risk-partial-1.3.0';
 
 const CONTRACT_RULES = [...createProxyAnalysisRules(), ...createPrivilegeAnalysisRules()];
 const LIQUIDITY_RULES = createLiquidityRiskRules();
 const HOLDER_RULES = createHolderDistributionRules();
-const ALL_RULES = [...CONTRACT_RULES, ...LIQUIDITY_RULES, ...HOLDER_RULES];
+export const ALL_RULES = [
+  ...CONTRACT_RULES,
+  ...LIQUIDITY_RULES,
+  ...HOLDER_RULES,
+  ...createOracleRiskRules(),
+  ...createMarketIntegrityRiskRules(),
+];
 
 const CATEGORY_CAPS: Partial<Record<RiskCategory, number>> = {
   'Contract control': 1_500,
@@ -51,6 +59,8 @@ const CATEGORY_CAPS: Partial<Record<RiskCategory, number>> = {
   Liquidity: 2_000,
   'Holder distribution': 500,
   'Metadata quality': 500,
+  'Oracle behavior': 3_000,
+  'Market integrity': 3_000,
 } as const;
 
 function ruleset(version: string, rules: readonly RiskRule[]): RiskRuleset {
@@ -68,8 +78,8 @@ function ruleset(version: string, rules: readonly RiskRule[]): RiskRuleset {
   };
 }
 
-export const TOKEN_RISK_RULESET = ruleset('risk-token-partial-1.2.0', ALL_RULES);
-export const POOL_RISK_RULESET = ruleset('risk-pool-partial-1.2.0', [
+export const TOKEN_RISK_RULESET = ruleset('risk-token-partial-1.3.0', ALL_RULES);
+export const POOL_RISK_RULESET = ruleset('risk-pool-partial-1.3.0', [
   ...CONTRACT_RULES,
   ...LIQUIDITY_RULES,
 ]);
