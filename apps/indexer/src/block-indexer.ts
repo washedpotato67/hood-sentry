@@ -1,7 +1,6 @@
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
-import type { Hash } from 'viem';
 import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
 import type { CheckpointManager } from './checkpoint-manager.js';
@@ -227,7 +226,7 @@ export class BlockIndexer {
           lag: this.metrics.lag,
         });
 
-        await this.publishDerivedJobs(blockData, finalityState);
+        await this.publishDerivedJobs(blockData);
 
         currentBlock++;
         lastBlockHash = blockData.block.hash;
@@ -283,7 +282,7 @@ export class BlockIndexer {
           this.metrics.logsIndexed += blockData.logs.length;
           this.metrics.lastBlockNumber = blockNumber;
 
-          await this.publishDerivedJobs(blockData, finalityState);
+          await this.publishDerivedJobs(blockData);
         }
 
         currentBlock = actualEnd + 1n;
@@ -346,7 +345,7 @@ export class BlockIndexer {
         this.metrics.transactionsIndexed += blockData.transactions.length;
         this.metrics.logsIndexed += blockData.logs.length;
 
-        await this.publishDerivedJobs(blockData, finalityState);
+        await this.publishDerivedJobs(blockData);
       }
     }
 
@@ -423,21 +422,28 @@ export class BlockIndexer {
       const batch = logs.slice(i, i + batchSize);
 
       for (const log of batch) {
-        const job: DerivedJob = {
-          type: 'contract-replay',
-          chainId: this.config.chainId,
-          blockNumber: log.blockNumber,
-          blockHash: log.blockHash as Hash,
-          data: {
+        if (log.transactionIndex === null) {
+          this.logger.warn('Skipping legacy replay log with missing transaction index', {
             transactionHash: log.transactionHash,
             logIndex: log.logIndex,
-            address: log.address,
-            topics: [log.topic0, log.topic1, log.topic2, log.topic3].filter(Boolean),
-            data: log.data,
-          },
-        };
-
-        await this.publishJob(job);
+          });
+          continue;
+        }
+        await this.protocolEventsHandler?.handle({
+          chainId: Number(log.chainId),
+          blockNumber: log.blockNumber,
+          blockHash: log.blockHash,
+          transactionHash: log.transactionHash,
+          transactionIndex: log.transactionIndex,
+          logIndex: log.logIndex,
+          address: log.address,
+          topics: [log.topic0, log.topic1, log.topic2, log.topic3].filter(
+            (topic): topic is string => topic !== null,
+          ),
+          data: log.data,
+          removed: log.removed,
+          canonical: log.canonical,
+        });
       }
 
       this.logger.info('Contract replay progress', {
@@ -468,49 +474,14 @@ export class BlockIndexer {
     return 'pending';
   }
 
-  private async publishDerivedJobs(
-    blockData: BlockData,
-    finalityState: FinalityState,
-  ): Promise<void> {
+  private async publishDerivedJobs(blockData: BlockData): Promise<void> {
     const block = blockData.block;
     if (block.number === null || block.hash === null) {
       this.logger.warn('Skipping derived jobs for block with missing number or hash');
       return;
     }
 
-    // Process all standard transactions and logs
-    for (const tx of blockData.transactions) {
-      const job: DerivedJob = {
-        type: 'transaction',
-        chainId: this.config.chainId,
-        blockNumber: block.number,
-        blockHash: block.hash,
-        data: {
-          transactionHash: tx.hash,
-          finalityState,
-        },
-      };
-
-      await this.publishJob(job);
-    }
-
     for (const log of blockData.logs) {
-      const job: DerivedJob = {
-        type: 'log',
-        chainId: this.config.chainId,
-        blockNumber: block.number,
-        blockHash: block.hash,
-        data: {
-          transactionHash: log.transactionHash,
-          logIndex: log.logIndex,
-          address: log.address,
-          topics: log.topics,
-          data: log.data,
-          finalityState,
-        },
-      };
-
-      await this.publishJob(job);
       await this.protocolEventsHandler?.handle({
         chainId: Number(this.config.chainId),
         blockNumber: block.number,

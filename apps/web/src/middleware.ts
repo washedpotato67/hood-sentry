@@ -4,9 +4,10 @@ export function middleware(request: NextRequest) {
   crypto.getRandomValues(bytes);
   const nonce = btoa(String.fromCharCode(...bytes));
   const requestHeaders = new Headers(request.headers);
+  const developmentScriptPolicy = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentScriptPolicy}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `connect-src 'self' https:`,
@@ -16,10 +17,10 @@ export function middleware(request: NextRequest) {
     "form-action 'self'",
   ].join('; ');
   requestHeaders.set('Content-Security-Policy', csp);
-  requestHeaders.set('x-csp-nonce', nonce);
+  requestHeaders.set('x-nonce', nonce);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
-  response.headers.set('x-csp-nonce', nonce);
+  response.headers.set('x-nonce', nonce);
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');

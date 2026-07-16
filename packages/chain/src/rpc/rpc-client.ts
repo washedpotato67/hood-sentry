@@ -83,6 +83,7 @@ export class RPCClient {
       this.blockLagMonitor,
       {
         maxAcceptableLag: config.healthCheck.maxBlockLag,
+        requireArchiveForHistorical: config.archive !== undefined,
       },
     );
 

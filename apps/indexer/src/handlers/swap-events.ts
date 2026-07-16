@@ -13,8 +13,10 @@ export function swapDerivedJobs(swap: NormalizedSwap): readonly DerivedJob[] {
     poolAddress: swap.poolAddress,
     transactionHash: swap.transactionHash,
     logIndex: swap.logIndex,
+    eventType: 'swap',
   };
   return [
+    { type: 'pool-refresh', ...shared, data },
     { type: 'new-price-observation', ...shared, data },
     { type: 'market-metric', ...shared, data },
     { type: 'wallet-activity', ...shared, data },

@@ -7,12 +7,15 @@ import {
   aggregateMarketMetrics,
   bondingCurveEvidence,
   chainlinkEvidence,
+  denormalizeQuoteAmount,
   detectOutliers,
   evaluateObservation,
   externalEvidence,
   median,
+  normalizeQuoteAmount,
   poolEvidence,
   poolPriceRaw,
+  quoteConstantProductSwap,
   selectPriceSource,
   validateSourceRegistry,
 } from '../index.js';
@@ -553,5 +556,52 @@ describe('reproducible metrics', () => {
   it('uses integer median rules', () => {
     expect(median([1n, 2n, 100n])).toBe(2n);
     expect(median([1n, 2n])).toBe(1n);
+  });
+
+  it('normalizes quote amounts across decimal scales without floating-point arithmetic', () => {
+    const rate = {
+      sourceDecimals: 18,
+      normalizedDecimals: 6,
+      priceRaw: 2_500_000_000n,
+      priceDecimals: 6,
+    };
+    const sourceAmount = 2n * 10n ** 18n;
+    const normalized = normalizeQuoteAmount(sourceAmount, rate);
+
+    expect(normalized).toBe(5_000_000_000n);
+    expect(denormalizeQuoteAmount(normalized, rate)).toBe(sourceAmount);
+  });
+
+  it('quotes constant-product output and includes protocol fees in price impact', () => {
+    const result = quoteConstantProductSwap({
+      amountInRaw: 1_000n,
+      reserveInRaw: 100_000n,
+      reserveOutRaw: 200_000n,
+      feeRaw: 3_000n,
+      feeDenominator: 1_000_000n,
+    });
+
+    expect(result.amountOutRaw).toBe(1_974n);
+    expect(result.priceImpactBps).toBe(130n);
+  });
+
+  it('rejects invalid normalization and fee inputs', () => {
+    expect(() =>
+      normalizeQuoteAmount(1n, {
+        sourceDecimals: 18,
+        normalizedDecimals: 18,
+        priceRaw: 0n,
+        priceDecimals: 18,
+      }),
+    ).toThrow(/positive/);
+    expect(() =>
+      quoteConstantProductSwap({
+        amountInRaw: 1n,
+        reserveInRaw: 1n,
+        reserveOutRaw: 1n,
+        feeRaw: 1_000_000n,
+        feeDenominator: 1_000_000n,
+      }),
+    ).toThrow(/fee/);
   });
 });

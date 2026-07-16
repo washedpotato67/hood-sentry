@@ -12,6 +12,7 @@ import type {
   ProtocolKind,
   ProtocolValidationResult,
 } from '@hood-sentry/chain';
+import type { Hash } from 'viem';
 
 export interface ProtocolSummary {
   chainId: number;
@@ -53,6 +54,7 @@ export interface ProtocolRepository {
     poolAddress: string,
     state: NormalizedPoolState,
     blockNumber: bigint,
+    blockHash: Hash,
   ): Promise<void>;
   insertSwap(swap: NormalizedSwap): Promise<void>;
   insertLiquidityEvent(event: NormalizedLiquidityEvent): Promise<void>;
@@ -66,15 +68,25 @@ export interface ProtocolRepository {
   listProtocols(chainId: number, kind?: ProtocolKind): Promise<readonly ProtocolSummary[]>;
   listProtocolVerifications(chainId: number): Promise<readonly ProtocolVerificationRecord[]>;
   getActivePools(chainId: number): Promise<readonly NormalizedPool[]>;
-  getPoolsByToken(chainId: number, tokenAddress: string): Promise<readonly NormalizedPool[]>;
+  getPool(chainId: number, poolAddress: string, atBlock?: bigint): Promise<NormalizedPool | null>;
+  getPoolsByToken(
+    chainId: number,
+    tokenAddress: string,
+    atBlock?: bigint,
+  ): Promise<readonly NormalizedPool[]>;
   getSwapsByPool(chainId: number, poolAddress: string): Promise<readonly NormalizedSwap[]>;
   getLiquidityHistory(
     chainId: number,
     poolAddress: string,
+    atBlock?: bigint,
   ): Promise<readonly NormalizedLiquidityEvent[]>;
   getLaunchpadToken(chainId: number, tokenAddress: string): Promise<LaunchpadTokenCreated | null>;
   getGraduation(chainId: number, tokenAddress: string): Promise<LaunchpadGraduation | null>;
-  getMigration(chainId: number, tokenAddress: string): Promise<LaunchpadMigration | null>;
+  getMigration(
+    chainId: number,
+    tokenAddress: string,
+    atBlock?: bigint,
+  ): Promise<LaunchpadMigration | null>;
 }
 
 export type Pool = NormalizedPool;

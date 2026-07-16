@@ -1,3 +1,4 @@
+import { generateId } from '@hood-sentry/shared';
 import { type Hex, keccak256, stringToHex } from 'viem';
 
 export type TransactionIntent = {
@@ -66,7 +67,7 @@ export class TransactionIntentService {
       ...request,
       intentId: keccak256(
         stringToHex(
-          `${request.userId}:${request.wallet}:${request.chainId}:${request.target}:${request.calldata}:${created.toISOString()}`,
+          `${request.userId}:${request.wallet}:${request.chainId}:${request.target}:${request.calldata}:${created.toISOString()}:${generateId('intent')}`,
         ),
       ),
       createdAt: created.toISOString(),

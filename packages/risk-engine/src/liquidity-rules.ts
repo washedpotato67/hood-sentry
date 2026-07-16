@@ -1,4 +1,10 @@
-import type { LiquidityRiskResult } from './liquidity-risk.js';
+import type {
+  LiquidityOwnership,
+  LiquidityPoolEvidence,
+  LiquidityRemovalEvent,
+  LiquidityRiskResult,
+  StandardTradeImpact,
+} from './liquidity-risk.js';
 import type {
   RiskConfidence,
   RiskFindingStatus,
@@ -25,6 +31,10 @@ export const LIQUIDITY_RULE_CODES = [
   'SINGLE_POOL_DEPENDENCY',
   'UNEXPECTED_MIGRATION_VENUE',
   'PROVIDER_CONCENTRATION',
+  'STANDARD_TRADE_PRICE_IMPACT_UNAVAILABLE',
+  'HIGH_STANDARD_TRADE_PRICE_IMPACT',
+  'SINGLE_MARKET_POOL',
+  'POOL_LIQUIDITY_CONCENTRATION',
 ] as const;
 export type LiquidityRuleCode = (typeof LIQUIDITY_RULE_CODES)[number];
 
@@ -115,6 +125,44 @@ const SPECS: Record<LiquidityRuleCode, RuleSpec> = {
     whenAbsent: 'No single provider holds a dominant share of pool liquidity.',
     remediation: 'Size positions against the possibility that the dominant provider exits.',
   },
+  STANDARD_TRADE_PRICE_IMPACT_UNAVAILABLE: {
+    severity: 'medium',
+    status: 'unknown',
+    title: 'Standard trade impact unavailable',
+    description: 'Pinned normalized quote evidence is missing for the standard trade size.',
+    whenPresent:
+      'The analyzer lacks enough pinned quote evidence to calculate the standard trade price impact.',
+    whenAbsent: 'The standard trade price impact was calculated from pinned pool state.',
+    remediation: 'Confirm the quote asset conversion and pool reserves before sizing a trade.',
+  },
+  HIGH_STANDARD_TRADE_PRICE_IMPACT: {
+    severity: 'medium',
+    status: 'warning',
+    title: 'High standard trade impact',
+    description: 'The best verified pool quote loses at least ten percent against spot execution.',
+    whenPresent:
+      'The best verified pool quote has at least ten percent price impact at the standard trade size.',
+    whenAbsent: 'The standard trade price impact stays below ten percent.',
+    remediation: 'Reduce order size or wait for deeper verified liquidity.',
+  },
+  SINGLE_MARKET_POOL: {
+    severity: 'medium',
+    status: 'warning',
+    title: 'Single market pool',
+    description: 'Only one verified pool supplies market liquidity for the token.',
+    whenPresent: 'Only one verified pool supplies liquidity for this token.',
+    whenAbsent: 'More than one verified pool supplies liquidity for this token.',
+    remediation: 'Review the effect of a full exit from the only verified pool.',
+  },
+  POOL_LIQUIDITY_CONCENTRATION: {
+    severity: 'medium',
+    status: 'warning',
+    title: 'Liquidity concentrated in one pool',
+    description: 'One pool holds at least ninety percent of normalized quote liquidity.',
+    whenPresent: 'One pool holds at least ninety percent of normalized quote liquidity.',
+    whenAbsent: 'No pool holds ninety percent of normalized quote liquidity.',
+    remediation: 'Review the dominant pool protocol, ownership, and removal history.',
+  },
 };
 
 function isLiquidityRiskResult(value: unknown): value is LiquidityRiskResult {
@@ -180,6 +228,112 @@ function isTriggered(code: LiquidityRuleCode, result: LiquidityRiskResult): bool
   return result.findings.includes(code);
 }
 
+function serializedTradeImpact(impact: StandardTradeImpact): Record<string, unknown> {
+  return {
+    amountQuoteRaw: impact.amountQuoteRaw.toString(),
+    amountPoolQuoteRaw: impact.amountPoolQuoteRaw.toString(),
+    expectedTokenOutRaw: impact.expectedTokenOutRaw.toString(),
+    priceImpactBps: impact.priceImpactBps.toString(),
+    poolAddress: impact.poolAddress,
+  };
+}
+
+function serializedOwnership(ownership: LiquidityOwnership): Record<string, unknown> {
+  return {
+    ...ownership,
+    unlockTime: ownership.unlockTime?.toString() ?? null,
+    evidence:
+      ownership.evidence === undefined
+        ? null
+        : {
+            ...ownership.evidence,
+            sourceBlock: ownership.evidence.sourceBlock.toString(),
+          },
+  };
+}
+
+function serializedRemovalEvent(event: LiquidityRemovalEvent): Record<string, unknown> {
+  return {
+    amountRaw: event.amountRaw.toString(),
+    blockNumber: event.blockNumber.toString(),
+    blockHash: event.blockHash,
+    transactionHash: event.transactionHash,
+    logIndex: event.logIndex,
+  };
+}
+
+function serializedPool(pool: LiquidityPoolEvidence): Record<string, unknown> {
+  return {
+    poolAddress: pool.poolAddress,
+    protocolKey: pool.protocolKey,
+    protocolVersion: pool.protocolVersion,
+    poolType: pool.poolType,
+    quoteAsset: pool.quoteAsset,
+    poolAgeBlocks: pool.poolAgeBlocks.toString(),
+    tokenLiquidityRaw: pool.tokenLiquidityRaw.toString(),
+    quoteLiquidityRaw: pool.quoteLiquidityRaw.toString(),
+    currentLiquidityRaw: pool.currentLiquidityRaw.toString(),
+    burnedLiquidityRaw: pool.burnedLiquidityRaw.toString(),
+    burnedProviders: pool.burnedProviders.map((provider) => ({
+      address: provider.address,
+      liquidityRaw: provider.liquidityRaw.toString(),
+    })),
+    providers: pool.providers.map((provider) => ({
+      address: provider.address,
+      liquidityRaw: provider.liquidityRaw.toString(),
+    })),
+    providerCount: pool.providers.length,
+    ownership: serializedOwnership(pool.ownership),
+    removalsRaw: pool.removalsRaw.toString(),
+    additionsRaw: pool.additionsRaw.toString(),
+    removalEvents: pool.removalEvents.map(serializedRemovalEvent),
+    normalizedQuoteLiquidityRaw: pool.normalizedQuoteLiquidityRaw.toString(),
+    normalization: {
+      ...pool.normalization,
+      priceRaw: pool.normalization.priceRaw.toString(),
+      sourceBlock: pool.normalization.sourceBlock?.toString() ?? null,
+    },
+    standardTradeImpacts: pool.standardTradeImpacts.map(serializedTradeImpact),
+  };
+}
+
+function liquidityEvidenceData(
+  code: LiquidityRuleCode,
+  result: LiquidityRiskResult,
+): Record<string, unknown> {
+  return {
+    code,
+    poolAddress: result.poolAddress,
+    protocolKey: result.protocolKey,
+    verifiedProtocol: result.verifiedProtocol,
+    ownership: serializedOwnership(result.ownership),
+    providerConcentrationBps: result.providerConcentrationBps.toString(),
+    providerCount: result.providers.length,
+    poolCount: result.poolCount,
+    poolConcentrationBps: result.poolConcentrationBps?.toString() ?? null,
+    currentLiquidityRaw: result.currentLiquidityRaw.toString(),
+    burnedLiquidityRaw: result.burnedLiquidityRaw.toString(),
+    burnedProviders: result.burnedProviders.map((provider) => ({
+      address: provider.address,
+      liquidityRaw: provider.liquidityRaw.toString(),
+    })),
+    removalsRaw: result.removalsRaw.toString(),
+    removalEvents: result.removalEvents.map(serializedRemovalEvent),
+    additionsRaw: result.additionsRaw.toString(),
+    normalizationQuoteAsset: result.normalizationQuoteAsset ?? null,
+    normalizationQuoteDecimals: result.normalizationQuoteDecimals ?? null,
+    normalizedQuoteLiquidityRaw: result.normalizedQuoteLiquidityRaw?.toString() ?? null,
+    standardTradeSizeQuoteRaw: result.standardTradeSizeQuoteRaw?.toString() ?? null,
+    priceImpactBps: result.priceImpactBps?.toString() ?? null,
+    standardTradeImpacts: result.standardTradeImpacts?.map(serializedTradeImpact) ?? [],
+    pools: result.pools?.map(serializedPool) ?? [],
+    migrationDestination: result.migrationDestination ?? null,
+    expectedMigrationDestination: result.expectedMigrationDestination ?? null,
+    sourceBlock: result.sourceBlock.toString(),
+    warnings: result.warnings,
+  };
+}
+
 function evaluation(
   code: LiquidityRuleCode,
   context: Readonly<RiskScanContext>,
@@ -199,22 +353,7 @@ function evaluation(
       {
         evidenceType: 'liquidity_analysis',
         summary: triggered ? spec.whenPresent : spec.whenAbsent,
-        data: {
-          code,
-          poolAddress: result.poolAddress,
-          protocolKey: result.protocolKey,
-          verifiedProtocol: result.verifiedProtocol,
-          ownership: result.ownership,
-          providerConcentrationBps: result.providerConcentrationBps.toString(),
-          providerCount: result.providers.length,
-          currentLiquidityRaw: result.currentLiquidityRaw.toString(),
-          removalsRaw: result.removalsRaw.toString(),
-          additionsRaw: result.additionsRaw.toString(),
-          migrationDestination: result.migrationDestination ?? null,
-          expectedMigrationDestination: result.expectedMigrationDestination ?? null,
-          sourceBlock: result.sourceBlock.toString(),
-          warnings: result.warnings,
-        },
+        data: liquidityEvidenceData(code, result),
         provenanceKeys: [LIQUIDITY_STATE_SOURCE],
       },
     ],
@@ -239,7 +378,7 @@ function maxPenalty(code: LiquidityRuleCode): number {
 export function createLiquidityRiskRules(): readonly RiskRule[] {
   return LIQUIDITY_RULE_CODES.map((code) => ({
     ruleId: `liquidity.${code.toLowerCase()}`,
-    version: '1.0.0',
+    version: '1.1.0',
     category: 'Liquidity' as const,
     title: SPECS[code].title,
     description: SPECS[code].description,

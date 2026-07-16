@@ -1,9 +1,41 @@
 # Deployment infrastructure
 
-Environments use isolated credentials for local, test, staging, and production. Production writes remain disabled until mainnet-write approval is recorded.
+Hood Sentry uses Cloudflare for DNS and edge controls, Vercel for Next.js, Railway for API and background services, managed PostgreSQL with point-in-time recovery, managed Redis, S3-compatible evidence storage, and two independently operated RPC providers.
 
-Topology: Cloudflare DNS/WAF, Netlify web, Railway or equivalent API/indexer/worker/bot, managed PostgreSQL with PITR, managed Redis, object storage, primary RPC, and independent secondary RPC.
+The repository includes:
 
-Required release sequence: format, lint, typecheck, unit tests, integration tests, E2E, security scans, build, staging deploy, smoke test, manual production approval, production deploy, post-deploy smoke test.
+- six verified Docker image recipes in `infra/docker`
+- four Railway config-as-code files in `infra/railway`
+- root `vercel.json`
+- a full local product Compose profile
+- `infra/release.sh` for the complete local release gate
+- `infra/smoke-test.sh` for post-deployment API and web checks
 
-Preview deployments use testnet credentials only. Failed smoke tests stop rollout. Use immutable image or commit references, migration locks, readiness checks, resource limits, and rollback to the previous immutable release.
+Run the local stack:
+
+```bash
+pnpm env:init
+# Add provider API keys to .env.
+docker compose --profile product up --build
+```
+
+Run Telegram polling when its key exists:
+
+```bash
+docker compose --profile product --profile notifications up --build
+```
+
+Run all release checks:
+
+```bash
+pnpm release:check
+```
+
+Check a deployed environment:
+
+```bash
+pnpm smoke -- https://app.example.com https://api.example.com
+```
+
+Use immutable deployment revisions, migration locks, readiness checks, resource limits, managed backups, restore tests, and a recorded rollback revision. Preview and staging environments use Robinhood Chain testnet only.
+

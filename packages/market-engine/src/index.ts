@@ -1,4 +1,5 @@
 export * from './arithmetic.js';
+export * from './liquidity-depth.js';
 export * from './metrics.js';
 export * from './observations.js';
 export * from './outliers.js';

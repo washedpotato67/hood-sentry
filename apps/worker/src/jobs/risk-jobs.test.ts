@@ -105,7 +105,7 @@ function fixtureRun(status: RiskScanRun['status'] = 'running'): RiskScanRun {
 }
 
 function scanRepository(
-  created: boolean,
+  claimed: boolean,
   captures: {
     findings: StoredRiskFinding[];
     scores: StoredRiskScore[];
@@ -119,7 +119,7 @@ function scanRepository(
       return { ...value, createdAt: new Date() };
     },
     async claimScanRun() {
-      return { scanRun: fixtureRun(), created };
+      return { scanRun: fixtureRun(), claimed };
     },
     async isScanCancellationRequested() {
       return false;

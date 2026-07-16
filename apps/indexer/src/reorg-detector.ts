@@ -114,6 +114,7 @@ export class ReorgDetector {
     await this.markTransactionsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markLogsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.markTokenTransfersOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
+    await this.markWalletProjectionsOrphaned(reorgEvent.fromBlock, reorgEvent.toBlock);
     await this.protocolRepository?.markDerivedNonCanonical(
       Number(this.config.chainId),
       reorgEvent.fromBlock,
@@ -188,6 +189,43 @@ export class ReorgDetector {
           gte(schema.tokenTransfers.block_number, fromBlock),
           lte(schema.tokenTransfers.block_number, toBlock),
           eq(schema.tokenTransfers.canonical, true),
+        ),
+      );
+  }
+
+  private async markWalletProjectionsOrphaned(fromBlock: bigint, toBlock: bigint): Promise<void> {
+    const chainId = Number(this.config.chainId);
+    await this.drizzle
+      .update(schema.walletTokenLots)
+      .set({ canonical: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.walletTokenLots.chainId, chainId),
+          gte(schema.walletTokenLots.sourceBlock, fromBlock),
+          lte(schema.walletTokenLots.sourceBlock, toBlock),
+          eq(schema.walletTokenLots.canonical, true),
+        ),
+      );
+    await this.drizzle
+      .update(schema.walletPnlSnapshots)
+      .set({ canonical: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.walletPnlSnapshots.chainId, chainId),
+          gte(schema.walletPnlSnapshots.snapshotBlock, fromBlock),
+          lte(schema.walletPnlSnapshots.snapshotBlock, toBlock),
+          eq(schema.walletPnlSnapshots.canonical, true),
+        ),
+      );
+    await this.drizzle
+      .update(schema.walletCashFlows)
+      .set({ canonical: false, updatedAt: new Date() })
+      .where(
+        and(
+          eq(schema.walletCashFlows.chainId, chainId),
+          gte(schema.walletCashFlows.blockNumber, fromBlock),
+          lte(schema.walletCashFlows.blockNumber, toBlock),
+          eq(schema.walletCashFlows.canonical, true),
         ),
       );
   }

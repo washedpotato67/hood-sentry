@@ -1,10 +1,22 @@
+import type { ProtocolReadClient } from '@hood-sentry/chain';
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import type { DerivedJobPayload } from '@hood-sentry/queue';
+import type { PoolRefreshJob } from '../jobs/pool-refresh.js';
+import type { ProtocolEnrichmentJob } from '../jobs/protocol-enrichment.js';
+import type { RiskAnalysisRunner } from '../jobs/risk-runtime.js';
+import type { AlertDeliveryService } from '../notifications/alert-delivery.js';
+import type { RiskAlertEvaluator } from '../notifications/risk-alerts.js';
 
 export interface ProcessorContext {
   database: Database;
   logger: Logger;
+  riskAnalysis: RiskAnalysisRunner;
+  poolRefresh: Pick<PoolRefreshJob, 'run'>;
+  chainReader: Pick<ProtocolReadClient, 'getBytecode' | 'readContract'>;
+  protocolEnrichment: Pick<ProtocolEnrichmentJob, 'run'>;
+  alertDelivery?: Pick<AlertDeliveryService, 'deliver'>;
+  riskAlerts: RiskAlertEvaluator;
 }
 
 /**

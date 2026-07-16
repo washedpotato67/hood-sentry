@@ -1,0 +1,17 @@
+{
+  "name": "@hood-sentry/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "pretest": "pnpm --filter @hood-sentry/web build",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.51.1",
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}

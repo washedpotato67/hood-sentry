@@ -1,5 +1,5 @@
 import { type ConnectionOptions, Queue } from 'bullmq';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createQueueConnection } from '../connection.js';
 import { createDerivedJobWorker } from '../consumer.js';
 import { QueueJobPublisher } from '../publisher.js';
@@ -9,7 +9,7 @@ const REDIS_URL = process.env.TEST_REDIS_URL || process.env.REDIS_URL || 'redis:
 
 function job(overrides: Partial<DerivedJobInput> = {}): DerivedJobInput {
   return {
-    type: 'log',
+    type: 'token-transfer',
     chainId: 4663n,
     blockNumber: 1n,
     blockHash: '0xabc',
@@ -38,19 +38,34 @@ function names(): { queue: string; dlq: string } {
 }
 
 describe('derived job queue', () => {
-  let dbAvailable = false;
+  let redisAvailable = false;
 
   beforeAll(async () => {
-    const probe = createQueueConnection(REDIS_URL, { connectTimeout: 1500 });
+    const probe = createQueueConnection(REDIS_URL, {
+      lazyConnect: true,
+      connectTimeout: 1_000,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      retryStrategy: () => null,
+    });
+    probe.on('error', () => undefined);
     try {
+      await probe.connect();
       await probe.ping();
-      dbAvailable = true;
+      redisAvailable = true;
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: test output
-      console.warn('Redis not available, skipping tests:', (error as Error).message);
+      console.warn(
+        'Redis not available, skipping tests:',
+        error instanceof Error ? error.message : 'unknown error',
+      );
     } finally {
       probe.disconnect();
     }
+  });
+
+  beforeEach(({ skip }) => {
+    skip(!redisAvailable, 'Redis is unavailable');
   });
 
   afterAll(() => {
@@ -58,7 +73,6 @@ describe('derived job queue', () => {
   });
 
   it('publishes a job that the worker consumes', async () => {
-    if (!dbAvailable) return;
     const { queue, dlq } = names();
     const workerConn = createQueueConnection(REDIS_URL);
     const sharedConn = createQueueConnection(REDIS_URL);
@@ -87,7 +101,6 @@ describe('derived job queue', () => {
   });
 
   it('deduplicates jobs published with the same idempotency key', async () => {
-    if (!dbAvailable) return;
     const { queue, dlq } = names();
     const workerConn = createQueueConnection(REDIS_URL);
     const sharedConn = createQueueConnection(REDIS_URL);
@@ -118,7 +131,6 @@ describe('derived job queue', () => {
   });
 
   it('retries a failing job and eventually succeeds', async () => {
-    if (!dbAvailable) return;
     const { queue, dlq } = names();
     const workerConn = createQueueConnection(REDIS_URL);
     const sharedConn = createQueueConnection(REDIS_URL);
@@ -152,7 +164,6 @@ describe('derived job queue', () => {
   });
 
   it('dead-letters a job after its retries are exhausted', async () => {
-    if (!dbAvailable) return;
     const { queue, dlq } = names();
     const workerConn = createQueueConnection(REDIS_URL);
     const sharedConn = createQueueConnection(REDIS_URL);

@@ -138,7 +138,7 @@ export class RiskScanJob {
       errorCode: null,
       cancellationRequestedAt: null,
     });
-    if (!claimed.created) {
+    if (!claimed.claimed) {
       return { scanRunId: claimed.scanRun.id, idempotencyKey, duplicate: true, result: null };
     }
 

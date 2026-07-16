@@ -14,12 +14,15 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@hood-sentry/alert-engine": "workspace:*",
+    "@hood-sentry/auth": "workspace:*",
     "@hood-sentry/chain": "workspace:*",
     "@hood-sentry/config": "workspace:*",
     "@hood-sentry/db": "workspace:*",
     "@hood-sentry/discovery-engine": "workspace:*",
     "@hood-sentry/market-engine": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
+    "@hood-sentry/providers": "workspace:*",
     "@hood-sentry/queue": "workspace:*",
     "@hood-sentry/risk-engine": "workspace:*",
     "@hood-sentry/shared": "workspace:*",

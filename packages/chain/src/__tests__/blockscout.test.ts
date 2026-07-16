@@ -102,6 +102,37 @@ describe('BlockscoutClient', () => {
     expect(result.metadata?.provenance.fetchedAt).toBeTruthy();
   });
 
+  it('authenticates requests without exposing the API key in provenance', async () => {
+    const fetchImplementation = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(jsonResponse(verifiedContract()))
+      .mockResolvedValueOnce(jsonResponse(addressMetadata()));
+
+    const result = await createClient(fetchImplementation, {
+      apiKey: 'blockscout-secret',
+    }).enrichContract(46630, ADDRESS);
+
+    const firstRequest = fetchImplementation.mock.calls[0]?.[0];
+    expect(String(firstRequest)).toContain('apikey=blockscout-secret');
+    expect(result.metadata?.provenance.providerUrl).not.toContain('blockscout-secret');
+    expect(result.metadata?.provenance.endpoints.join(',')).not.toContain('blockscout-secret');
+  });
+
+  it('removes the API key from provider failure messages', async () => {
+    const fetchImplementation = vi.fn<typeof globalThis.fetch>((input) => {
+      throw new Error(`request failed for ${String(input)}`);
+    });
+
+    const result = await createClient(fetchImplementation, {
+      apiKey: 'blockscout-secret',
+      maxAttempts: 1,
+    }).enrichContract(46630, ADDRESS);
+
+    expect(result.status).toBe('unavailable');
+    expect(JSON.stringify(result)).not.toContain('blockscout-secret');
+    expect(result.warnings[0]?.message).toContain('[REDACTED]');
+  });
+
   it('represents a missing smart-contract record as unverified metadata', async () => {
     const fetchImplementation = vi
       .fn<typeof globalThis.fetch>()

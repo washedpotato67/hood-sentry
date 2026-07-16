@@ -28,6 +28,158 @@ services:
       timeout: 5s
       retries: 20
 
+  migrate:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+    command: ["node", "packages/db/dist/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+      PUBLIC_APP_URL: http://localhost:3000
+      SIWE_DOMAIN: localhost:3000
+      SIWE_URI: http://localhost:3000
+      SENTRY_API_INTERNAL_URL: http://api:4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  indexer:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.indexer
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+      SIWE_DOMAIN: localhost:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.worker
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+      SIWE_DOMAIN: localhost:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        SENTRY_API_INTERNAL_URL: http://api:4000
+        NEXT_PUBLIC_ROBINHOOD_CHAIN_ID: ${ROBINHOOD_CHAIN_ID:-46630}
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  telegram-bot:
+    profiles: ["notifications"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.telegram-bot
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+      SIWE_DOMAIN: localhost:3000
+      SENTRY_API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  admin:
+    profiles: ["admin"]
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.admin
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/hood_sentry
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-hood-sentry-local-session-secret-32-characters}
+      SIWE_DOMAIN: localhost:3000
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   hood_sentry_postgres:
   hood_sentry_redis:

@@ -1,19 +1,25 @@
-# Docker Configuration
+# Docker images
 
-This directory contains Docker-related configurations for Hood Sentry.
+The repository ships production images for each runtime:
 
-## Files
+- `Dockerfile.api` runs the Fastify API on port 4000.
+- `Dockerfile.indexer` runs the canonical chain indexer.
+- `Dockerfile.worker` runs BullMQ analytics and notification jobs.
+- `Dockerfile.telegram-bot` runs Telegram long polling.
+- `Dockerfile.admin` runs the audited admin role CLI.
+- `Dockerfile.web` runs the Next.js standalone server on port 3000.
 
-- `Dockerfile.api` - Fastify API service
-- `Dockerfile.indexer` - Blockchain indexer service
-- `Dockerfile.worker` - Background worker service
-- `Dockerfile.telegram-bot` - Telegram bot service
-- `Dockerfile.admin` - Admin service
+All images use Node 20.20.2 on Alpine 3.22, pnpm 9.15.4, the frozen lockfile, and a non-root runtime user.
 
-## Local Development
+## Local product stack
 
-Use `docker-compose.yml` in the root directory for local development.
+```bash
+pnpm env:init
+# Add ALCHEMY_API_KEY and any optional provider keys to .env.
+docker compose --profile product up --build
+```
 
-## Production
+Add `--profile notifications` when `TELEGRAM_BOT_TOKEN` exists. Add `--profile admin` only for an explicit admin CLI command.
 
-Production deployments use managed services (Railway, Vercel) rather than custom Docker images.
+The product profile applies all migrations before starting the API, indexer, worker, and web services. PostgreSQL and Redis use persistent local volumes.
+

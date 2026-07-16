@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gt, isNull, lt } from 'drizzle-orm';
+import { z } from 'zod';
 
 import type { Database } from '../../client.js';
 import {
@@ -8,12 +9,20 @@ import {
   decodeCursorAsDate,
 } from '../../core/index.js';
 import type { TransactionContext } from '../../core/transaction.js';
-import { sessions, userWallets, users } from '../../schema/auth.js';
-import type { AuthRepository, Session, User, UserWallet } from '../interfaces/auth-repository.js';
+import { sessions, siweNonces, userWallets, users } from '../../schema/auth.js';
+import type {
+  AuthRepository,
+  Session,
+  SiweNonce,
+  User,
+  UserWallet,
+  UserWithWallet,
+} from '../interfaces/auth-repository.js';
 
 type UserRow = typeof users.$inferSelect;
 type UserWalletRow = typeof userWallets.$inferSelect;
 type SessionRow = typeof sessions.$inferSelect;
+type SiweNonceRow = typeof siweNonces.$inferSelect;
 type UserStatus = (typeof users.$inferInsert)['status'];
 
 function toUser(row: UserRow): User {
@@ -52,6 +61,18 @@ function toSession(row: SessionRow): Session {
     revokedAt: row.revokedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  };
+}
+
+function toSiweNonce(row: SiweNonceRow): SiweNonce {
+  return {
+    id: row.id,
+    hashedNonce: row.hashedNonce,
+    domain: row.domain,
+    uri: row.uri,
+    issuedAt: row.issuedAt,
+    expiresAt: row.expiresAt,
+    consumedAt: row.consumedAt,
   };
 }
 
@@ -196,6 +217,69 @@ export class DrizzleAuthRepository implements AuthRepository {
     return row ? toUserWallet(row) : null;
   }
 
+  async getUserWalletOwner(
+    chainId: number,
+    address: string,
+    tx?: TransactionContext,
+  ): Promise<UserWithWallet | null> {
+    const normalizedAddress = address.toLowerCase();
+    const rows = await this.executor(tx)
+      .select({ user: users, wallet: userWallets })
+      .from(userWallets)
+      .innerJoin(users, eq(users.id, userWallets.userId))
+      .where(
+        and(
+          eq(userWallets.chainId, chainId),
+          eq(userWallets.address, normalizedAddress),
+          isNull(userWallets.deletedAt),
+          isNull(users.deletedAt),
+          eq(users.status, 'active'),
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    return row === undefined ? null : { user: toUser(row.user), wallet: toUserWallet(row.wallet) };
+  }
+
+  async provisionUserForWallet(
+    chainId: number,
+    address: string,
+    verifiedAt: Date,
+  ): Promise<UserWithWallet> {
+    const normalizedAddress = address.toLowerCase();
+    const existing = await this.getUserWalletOwner(chainId, normalizedAddress);
+    if (existing !== null) return existing;
+
+    try {
+      return await this.db.transaction(async (transaction) => {
+        const concurrent = await this.getUserWalletOwner(chainId, normalizedAddress, transaction);
+        if (concurrent !== null) return concurrent;
+        const userRows = await transaction.insert(users).values({ status: 'active' }).returning();
+        const user = toUser(ensureRow(userRows[0], 'provisionUserForWallet user'));
+        const walletRows = await transaction
+          .insert(userWallets)
+          .values({
+            userId: user.id,
+            chainId,
+            address: normalizedAddress,
+            verifiedAt,
+            isPrimary: true,
+          })
+          .returning();
+        return {
+          user,
+          wallet: toUserWallet(ensureRow(walletRows[0], 'provisionUserForWallet wallet')),
+        };
+      });
+    } catch (error) {
+      const parsed = z.object({ code: z.string() }).safeParse(error);
+      if (!parsed.success || parsed.data.code !== '23505') throw error;
+      const owner = await this.getUserWalletOwner(chainId, normalizedAddress);
+      if (owner === null) throw error;
+      return owner;
+    }
+  }
+
   async insertUserWallet(
     userWallet: Omit<UserWallet, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>,
     tx?: TransactionContext,
@@ -300,5 +384,55 @@ export class DrizzleAuthRepository implements AuthRepository {
       .returning();
 
     return rows.length;
+  }
+
+  async insertSiweNonce(
+    nonce: Omit<SiweNonce, 'id' | 'issuedAt' | 'consumedAt'>,
+    tx?: TransactionContext,
+  ): Promise<SiweNonce> {
+    const rows = await this.executor(tx)
+      .insert(siweNonces)
+      .values({
+        hashedNonce: nonce.hashedNonce,
+        domain: nonce.domain,
+        uri: nonce.uri,
+        expiresAt: nonce.expiresAt,
+      })
+      .returning();
+    return toSiweNonce(ensureRow(rows[0], 'insertSiweNonce'));
+  }
+
+  async getSiweNonce(hashedNonce: string, tx?: TransactionContext): Promise<SiweNonce | null> {
+    const rows = await this.executor(tx)
+      .select()
+      .from(siweNonces)
+      .where(eq(siweNonces.hashedNonce, hashedNonce))
+      .limit(1);
+    const row = rows[0];
+    return row === undefined ? null : toSiweNonce(row);
+  }
+
+  async consumeSiweNonce(
+    hashedNonce: string,
+    domain: string,
+    uri: string,
+    now: Date,
+    tx?: TransactionContext,
+  ): Promise<SiweNonce | null> {
+    const rows = await this.executor(tx)
+      .update(siweNonces)
+      .set({ consumedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(siweNonces.hashedNonce, hashedNonce),
+          eq(siweNonces.domain, domain),
+          eq(siweNonces.uri, uri),
+          isNull(siweNonces.consumedAt),
+          gt(siweNonces.expiresAt, now),
+        ),
+      )
+      .returning();
+    const row = rows[0];
+    return row === undefined ? null : toSiweNonce(row);
   }
 }

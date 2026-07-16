@@ -171,6 +171,7 @@ export const pools = pgTable(
     active: boolean('active').notNull().default(true),
     state: jsonb('state').$type<Record<string, string | number>>(),
     state_block_number: bigint('state_block_number', { mode: 'bigint' }),
+    state_block_hash: text('state_block_hash'),
     ...timestamps,
   },
   (table) => [
@@ -194,6 +195,78 @@ export const poolTokens = pgTable(
   (table) => [
     primaryKey({ columns: [table.chain_id, table.pool_address, table.token_address] }),
     index('pool_tokens_token_idx').on(table.chain_id, table.token_address),
+  ],
+);
+
+export const poolStateSnapshots = pgTable(
+  'pool_state_snapshots',
+  {
+    chain_id: integer('chain_id').notNull(),
+    pool_address: text('pool_address').notNull(),
+    protocol_key: text('protocol_key').notNull(),
+    protocol_version: text('protocol_version').notNull(),
+    pool_type: text('pool_type').notNull(),
+    source_block_number: bigint('source_block_number', { mode: 'bigint' }).notNull(),
+    source_block_hash: text('source_block_hash').notNull(),
+    reserve0_raw: numeric('reserve0_raw', { precision: 78, scale: 0 }),
+    reserve1_raw: numeric('reserve1_raw', { precision: 78, scale: 0 }),
+    lp_total_supply_raw: numeric('lp_total_supply_raw', { precision: 78, scale: 0 }),
+    state: jsonb('state').$type<Record<string, string | number>>().notNull(),
+    source_provider: text('source_provider').notNull().default('rpc'),
+    canonical: boolean('canonical').notNull().default(true),
+    observed_at: timestamp('observed_at', { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.chain_id, table.pool_address, table.source_block_hash] }),
+    index('pool_state_snapshots_pool_block_idx').on(
+      table.chain_id,
+      table.pool_address,
+      table.source_block_number,
+    ),
+    index('pool_state_snapshots_canonical_idx').on(
+      table.chain_id,
+      table.source_block_number,
+      table.canonical,
+    ),
+  ],
+);
+
+export const liquidityLockEvidence = pgTable(
+  'liquidity_lock_evidence',
+  {
+    id: bigint('id', { mode: 'bigint' }).primaryKey().generatedAlwaysAsIdentity(),
+    chain_id: integer('chain_id').notNull(),
+    pool_address: text('pool_address').notNull(),
+    lock_contract_address: text('lock_contract_address').notNull(),
+    beneficiary_address: text('beneficiary_address').notNull(),
+    locked_amount_raw: numeric('locked_amount_raw', { precision: 78, scale: 0 }).notNull(),
+    unlock_time: timestamp('unlock_time', { withTimezone: true }).notNull(),
+    withdrawal_conditions: text('withdrawal_conditions').notNull(),
+    verification_source: text('verification_source').notNull(),
+    verified_at: timestamp('verified_at', { withTimezone: true }).notNull(),
+    verification_expires_at: timestamp('verification_expires_at', { withTimezone: true }).notNull(),
+    source_block_number: bigint('source_block_number', { mode: 'bigint' }).notNull(),
+    source_block_hash: text('source_block_hash').notNull(),
+    transaction_hash: text('transaction_hash').notNull(),
+    log_index: integer('log_index').notNull(),
+    methodology_version: text('methodology_version').notNull(),
+    canonical: boolean('canonical').notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('liquidity_lock_evidence_event_idx').on(
+      table.chain_id,
+      table.pool_address,
+      table.source_block_hash,
+      table.transaction_hash,
+      table.log_index,
+    ),
+    index('liquidity_lock_evidence_pool_idx').on(
+      table.chain_id,
+      table.pool_address,
+      table.source_block_number,
+    ),
   ],
 );
 

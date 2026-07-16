@@ -15,7 +15,8 @@
   "dependencies": {
     "@hood-sentry/config": "workspace:*",
     "@hood-sentry/observability": "workspace:*",
-    "@hood-sentry/shared": "workspace:*"
+    "@hood-sentry/shared": "workspace:*",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

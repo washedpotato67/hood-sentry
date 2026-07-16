@@ -33,17 +33,20 @@ export function launchpadDerivedJobs(event: LaunchpadEvent): readonly DerivedJob
     ];
   }
   if ('destinationPoolAddress' in event) {
+    const migrationData = {
+      ...data,
+      destinationProtocolKey: event.destinationProtocolKey,
+      destinationPoolAddress: event.destinationPoolAddress,
+      poolAddress: event.destinationPoolAddress,
+      eventType: 'launchpadMigration',
+    };
     return [
-      { type: 'bonding-curve-migration-transition', ...shared, data },
-      { type: 'source-reconciliation', ...shared, data },
-      { type: 'market-metric', ...shared, data },
-      { type: 'alert-evaluation', ...shared, data },
+      { type: 'bonding-curve-migration-transition', ...shared, data: migrationData },
+      { type: 'source-reconciliation', ...shared, data: migrationData },
+      { type: 'market-metric', ...shared, data: migrationData },
+      { type: 'alert-evaluation', ...shared, data: migrationData },
     ];
   }
-  return [
-    { type: 'new-price-observation', ...shared, data },
-    { type: 'market-metric', ...shared, data },
-    { type: 'wallet-activity', ...shared, data },
-    { type: 'alert-evaluation', ...shared, data },
-  ];
+  const tradeData = { ...data, eventType: 'launchpadTrade' };
+  return [{ type: 'alert-evaluation', ...shared, data: tradeData }];
 }

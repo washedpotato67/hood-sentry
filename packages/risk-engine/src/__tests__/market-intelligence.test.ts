@@ -30,11 +30,14 @@ describe('market intelligence', () => {
       tokenLiquidityRaw: 1n,
       quoteLiquidityRaw: 1n,
       currentLiquidityRaw: 1n,
+      burnedLiquidityRaw: 0n,
+      burnedProviders: [],
       priceImpactBps: 5000n,
       providers: [{ address: '0x3333333333333333333333333333333333333333', liquidityRaw: 1n }],
       ownership: { kind: 'unknown', verified: false },
       removalsRaw: 0n,
       additionsRaw: 1n,
+      removalEvents: [],
     });
     expect(result.status).toBe('unknown');
     expect(result.findings).toContain('UNKNOWN_PROTOCOL');

@@ -23,7 +23,11 @@ function input(overrides: Partial<LiquidityRiskInput> = {}): LiquidityRiskInput 
     tokenLiquidityRaw: 1_000n,
     quoteLiquidityRaw: 1_000n,
     currentLiquidityRaw: 1_000n,
+    burnedLiquidityRaw: 0n,
+    burnedProviders: [],
     priceImpactBps: 10n,
+    poolCount: 2,
+    poolConcentrationBps: 5_000n,
     providers: [
       { address: LOCKER, liquidityRaw: 600n },
       { address: CREATOR, liquidityRaw: 400n },
@@ -31,6 +35,7 @@ function input(overrides: Partial<LiquidityRiskInput> = {}): LiquidityRiskInput 
     ownership: { kind: 'locked', lockContract: LOCKER, verified: true },
     removalsRaw: 0n,
     additionsRaw: 1_000n,
+    removalEvents: [],
     ...overrides,
   };
 }
@@ -107,6 +112,7 @@ describe('liquidity rules', () => {
 
   it('warns when one provider dominates the pool', async () => {
     const result = await evaluate('liquidity.provider_concentration', {
+      currentLiquidityRaw: 10_000n,
       providers: [
         { address: LOCKER, liquidityRaw: 9_500n },
         { address: CREATOR, liquidityRaw: 500n },
@@ -118,6 +124,7 @@ describe('liquidity rules', () => {
 
   it('holds concentration at the threshold boundary', async () => {
     const atThreshold = await evaluate('liquidity.provider_concentration', {
+      currentLiquidityRaw: 10_000n,
       providers: [
         { address: LOCKER, liquidityRaw: 9_000n },
         { address: CREATOR, liquidityRaw: 1_000n },
@@ -126,12 +133,62 @@ describe('liquidity rules', () => {
     expect(atThreshold.status).toBe('warning');
 
     const belowThreshold = await evaluate('liquidity.provider_concentration', {
+      currentLiquidityRaw: 10_000n,
       providers: [
         { address: LOCKER, liquidityRaw: 8_999n },
         { address: CREATOR, liquidityRaw: 1_001n },
       ],
     });
     expect(belowThreshold.status).toBe('pass');
+  });
+
+  it('uses total LP supply as the concentration denominator', async () => {
+    const result = await evaluate('liquidity.provider_concentration', {
+      providers: [{ address: CREATOR, liquidityRaw: 6_000n }],
+      currentLiquidityRaw: 10_000n,
+      burnedLiquidityRaw: 4_000n,
+      burnedProviders: [{ address: LOCKER, liquidityRaw: 4_000n }],
+    });
+    expect(result.status).toBe('pass');
+    expect(result.evidence[0]?.data.providerConcentrationBps).toBe('6000');
+  });
+
+  it('reports missing standard trade impact as unknown without a score penalty', async () => {
+    const result = await evaluate('liquidity.standard_trade_price_impact_unavailable', {
+      priceImpactBps: undefined,
+    });
+    expect(result.status).toBe('unknown');
+    expect(result.confidence.basisPoints).toBe(0);
+    expect(rule('liquidity.standard_trade_price_impact_unavailable').maxPenaltyBps).toBe(0);
+  });
+
+  it('warns when the standard trade impact reaches ten percent', async () => {
+    const atThreshold = await evaluate('liquidity.high_standard_trade_price_impact', {
+      priceImpactBps: 1_000n,
+    });
+    const belowThreshold = await evaluate('liquidity.high_standard_trade_price_impact', {
+      priceImpactBps: 999n,
+    });
+    expect(atThreshold.status).toBe('warning');
+    expect(belowThreshold.status).toBe('pass');
+  });
+
+  it('warns on one market pool and cross-pool concentration', async () => {
+    const single = await evaluate('liquidity.single_market_pool', {
+      poolCount: 1,
+      poolConcentrationBps: 10_000n,
+    });
+    const concentrated = await evaluate('liquidity.pool_liquidity_concentration', {
+      poolCount: 2,
+      poolConcentrationBps: 9_000n,
+    });
+    const distributed = await evaluate('liquidity.pool_liquidity_concentration', {
+      poolCount: 2,
+      poolConcentrationBps: 8_999n,
+    });
+    expect(single.status).toBe('warning');
+    expect(concentrated.status).toBe('warning');
+    expect(distributed.status).toBe('pass');
   });
 
   it('lowers confidence when the protocol is unverified', async () => {

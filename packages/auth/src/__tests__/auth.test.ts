@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createApiKey, verifyApiKey } from '../api-customer.js';
+import {
+  apiKeyPrefix,
+  createApiKey,
+  issueApiKeyToken,
+  verifyApiKey,
+  verifyApiKeyToken,
+} from '../api-customer.js';
 import { validateSiwe } from '../siwe.js';
 describe('auth: SIWE and API keys', () => {
   it('consumes a valid SIWE nonce and rejects replay', () => {
@@ -38,5 +44,11 @@ describe('auth: SIWE and API keys', () => {
   it('hashes API secrets and verifies them', () => {
     const k = createApiKey(['tokens:read'], 10);
     expect(verifyApiKey(k.secret, k.key)).toBe(true);
+  });
+  it('issues prefixed API tokens and verifies their keyed hashes', () => {
+    const issued = issueApiKeyToken('s'.repeat(48));
+    expect(apiKeyPrefix(issued.token)).toBe(issued.prefix);
+    expect(verifyApiKeyToken(issued.token, issued.hash, 's'.repeat(48))).toBe(true);
+    expect(verifyApiKeyToken(issued.token, issued.hash, 'x'.repeat(48))).toBe(false);
   });
 });

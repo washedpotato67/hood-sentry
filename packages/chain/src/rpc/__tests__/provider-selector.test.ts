@@ -266,6 +266,21 @@ describe('ProviderSelector', () => {
 
       expect(provider).toBe('http://primary.com');
     });
+
+    it('uses the primary for pinned reads when no archive provider is configured', () => {
+      const noArchiveSelector = new ProviderSelector(
+        'http://primary.com',
+        'http://secondary.com',
+        undefined,
+        healthTrackers,
+        blockLagMonitor,
+        { requireArchiveForHistorical: false },
+      );
+
+      expect(noArchiveSelector.selectProviderForMethod('eth_getBlockByNumber')).toBe(
+        'http://primary.com',
+      );
+    });
   });
 
   describe('fallback selection', () => {

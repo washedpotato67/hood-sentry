@@ -7,29 +7,29 @@ import { applyMigrations, resetSchema } from './setup.js';
 
 const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hood_sentry_test';
+const sql = postgres(TEST_DATABASE_URL, { connect_timeout: 2 });
 
 describe('Database Migrations', () => {
-  let sql: ReturnType<typeof postgres>;
   let dbAvailable = false;
 
   beforeAll(async () => {
     try {
-      sql = postgres(TEST_DATABASE_URL, { connect_timeout: 2 });
       await sql`SELECT 1`;
-      dbAvailable = true;
 
       // Start from a clean schema; the "apply all migrations" test builds it up.
       await resetSchema(sql);
+      dbAvailable = true;
     } catch (error) {
       // biome-ignore lint/suspicious/noConsole: test output
-      console.warn('Database not available, skipping tests:', (error as Error).message);
+      console.warn(
+        'Database not available, skipping tests:',
+        error instanceof Error ? error.message : 'unknown error',
+      );
     }
   });
 
   afterAll(async () => {
-    if (dbAvailable) {
-      await sql.end();
-    }
+    await sql.end();
   });
 
   it('defines external protocol tables and blocks unsafe legacy conversion', () => {
@@ -107,13 +107,26 @@ describe('Database Migrations', () => {
     expect(migration).toContain('canonical BOOLEAN NOT NULL DEFAULT true');
   });
 
-  it('should apply all migrations successfully', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
+  it('defines block-pinned liquidity state and verified lock evidence', () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        'migrations',
+        '017_liquidity_risk_context.sql',
+      ),
+      'utf8',
+    );
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS pool_state_snapshots');
+    expect(migration).toContain('source_block_hash TEXT NOT NULL');
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS liquidity_lock_evidence');
+    expect(migration).toContain('withdrawal_conditions TEXT NOT NULL');
+    expect(migration).toContain('token_transfers_chain_log_idx');
+  });
 
+  it('should apply all migrations successfully', async ({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
     const files = await applyMigrations(sql);
     expect(files.length).toBeGreaterThan(0);
 
@@ -121,13 +134,8 @@ describe('Database Migrations', () => {
     expect(applied.length).toBe(files.length);
   });
 
-  it('should handle bigint round-trip correctly', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
+  it('should handle bigint round-trip correctly', async ({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
     const testValue = '9223372036854775807';
 
     await sql`INSERT INTO chains (chain_id, name, native_symbol) VALUES (1, 'Test', 'TEST')`;
@@ -141,26 +149,16 @@ describe('Database Migrations', () => {
     expect(result[0]?.number).toBe(testValue);
   });
 
-  it('should enforce foreign key constraints', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
+  it('should enforce foreign key constraints', async ({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
     await expect(
       sql`INSERT INTO blocks (chain_id, number, hash, parent_hash, timestamp, finality_state, canonical)
           VALUES (999, 1, '0x456', '0x000', NOW(), 'soft_confirmed', true)`,
     ).rejects.toThrow();
   });
 
-  it('should handle transaction rollback on error', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
+  it('should handle transaction rollback on error', async ({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
     const initialCount = await sql`SELECT COUNT(*) as count FROM tokens WHERE chain_id = 1`;
 
     await expect(
@@ -174,13 +172,8 @@ describe('Database Migrations', () => {
     expect(finalCount[0]?.count).toBe(initialCount[0]?.count);
   });
 
-  it('should support cursor-based pagination', async () => {
-    if (!dbAvailable) {
-      // biome-ignore lint/suspicious/noConsole: test output
-      console.log('Skipping: database not available');
-      return;
-    }
-
+  it('should support cursor-based pagination', async ({ skip }) => {
+    skip(!dbAvailable, 'PostgreSQL is unavailable');
     // Insert test data
     for (let i = 0; i < 10; i++) {
       const transactionHash = `0xtx${i}`;

@@ -29,14 +29,14 @@ describe('serializeBigints', () => {
 describe('toPayload', () => {
   it('renders bigint chain fields as strings and preserves data', () => {
     const payload = toPayload({
-      type: 'log',
+      type: 'token-transfer',
       chainId: 4663n,
       blockNumber: 100n,
       blockHash: '0xabc',
       data: { transactionHash: '0xtx', amountRaw: 1000n },
     });
     expect(payload).toEqual({
-      type: 'log',
+      type: 'token-transfer',
       chainId: '4663',
       blockNumber: '100',
       blockHash: '0xabc',
@@ -48,20 +48,20 @@ describe('toPayload', () => {
 describe('derivedJobIdempotencyKey', () => {
   it('is deterministic and collapses identical chain positions', () => {
     const base = {
-      type: 'log' as const,
+      type: 'token-transfer' as const,
       chainId: 4663n,
       blockHash: '0xabc',
       transactionHash: '0xtx',
       logIndex: 2,
     };
-    expect(derivedJobIdempotencyKey(base)).toBe('4663:0xabc:0xtx:2:log');
+    expect(derivedJobIdempotencyKey(base)).toBe('4663:0xabc:0xtx:2:token-transfer');
     expect(derivedJobIdempotencyKey(base)).toBe(derivedJobIdempotencyKey({ ...base }));
   });
 
   it('distinguishes job types at the same position', () => {
     const position = { chainId: 1n, blockHash: '0xh', transactionHash: '0xt', logIndex: 0 };
-    expect(derivedJobIdempotencyKey({ ...position, type: 'transaction' })).not.toBe(
-      derivedJobIdempotencyKey({ ...position, type: 'log' }),
+    expect(derivedJobIdempotencyKey({ ...position, type: 'token-transfer' })).not.toBe(
+      derivedJobIdempotencyKey({ ...position, type: 'token-approval' }),
     );
   });
 });

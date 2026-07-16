@@ -7,6 +7,15 @@ const VALID_CHAIN_IDS = [MAINNET_CHAIN_ID, TESTNET_CHAIN_ID] as const;
 const PUBLIC_RPC_PATTERNS = ['rpc.mainnet.chain.robinhood.com', 'rpc.testnet.chain.robinhood.com'];
 const LOCAL_DB_PATTERNS = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
 
+const optionalNonemptyStringSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().trim().min(1).optional(),
+);
+const optionalUrlSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  z.string().url().optional(),
+);
+
 const SECRET_PLACEHOLDERS = [
   'change-me',
   'changeme',
@@ -79,6 +88,7 @@ const applicationSchema = z.object({
   LEGAL_ENTITY_NAME: z.string().default('Hood Sentry'),
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_HOST: z.string().default('0.0.0.0'),
+  SENTRY_API_INTERNAL_URL: z.string().url().default('http://localhost:4000'),
 });
 
 const databaseSchema = z.object({
@@ -91,15 +101,27 @@ const databaseSchema = z.object({
 
 const chainSchema = z.object({
   ROBINHOOD_CHAIN_ID: chainIdSchema.default(TESTNET_CHAIN_ID),
-  ROBINHOOD_RPC_PRIMARY: z.string().url(),
-  ROBINHOOD_RPC_SECONDARY: z.string().url().optional(),
-  ROBINHOOD_WS_PRIMARY: z.string().url().optional(),
-  ROBINHOOD_WS_SECONDARY: z.string().url().optional(),
+  ROBINHOOD_RPC_PRIMARY: optionalUrlSchema,
+  ROBINHOOD_RPC_SECONDARY: optionalUrlSchema,
+  ROBINHOOD_WS_PRIMARY: optionalUrlSchema,
+  ROBINHOOD_WS_SECONDARY: optionalUrlSchema,
   BLOCKSCOUT_API_BASE: z.string().url().default('https://robinhoodchain.blockscout.com/api'),
   BLOCKSCOUT_WEB_BASE: z.string().url().default('https://robinhoodchain.blockscout.com'),
   RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   RPC_MAX_RETRIES: z.coerce.number().int().min(0).default(3),
   INDEXER_CONFIRMATION_MODE: z.enum(['soft', 'finalized']).default('soft'),
+});
+
+const providersSchema = z.object({
+  PROVIDER_PROFILE: z.literal('default').default('default'),
+  ALCHEMY_API_KEY: optionalNonemptyStringSchema,
+  BLOCKSCOUT_API_KEY: optionalNonemptyStringSchema,
+  MARKET_DATA_API_KEY: optionalNonemptyStringSchema,
+  PORTFOLIO_DATA_API_KEY: optionalNonemptyStringSchema,
+  SECURITY_FEED_API_KEY: optionalNonemptyStringSchema,
+  AI_PROVIDER_API_KEY: optionalNonemptyStringSchema,
+  AI_COMMENTARY_MODEL: z.string().trim().min(1).default('gpt-5.4-mini-2026-03-17'),
+  AI_COMMENTARY_CACHE_SECONDS: z.coerce.number().int().positive().default(3_600),
 });
 
 const authSchema = z.object({
@@ -128,6 +150,41 @@ const notificationsSchema = z.object({
 
 const contractsSchema = z.object({
   SENTRY_TOKEN_ADDRESS: ethereumAddressSchema.optional(),
+  SENTRY_TOKEN_RUNTIME_BYTECODE_HASH: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^0x[a-fA-F0-9]{64}$/)
+      .optional(),
+  ),
+  SENTRY_TOKEN_VERIFICATION_SOURCE_URL: optionalUrlSchema,
+  SENTRY_TOKEN_VERIFIED_AT: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().datetime().optional(),
+  ),
+  SENTRY_SCOUT_MINIMUM_RAW: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[0-9]+$/)
+      .optional(),
+  ),
+  SENTRY_ANALYST_MINIMUM_RAW: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[0-9]+$/)
+      .optional(),
+  ),
+  SENTRY_SENTINEL_MINIMUM_RAW: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[0-9]+$/)
+      .optional(),
+  ),
+  TOKEN_ENTITLEMENT_CACHE_SECONDS: z.coerce.number().int().positive().default(60),
+  TOKEN_ENTITLEMENT_MINIMUM_HOLDING_SECONDS: z.coerce.number().int().nonnegative().default(86_400),
   TREASURY_SAFE_ADDRESS: ethereumAddressSchema.optional(),
 });
 
@@ -160,6 +217,7 @@ const observabilitySchema = z.object({
 const baseSchema = applicationSchema
   .merge(databaseSchema)
   .merge(chainSchema)
+  .merge(providersSchema)
   .merge(authSchema)
   .merge(storageSchema)
   .merge(notificationsSchema)
@@ -169,6 +227,14 @@ const baseSchema = applicationSchema
 
 export const envSchema = baseSchema.superRefine((data, ctx) => {
   const isProduction = data.NODE_ENV === 'production';
+
+  if (!data.ROBINHOOD_RPC_PRIMARY && !data.ALCHEMY_API_KEY) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['ALCHEMY_API_KEY'],
+      message: 'Set ALCHEMY_API_KEY or ROBINHOOD_RPC_PRIMARY',
+    });
+  }
 
   const sessionSecretError = validateSecret(data.SESSION_SECRET, isProduction);
   if (sessionSecretError) {
@@ -190,6 +256,51 @@ export const envSchema = baseSchema.superRefine((data, ctx) => {
     }
   }
 
+  if (data.TOKEN_GATE_ENABLED) {
+    const required = [
+      'SENTRY_TOKEN_ADDRESS',
+      'SENTRY_TOKEN_RUNTIME_BYTECODE_HASH',
+      'SENTRY_TOKEN_VERIFICATION_SOURCE_URL',
+      'SENTRY_TOKEN_VERIFIED_AT',
+      'SENTRY_SCOUT_MINIMUM_RAW',
+      'SENTRY_ANALYST_MINIMUM_RAW',
+      'SENTRY_SENTINEL_MINIMUM_RAW',
+    ] as const;
+    for (const key of required) {
+      if (data[key] === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required when TOKEN_GATE_ENABLED is true`,
+        });
+      }
+    }
+    if (
+      data.SENTRY_SCOUT_MINIMUM_RAW !== undefined &&
+      data.SENTRY_ANALYST_MINIMUM_RAW !== undefined &&
+      data.SENTRY_SENTINEL_MINIMUM_RAW !== undefined
+    ) {
+      const scout = BigInt(data.SENTRY_SCOUT_MINIMUM_RAW);
+      const analyst = BigInt(data.SENTRY_ANALYST_MINIMUM_RAW);
+      const sentinel = BigInt(data.SENTRY_SENTINEL_MINIMUM_RAW);
+      if (scout <= 0n || analyst <= scout || sentinel <= analyst) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SENTRY_SCOUT_MINIMUM_RAW'],
+          message: 'SENTRY tier thresholds must be positive and strictly increasing',
+        });
+      }
+    }
+  }
+
+  if (data.AI_EXPLANATIONS_ENABLED && data.AI_PROVIDER_API_KEY === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['AI_PROVIDER_API_KEY'],
+      message: 'AI_PROVIDER_API_KEY is required when AI_EXPLANATIONS_ENABLED is true',
+    });
+  }
+
   if (isProduction) {
     if (isLocalDatabaseUrl(data.DATABASE_URL)) {
       ctx.addIssue({
@@ -199,7 +310,11 @@ export const envSchema = baseSchema.superRefine((data, ctx) => {
       });
     }
 
-    if (isPublicRpc(data.ROBINHOOD_RPC_PRIMARY) && !data.ROBINHOOD_RPC_SECONDARY) {
+    if (
+      data.ROBINHOOD_RPC_PRIMARY &&
+      isPublicRpc(data.ROBINHOOD_RPC_PRIMARY) &&
+      !data.ROBINHOOD_RPC_SECONDARY
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['ROBINHOOD_RPC_PRIMARY'],
@@ -214,6 +329,16 @@ export type Env = z.infer<typeof envSchema>;
 
 const SECRET_KEYS = new Set([
   'SESSION_SECRET',
+  'ALCHEMY_API_KEY',
+  'BLOCKSCOUT_API_KEY',
+  'MARKET_DATA_API_KEY',
+  'PORTFOLIO_DATA_API_KEY',
+  'SECURITY_FEED_API_KEY',
+  'AI_PROVIDER_API_KEY',
+  'ROBINHOOD_RPC_PRIMARY',
+  'ROBINHOOD_RPC_SECONDARY',
+  'ROBINHOOD_WS_PRIMARY',
+  'ROBINHOOD_WS_SECONDARY',
   'OBJECT_STORAGE_ACCESS_KEY_ID',
   'OBJECT_STORAGE_SECRET_ACCESS_KEY',
   'TELEGRAM_BOT_TOKEN',

@@ -16,8 +16,10 @@ export const healthResponseSchema = z.object({
   checks: z
     .record(
       z.object({
-        status: z.string(),
-        latencyMs: z.number().optional(),
+        status: z.enum(['ok', 'error']),
+        latencyMs: z.number(),
+        code: z.string().optional(),
+        details: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
       }),
     )
     .optional(),

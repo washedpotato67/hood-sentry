@@ -12,9 +12,11 @@ import type {
   ProtocolKind,
   ProtocolValidationResult,
 } from '@hood-sentry/chain';
-import { and, desc, eq, gte, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
 import { getAddress, isHash } from 'viem';
+import type { Hash } from 'viem';
 import type { Database } from '../../client.js';
+import { blocks } from '../../schema/chain-facts.js';
 import {
   dexProtocols,
   launchpadCreatorFeeEvents,
@@ -23,6 +25,8 @@ import {
   launchpadTokens,
   launchpadTrades,
   liquidityEvents,
+  liquidityLockEvidence,
+  poolStateSnapshots,
   poolTokens,
   pools,
   protocolContractVerifications,
@@ -252,11 +256,115 @@ export class ProtocolRepository implements IProtocolRepository {
     poolAddress: string,
     state: NormalizedPoolState,
     blockNumber: bigint,
+    blockHash: Hash,
   ): Promise<void> {
-    await this.db
-      .update(pools)
-      .set({ state: stateRecord(state), state_block_number: blockNumber, updated_at: new Date() })
-      .where(and(eq(pools.chain_id, chainId), eq(pools.address, poolAddress.toLowerCase())));
+    const address = poolAddress.toLowerCase();
+    await this.db.transaction(async (tx) => {
+      const [poolRows, blockRows] = await Promise.all([
+        tx
+          .select({
+            protocolKey: pools.protocol_key,
+            protocolVersion: pools.protocol_version,
+            token0: pools.token0_address,
+            token1: pools.token1_address,
+          })
+          .from(pools)
+          .where(and(eq(pools.chain_id, chainId), eq(pools.address, address)))
+          .limit(1),
+        tx
+          .select({ hash: blocks.hash })
+          .from(blocks)
+          .where(
+            and(
+              eq(blocks.chainId, BigInt(chainId)),
+              eq(blocks.number, blockNumber),
+              eq(blocks.hash, blockHash),
+              eq(blocks.canonical, true),
+            ),
+          )
+          .limit(1),
+      ]);
+      const pool = poolRows[0];
+      if (pool === undefined) throw new Error(`Pool ${poolAddress} is not indexed`);
+      const canonical = blockRows.length === 1;
+      const record = stateRecord(state);
+      const constantProduct = state.poolType === 'constantProduct' ? state : null;
+
+      await tx
+        .insert(poolStateSnapshots)
+        .values({
+          chain_id: chainId,
+          pool_address: address,
+          protocol_key: pool.protocolKey,
+          protocol_version: pool.protocolVersion,
+          pool_type: state.poolType,
+          source_block_number: blockNumber,
+          source_block_hash: blockHash,
+          reserve0_raw: constantProduct?.reserve0Raw.toString(),
+          reserve1_raw: constantProduct?.reserve1Raw.toString(),
+          lp_total_supply_raw: constantProduct?.lpTotalSupplyRaw.toString(),
+          state: record,
+          canonical,
+        })
+        .onConflictDoUpdate({
+          target: [
+            poolStateSnapshots.chain_id,
+            poolStateSnapshots.pool_address,
+            poolStateSnapshots.source_block_hash,
+          ],
+          set: {
+            state: record,
+            reserve0_raw: constantProduct?.reserve0Raw.toString(),
+            reserve1_raw: constantProduct?.reserve1Raw.toString(),
+            lp_total_supply_raw: constantProduct?.lpTotalSupplyRaw.toString(),
+            canonical,
+            observed_at: new Date(),
+            updated_at: new Date(),
+          },
+        });
+
+      if (!canonical) return;
+      const updated = await tx
+        .update(pools)
+        .set({
+          state: record,
+          state_block_number: blockNumber,
+          state_block_hash: blockHash,
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            eq(pools.chain_id, chainId),
+            eq(pools.address, address),
+            or(isNull(pools.state_block_number), lte(pools.state_block_number, blockNumber)),
+          ),
+        )
+        .returning({ address: pools.address });
+
+      if (updated.length === 0 || constantProduct === null) return;
+      await Promise.all([
+        tx
+          .update(poolTokens)
+          .set({ reserve_raw: constantProduct.reserve0Raw.toString(), updated_at: new Date() })
+          .where(
+            and(
+              eq(poolTokens.chain_id, chainId),
+              eq(poolTokens.pool_address, address),
+              eq(poolTokens.token_address, pool.token0),
+            ),
+          ),
+        tx
+          .update(poolTokens)
+          .set({ reserve_raw: constantProduct.reserve1Raw.toString(), updated_at: new Date() })
+          .where(
+            and(
+              eq(poolTokens.chain_id, chainId),
+              eq(poolTokens.pool_address, address),
+              eq(poolTokens.token_address, pool.token1),
+            ),
+          ),
+      ]);
+    });
   }
 
   async insertSwap(swap: NormalizedSwap): Promise<void> {
@@ -520,6 +628,43 @@ export class ProtocolRepository implements IProtocolRepository {
         );
     }
     await this.db
+      .update(poolStateSnapshots)
+      .set({ canonical: false, updated_at: new Date() })
+      .where(
+        and(
+          eq(poolStateSnapshots.chain_id, chainId),
+          gte(poolStateSnapshots.source_block_number, fromBlock),
+          lte(poolStateSnapshots.source_block_number, toBlock),
+          eq(poolStateSnapshots.canonical, true),
+        ),
+      );
+    await this.db
+      .update(liquidityLockEvidence)
+      .set({ canonical: false, updated_at: new Date() })
+      .where(
+        and(
+          eq(liquidityLockEvidence.chain_id, chainId),
+          gte(liquidityLockEvidence.source_block_number, fromBlock),
+          lte(liquidityLockEvidence.source_block_number, toBlock),
+          eq(liquidityLockEvidence.canonical, true),
+        ),
+      );
+    await this.db
+      .update(pools)
+      .set({
+        state: null,
+        state_block_number: null,
+        state_block_hash: null,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          eq(pools.chain_id, chainId),
+          gte(pools.state_block_number, fromBlock),
+          lte(pools.state_block_number, toBlock),
+        ),
+      );
+    await this.db
       .update(pools)
       .set({ canonical: false, active: false, updated_at: new Date() })
       .where(
@@ -578,18 +723,64 @@ export class ProtocolRepository implements IProtocolRepository {
     }));
   }
 
-  async getPoolsByToken(chainId: number, tokenAddress: string): Promise<readonly NormalizedPool[]> {
-    const address = tokenAddress.toLowerCase();
+  async getPool(
+    chainId: number,
+    poolAddress: string,
+    atBlock?: bigint,
+  ): Promise<NormalizedPool | null> {
+    const conditions = [
+      eq(pools.chain_id, chainId),
+      eq(pools.address, poolAddress.toLowerCase()),
+      eq(pools.canonical, true),
+    ];
+    if (atBlock !== undefined) conditions.push(lte(pools.created_block, atBlock));
     const rows = await this.db
       .select()
       .from(pools)
-      .where(
-        and(
-          eq(pools.chain_id, chainId),
-          eq(pools.canonical, true),
-          or(eq(pools.token0_address, address), eq(pools.token1_address, address)),
-        ),
-      );
+      .where(and(...conditions))
+      .limit(1);
+    const row = rows[0];
+    return row === undefined
+      ? null
+      : {
+          chainId: row.chain_id,
+          protocolKey: row.protocol_key,
+          protocolVersion: row.protocol_version,
+          poolAddress: getAddress(row.address),
+          factoryAddress: getAddress(row.factory_address),
+          token0Address: getAddress(row.token0_address),
+          token1Address: getAddress(row.token1_address),
+          feeTier: row.fee_tier === null ? undefined : BigInt(row.fee_tier),
+          tickSpacing: row.tick_spacing ?? undefined,
+          poolType: this.poolType(row.pool_type),
+          createdBlockNumber: row.created_block,
+          createdBlockHash: parseHash(row.created_block_hash),
+          creationTransactionHash: parseHash(row.created_tx_hash),
+          creationLogIndex: row.creation_log_index,
+          canonical: row.canonical,
+        };
+  }
+
+  async getPoolsByToken(
+    chainId: number,
+    tokenAddress: string,
+    atBlock?: bigint,
+  ): Promise<readonly NormalizedPool[]> {
+    const address = tokenAddress.toLowerCase();
+    const tokenCondition = or(eq(pools.token0_address, address), eq(pools.token1_address, address));
+    if (tokenCondition === undefined) throw new Error('Pool token condition is empty');
+    const conditions = [
+      eq(pools.chain_id, chainId),
+      eq(pools.canonical, true),
+      eq(pools.active, true),
+      tokenCondition,
+    ];
+    if (atBlock !== undefined) conditions.push(lte(pools.created_block, atBlock));
+    const rows = await this.db
+      .select()
+      .from(pools)
+      .where(and(...conditions))
+      .orderBy(pools.address);
     return rows.map((row) => ({
       chainId: row.chain_id,
       protocolKey: row.protocol_key,
@@ -669,17 +860,18 @@ export class ProtocolRepository implements IProtocolRepository {
   async getLiquidityHistory(
     chainId: number,
     poolAddress: string,
+    atBlock?: bigint,
   ): Promise<readonly NormalizedLiquidityEvent[]> {
+    const conditions = [
+      eq(liquidityEvents.chain_id, chainId),
+      eq(liquidityEvents.pool_address, poolAddress.toLowerCase()),
+      eq(liquidityEvents.canonical, true),
+    ];
+    if (atBlock !== undefined) conditions.push(lte(liquidityEvents.block_number, atBlock));
     const rows = await this.db
       .select()
       .from(liquidityEvents)
-      .where(
-        and(
-          eq(liquidityEvents.chain_id, chainId),
-          eq(liquidityEvents.pool_address, poolAddress.toLowerCase()),
-          eq(liquidityEvents.canonical, true),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(desc(liquidityEvents.block_number), desc(liquidityEvents.log_index));
     return rows.map((row) => ({
       chainId: row.chain_id,
@@ -780,17 +972,21 @@ export class ProtocolRepository implements IProtocolRepository {
         };
   }
 
-  async getMigration(chainId: number, tokenAddress: string): Promise<LaunchpadMigration | null> {
+  async getMigration(
+    chainId: number,
+    tokenAddress: string,
+    atBlock?: bigint,
+  ): Promise<LaunchpadMigration | null> {
+    const conditions = [
+      eq(launchpadMigrations.chain_id, chainId),
+      eq(launchpadMigrations.token_address, tokenAddress.toLowerCase()),
+      eq(launchpadMigrations.canonical, true),
+    ];
+    if (atBlock !== undefined) conditions.push(lte(launchpadMigrations.block_number, atBlock));
     const rows = await this.db
       .select()
       .from(launchpadMigrations)
-      .where(
-        and(
-          eq(launchpadMigrations.chain_id, chainId),
-          eq(launchpadMigrations.token_address, tokenAddress.toLowerCase()),
-          eq(launchpadMigrations.canonical, true),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(desc(launchpadMigrations.block_number))
       .limit(1);
     const row = rows[0];

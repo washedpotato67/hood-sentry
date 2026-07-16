@@ -202,6 +202,23 @@ describe('protocol worker jobs', () => {
     let persistedBlock = 0n;
     const manager = new ProtocolAdapterManager([new FixtureDexAdapter()]);
     const job = new PoolRefreshJob(manager, {
+      async getPool() {
+        return {
+          chainId: 4663,
+          protocolKey: 'fixture-dex',
+          protocolVersion: 'v1',
+          poolAddress: POOL,
+          factoryAddress: FACTORY,
+          token0Address: TOKEN0,
+          token1Address: TOKEN1,
+          poolType: 'constantProduct',
+          createdBlockNumber: 100n,
+          createdBlockHash: HASH,
+          creationTransactionHash: HASH,
+          creationLogIndex: 0,
+          canonical: true,
+        };
+      },
       async updatePoolState(_chainId, _poolAddress, _state, blockNumber) {
         persistedBlock = blockNumber;
       },
@@ -213,6 +230,7 @@ describe('protocol worker jobs', () => {
       protocolVersion: 'v1',
       poolAddress: POOL,
       blockNumber: 101n,
+      blockHash: HASH,
     });
 
     expect(result.state).toMatchObject({ reserve0Raw: 1_000n, reserve1Raw: 2_000n });

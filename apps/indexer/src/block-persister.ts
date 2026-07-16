@@ -113,9 +113,13 @@ export class BlockPersister {
     blockHash: Hash,
     canonical: boolean,
   ): Promise<void> {
+    if (transaction.transactionIndex === null) {
+      throw new Error('Mined transaction is missing its transaction index');
+    }
     const txData: PersistedTransaction = {
       chainId: this.config.chainId,
       hash: transaction.hash,
+      transactionIndex: transaction.transactionIndex,
       blockNumber,
       blockHash,
       fromAddress: transaction.from,
@@ -135,6 +139,7 @@ export class BlockPersister {
       .values({
         chainId: txData.chainId,
         hash: txData.hash,
+        transactionIndex: txData.transactionIndex,
         blockNumber: txData.blockNumber,
         blockHash: txData.blockHash,
         fromAddress: txData.fromAddress,
@@ -213,13 +218,14 @@ export class BlockPersister {
     blockHash: Hash,
     canonical: boolean,
   ): Promise<void> {
-    if (log.transactionHash === null || log.logIndex === null) {
-      throw new Error('Log is missing required transaction hash or log index');
+    if (log.transactionHash === null || log.transactionIndex === null || log.logIndex === null) {
+      throw new Error('Log is missing required transaction provenance');
     }
 
     const logData: PersistedLog = {
       chainId: this.config.chainId,
       transactionHash: log.transactionHash,
+      transactionIndex: log.transactionIndex,
       logIndex: log.logIndex,
       blockHash,
       blockNumber,
@@ -238,6 +244,7 @@ export class BlockPersister {
       .values({
         chainId: logData.chainId,
         transactionHash: logData.transactionHash,
+        transactionIndex: logData.transactionIndex,
         logIndex: logData.logIndex,
         blockHash: logData.blockHash,
         blockNumber: logData.blockNumber,
