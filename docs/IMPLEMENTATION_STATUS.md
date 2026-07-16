@@ -8,8 +8,9 @@ privilege analysis, fork simulation, pinned liquidity context, package decomposi
 database bring-up
 
 Launch audit status: local gates pass, including the full integration suite against live
-PostgreSQL and Redis. E2E remains unverified. All write, launchpad, token-gating, sponsorship, and
-notification paths remain disabled, and aggregate risk scoring is now gated off as well.
+PostgreSQL and Redis and the browser E2E suite against the standalone server production ships. All
+write, launchpad, token-gating, sponsorship, and notification paths remain disabled, and aggregate
+risk scoring is now gated off as well.
 
 Release readiness: Not ready for production. A read-only launch is viable; see "Read-only launch
 surface".
@@ -38,6 +39,24 @@ surface".
   unavailable, so the mismatch survived the refactor unseen.
 - Ran the full integration suite against live PostgreSQL 16 and Redis 7: 21/21 tasks, 127 tests
   (worker 73, indexer 23, db 16, queue 9, api 6), all 28 migrations applied to a clean database.
+- E2E now runs the server production ships. `next.config.ts` sets `output: 'standalone'` and
+  `Dockerfile.web` runs `node apps/web/server.js`, but the suite started `next start`, which Next
+  warns is unsupported under that output. The test asserting that pages "render through the
+  production Next.js routes" was therefore exercising a server no deployment runs. `pretest` now
+  assembles the bundle exactly as the Dockerfile does, via `scripts/stage-standalone.mjs`. That
+  step is load-bearing: without it `/_next/static/*` returns 404, so CI would have served a bundle
+  with no JavaScript or CSS. Keep the script in step with `Dockerfile.web`.
+- Browser E2E passes: 2/2 from a clean tree (`.next` removed, rebuilt, staged, served). This is
+  the first evidence that the public read-only pages render, including the degradation path with
+  the API pointed at a dead port.
+- Removed `@hood-sentry/e2e` from the `pnpm test` sweep. `turbo run test` launched Playwright
+  inside the unit-test task, which needs a browser binary. CI was already wrong here: the `Test`
+  job runs `pnpm test` and never installs one, while the separate `Browser E2E` job does, so e2e
+  ran twice per CI run and could not pass in the first. `pnpm test` is unit-only; `pnpm test:e2e`
+  is a required command in AGENTS.md and remains the gate for the public pages.
+- Added `pnpm --filter @hood-sentry/e2e test:local`, which drives an installed Google Chrome for
+  machines where `playwright install chromium` cannot complete. It is an escape hatch, never the
+  gate: CI's pinned Chromium is reproducible, whatever Chrome a laptop carries is not.
 
 ## Read-only launch surface
 
