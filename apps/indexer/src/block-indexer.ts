@@ -3,6 +3,7 @@ import type { Logger } from '@hood-sentry/observability';
 import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
 import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
+import type { ChainlinkJobProducer } from './chainlink-job-producer.js';
 import type { CheckpointManager } from './checkpoint-manager.js';
 import type { GapScanner } from './gap-scanner.js';
 import type { ProtocolEventsHandler } from './handlers/protocol-events.js';
@@ -53,6 +54,7 @@ export class BlockIndexer {
     private readonly logger: Logger,
     private readonly protocolEventsHandler?: ProtocolEventsHandler,
     private readonly jobPublisher?: DerivedJobPublisher,
+    private readonly chainlinkJobProducer?: ChainlinkJobProducer,
   ) {
     this.drizzle = database.db;
     this.tokenDiscoveryHandler = new TokenDiscoveryHandler(this.config, this.logger);
@@ -502,6 +504,8 @@ export class BlockIndexer {
     for (const job of discoveryJobs) {
       await this.publishJob(job);
     }
+
+    await this.chainlinkJobProducer?.publishJobsForBlock(block.number, block.hash);
   }
 
   private async publishJob(job: DerivedJob): Promise<void> {

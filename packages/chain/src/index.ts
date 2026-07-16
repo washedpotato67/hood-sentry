@@ -131,3 +131,5 @@ export {
 
 export * from './blockscout/index.js';
 export * from './protocol-adapters/index.js';
+export * from './oracle/index.js';
+export { aggregatorV3InterfaceAbi, sequencerUptimeFeedAbi } from './abis/chainlink.js';

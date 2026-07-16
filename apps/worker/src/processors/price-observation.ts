@@ -3,10 +3,58 @@ import { poolEvidence } from '@hood-sentry/market-engine';
 import type { DerivedJobPayload } from '@hood-sentry/queue';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { NewPriceObservationJob } from '../jobs/price-observation.js';
+import {
+  buildChainlinkObservation,
+  loadVerifiedChainlinkPricingContext,
+} from './chainlink-pricing.js';
 import type { ProcessorContext } from './types.js';
 import { loadVerifiedPoolPricingContext } from './verified-pool-pricing.js';
 
+function isChainlinkPayload(data: unknown): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'sourceKey' in data &&
+    typeof data.sourceKey === 'string'
+  );
+}
+
 export async function processPriceObservation(
+  payload: DerivedJobPayload,
+  context: ProcessorContext,
+): Promise<void> {
+  if (isChainlinkPayload(payload.data)) {
+    await processChainlinkPriceObservation(payload, context);
+    return;
+  }
+  await processPoolPriceObservation(payload, context);
+}
+
+async function processChainlinkPriceObservation(
+  payload: DerivedJobPayload,
+  context: ProcessorContext,
+): Promise<void> {
+  const loaded = await loadVerifiedChainlinkPricingContext(context.database, payload);
+  if (loaded === null) {
+    context.logger.warn('Skipping chainlink price observation: source config not found', {
+      chainId: payload.chainId,
+      blockNumber: payload.blockNumber,
+    });
+    return;
+  }
+  if (context.oracleClient === undefined) {
+    throw new Error('OracleClient is required for chainlink price observations');
+  }
+  const repository = new DrizzlePricingRepository(context.database.db);
+  const observation = await buildChainlinkObservation(
+    loaded,
+    context.oracleClient,
+    context.database,
+  );
+  await repository.saveObservation(observation);
+}
+
+async function processPoolPriceObservation(
   payload: DerivedJobPayload,
   context: ProcessorContext,
 ): Promise<void> {

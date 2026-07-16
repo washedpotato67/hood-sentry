@@ -15,6 +15,11 @@ export interface PricingRepository {
     tokenAddress: string,
     quoteAssetAddress: string,
   ): Promise<PriceObservation | null>;
+  findLatestOracleStatus(
+    chainId: number,
+    tokenAddress: string,
+    quoteAssetAddress: string,
+  ): Promise<PriceObservation | null>;
   getPriceHistory(
     chainId: number,
     tokenAddress: string,

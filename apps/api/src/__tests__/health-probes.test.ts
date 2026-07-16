@@ -1,7 +1,11 @@
+import type { OracleClient } from '@hood-sentry/chain';
+import type { PricingRepository } from '@hood-sentry/db';
+import type { PriceSourceConfig } from '@hood-sentry/market-engine';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
   createBlockscoutHealthProbe,
+  createOracleHealthProbe,
   createRpcHealthProbe,
   createRpcProviderProbe,
 } from '../health-probes.js';
@@ -163,5 +167,187 @@ describe('provider health probes', () => {
     expect(requestedUrl).toContain('apikey=health-secret');
     expect(result).toMatchObject({ status: 'ok', details: { authenticated: true } });
     expect(JSON.stringify(result)).not.toContain('health-secret');
+  });
+});
+
+function chainlinkConfig(overrides: Partial<PriceSourceConfig> = {}): PriceSourceConfig {
+  return {
+    sourceKey: 'chainlink-fixture',
+    sourceType: 'chainlink',
+    assetClass: 'erc20',
+    chainId: 4663,
+    sourceContractAddress: '0x1000000000000000000000000000000000000001',
+    sourceAssetAddress: '0x3000000000000000000000000000000000000001',
+    quoteAssetAddress: '0x3000000000000000000000000000000000000002',
+    verificationSourceUrl: 'https://docs.chain.link/',
+    verifiedAt: '2026-07-14T00:00:00.000Z',
+    minimumLiquidityRaw: 0n,
+    liquidityDecimals: 0,
+    maximumStalenessSeconds: 3600,
+    enabled: true,
+    priority: 1,
+    confidenceRules: {
+      baseConfidenceBps: 9_000n,
+      thinLiquidityPenaltyBps: 0n,
+      stalePenaltyBps: 0n,
+      disagreementThresholdBps: 0n,
+      disagreementPenaltyBps: 0n,
+      maximumPriceImpactBps: 0n,
+      maximumSingleTransactionVolumeBps: 0n,
+      maximumPriceJumpBps: 0n,
+      stablecoinDepegThresholdBps: 0n,
+      minimumAuthoritativeConfidenceBps: 7_000n,
+    },
+    route: [],
+    methodologyVersion: 'chainlink-v1',
+    oracleHeartbeatSeconds: 60,
+    ...overrides,
+  };
+}
+
+function fakeOracleClient(state: {
+  answer?: bigint;
+  updatedAt?: string;
+  sequencerUp?: boolean;
+  recoveredAt?: bigint;
+  throwPrice?: boolean;
+  throwSequencer?: boolean;
+}): OracleClient {
+  return {
+    readPriceFeed: async () => {
+      if (state.throwPrice === true) throw new Error('price feed unavailable');
+      return {
+        answer: state.answer ?? 123_456_789n,
+        decimals: 8,
+        roundId: 100n,
+        answeredInRound: 100n,
+        updatedAt: state.updatedAt ?? new Date().toISOString(),
+      };
+    },
+    readSequencerFeed: async () => {
+      if (state.throwSequencer === true) throw new Error('sequencer feed unavailable');
+      return {
+        up: state.sequencerUp ?? true,
+        recoveredAt: state.recoveredAt,
+      };
+    },
+  } as unknown as OracleClient;
+}
+
+function fakePricingRepository(configs: readonly PriceSourceConfig[]): PricingRepository {
+  return {
+    listSourceConfigs: async () => configs,
+  } as unknown as PricingRepository;
+}
+
+describe('oracle health probe', () => {
+  it('reports healthy when the highest-priority feed is fresh and the sequencer is up', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([chainlinkConfig()]),
+      oracleClient: fakeOracleClient({}),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result.status).toBe('ok');
+    expect(result.code).toBeUndefined();
+    expect(result.details).toMatchObject({ sourceKey: 'chainlink-fixture', answer: '123456789' });
+  });
+
+  it('reports not configured when no Chainlink sources are enabled', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([]),
+      oracleClient: fakeOracleClient({}),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({ status: 'ok', code: 'ORACLE_NOT_CONFIGURED' });
+  });
+
+  it('fails when the feed answer is zero or negative', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([chainlinkConfig()]),
+      oracleClient: fakeOracleClient({ answer: 0n }),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({
+      status: 'error',
+      code: 'ORACLE_ANSWER_INVALID',
+      details: { sourceKey: 'chainlink-fixture', answer: '0' },
+    });
+  });
+
+  it('fails when the feed update is older than the heartbeat', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([chainlinkConfig()]),
+      oracleClient: fakeOracleClient({ updatedAt: '2026-07-14T12:00:00.000Z' }),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({
+      status: 'error',
+      code: 'ORACLE_STALE',
+      details: { sourceKey: 'chainlink-fixture', heartbeatSeconds: 60 },
+    });
+  });
+
+  it('fails when the sequencer is down', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([
+        chainlinkConfig({ sequencerFeedAddress: '0x2000000000000000000000000000000000000002' }),
+      ]),
+      oracleClient: fakeOracleClient({ sequencerUp: false }),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({
+      status: 'error',
+      code: 'SEQUENCER_DOWN',
+      details: { sourceKey: 'chainlink-fixture' },
+    });
+  });
+
+  it('fails during the sequencer grace period after recovery', async () => {
+    const recentRecovery = BigInt(Math.floor(Date.now() / 1000) - 10);
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([
+        chainlinkConfig({ sequencerFeedAddress: '0x2000000000000000000000000000000000000002' }),
+      ]),
+      oracleClient: fakeOracleClient({ recoveredAt: recentRecovery }),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({
+      status: 'error',
+      code: 'SEQUENCER_GRACE_PERIOD',
+      details: { sourceKey: 'chainlink-fixture' },
+    });
+  });
+
+  it('fails when the feed is unreachable', async () => {
+    const probe = createOracleHealthProbe({
+      repository: fakePricingRepository([chainlinkConfig()]),
+      oracleClient: fakeOracleClient({ throwPrice: true }),
+      chainId: 4663,
+    });
+
+    const result = await probe();
+
+    expect(result).toMatchObject({
+      status: 'error',
+      code: 'ORACLE_UNAVAILABLE',
+    });
   });
 });

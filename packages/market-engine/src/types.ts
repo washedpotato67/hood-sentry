@@ -54,6 +54,16 @@ export interface PriceSourceConfig {
   confidenceRules: ConfidenceRules;
   route: readonly PriceRouteStep[];
   methodologyVersion: string;
+  /**
+   * Official Chainlink feed heartbeat in seconds. Required for Chainlink sources so
+   * the engine can distinguish stale answers from fresh ones.
+   */
+  oracleHeartbeatSeconds?: number;
+  /**
+   * Optional Chainlink sequencer uptime feed address. When provided, the engine checks
+   * sequencer status before trusting the price answer.
+   */
+  sequencerFeedAddress?: Address | null;
 }
 
 export interface PriceEvidence {
@@ -87,6 +97,12 @@ export interface PriceObservation extends PriceEvidence {
   status: PriceStatus;
   authoritative: boolean;
   methodologyVersion: string;
+  /** Oracle round metadata, populated for Chainlink sources. */
+  roundId?: bigint;
+  answeredInRound?: bigint;
+  oraclePaused?: boolean;
+  sequencerUp?: boolean;
+  sequencerRecoveredAt?: bigint;
 }
 
 export interface PoolPriceInput {

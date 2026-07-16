@@ -1,4 +1,10 @@
-import { type Database, checkHealth } from '@hood-sentry/db';
+import type { OracleClient } from '@hood-sentry/chain';
+import {
+  type Database,
+  DrizzlePricingRepository,
+  type PricingRepository,
+  checkHealth,
+} from '@hood-sentry/db';
 import { ProviderHttpClient } from '@hood-sentry/providers';
 import { createQueueConnection } from '@hood-sentry/queue';
 import { z } from 'zod';
@@ -246,6 +252,97 @@ export function createBlockscoutHealthProbe(options: {
   };
 }
 
+export function createOracleHealthProbe(options: {
+  repository: PricingRepository;
+  oracleClient: OracleClient;
+  chainId: number;
+  gracePeriodSeconds?: number;
+}): DependencyProbe {
+  return async () => {
+    const startedAt = Date.now();
+    try {
+      const configs = await options.repository.listSourceConfigs(options.chainId);
+      const enabledChainlink = configs
+        .filter(
+          (
+            config,
+          ): config is typeof config & {
+            oracleHeartbeatSeconds: number;
+            sourceContractAddress: NonNullable<typeof config.sourceContractAddress>;
+          } =>
+            config.enabled &&
+            config.sourceType === 'chainlink' &&
+            config.sourceContractAddress !== null &&
+            config.oracleHeartbeatSeconds !== undefined,
+        )
+        .sort((left, right) => left.priority - right.priority);
+
+      const source = enabledChainlink[0];
+      if (source === undefined) {
+        return {
+          status: 'ok',
+          latencyMs: Date.now() - startedAt,
+          code: 'ORACLE_NOT_CONFIGURED',
+        };
+      }
+
+      const heartbeatSeconds = source.oracleHeartbeatSeconds;
+      const price = await options.oracleClient.readPriceFeed(source.sourceContractAddress);
+      if (price.answer <= 0n) {
+        return {
+          ...failed(startedAt, 'ORACLE_ANSWER_INVALID'),
+          details: { sourceKey: source.sourceKey, answer: price.answer.toString() },
+        };
+      }
+
+      const updatedAtSeconds = Math.floor(Date.parse(price.updatedAt) / 1000);
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      if (nowSeconds - updatedAtSeconds > heartbeatSeconds) {
+        return {
+          ...failed(startedAt, 'ORACLE_STALE'),
+          details: {
+            sourceKey: source.sourceKey,
+            heartbeatSeconds,
+            updatedAt: price.updatedAt,
+          },
+        };
+      }
+
+      if (source.sequencerFeedAddress !== undefined && source.sequencerFeedAddress !== null) {
+        const sequencer = await options.oracleClient.readSequencerFeed(source.sequencerFeedAddress);
+        if (!sequencer.up) {
+          return {
+            ...failed(startedAt, 'SEQUENCER_DOWN'),
+            details: { sourceKey: source.sourceKey, sequencerFeed: source.sequencerFeedAddress },
+          };
+        }
+        const grace = options.gracePeriodSeconds ?? heartbeatSeconds;
+        if (
+          sequencer.recoveredAt !== undefined &&
+          nowSeconds - Number(sequencer.recoveredAt) < grace
+        ) {
+          return {
+            ...failed(startedAt, 'SEQUENCER_GRACE_PERIOD'),
+            details: {
+              sourceKey: source.sourceKey,
+              recoveredAt: new Date(Number(sequencer.recoveredAt) * 1000).toISOString(),
+              gracePeriodSeconds: grace,
+            },
+          };
+        }
+      }
+
+      return {
+        status: 'ok',
+        latencyMs: Date.now() - startedAt,
+        details: { sourceKey: source.sourceKey, answer: price.answer.toString() },
+      };
+    } catch {
+      return failed(startedAt, 'ORACLE_UNAVAILABLE');
+    }
+  };
+}
+
 export function createHealthProbes(input: {
   database: Database;
   redisUrl: string;
@@ -255,6 +352,7 @@ export function createHealthProbes(input: {
   rpcProviderId?: string;
   blockscoutApiBaseUrl?: string;
   blockscoutApiKey?: string;
+  oracleClient?: OracleClient;
   optionalProviderConfiguration?: readonly {
     providerId: string;
     capability: string;
@@ -298,6 +396,19 @@ export function createHealthProbes(input: {
   }
   for (const provider of input.optionalProviderConfiguration ?? []) {
     providers.push({ ...provider, required: false });
+  }
+  if (input.oracleClient !== undefined) {
+    providers.push({
+      providerId: 'chainlink-oracle',
+      capability: 'oracle',
+      required: false,
+      configured: true,
+      probe: createOracleHealthProbe({
+        repository: new DrizzlePricingRepository(input.database.db),
+        oracleClient: input.oracleClient,
+        chainId: input.chainId,
+      }),
+    });
   }
   return {
     database: createDatabaseHealthProbe(input.database),

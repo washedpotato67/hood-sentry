@@ -90,6 +90,14 @@ function mapObservation(row: PriceObservationRow): PriceObservation {
     reasons: reasonsSchema.parse(row.reasons),
     canonical: row.canonical,
     methodologyVersion: row.methodology_version,
+    roundId: row.round_id === null ? undefined : BigInt(row.round_id),
+    answeredInRound: row.answered_in_round === null ? undefined : BigInt(row.answered_in_round),
+    oraclePaused: row.oracle_paused,
+    sequencerUp: row.sequencer_up === null ? undefined : row.sequencer_up,
+    sequencerRecoveredAt:
+      row.sequencer_recovered_at === null
+        ? undefined
+        : BigInt(Math.floor(row.sequencer_recovered_at.getTime() / 1000)),
   };
 }
 
@@ -176,6 +184,8 @@ export class DrizzlePricingRepository implements PricingRepository {
         confidence_rules: jsonValue(config.confidenceRules),
         route: jsonValue(config.route),
         methodology_version: config.methodologyVersion,
+        oracle_heartbeat_seconds: config.oracleHeartbeatSeconds ?? null,
+        sequencer_feed_address: config.sequencerFeedAddress ?? null,
         updated_at: new Date(),
       })
       .onConflictDoUpdate({
@@ -186,6 +196,8 @@ export class DrizzlePricingRepository implements PricingRepository {
           confidence_rules: jsonValue(config.confidenceRules),
           route: jsonValue(config.route),
           methodology_version: config.methodologyVersion,
+          oracle_heartbeat_seconds: config.oracleHeartbeatSeconds ?? null,
+          sequencer_feed_address: config.sequencerFeedAddress ?? null,
           updated_at: new Date(),
         },
       });
@@ -226,6 +238,8 @@ export class DrizzlePricingRepository implements PricingRepository {
         confidenceRules: row.confidence_rules,
         route: row.route,
         methodologyVersion: row.methodology_version,
+        oracleHeartbeatSeconds: row.oracle_heartbeat_seconds ?? undefined,
+        sequencerFeedAddress: row.sequencer_feed_address ?? null,
       }),
     );
   }
@@ -261,6 +275,14 @@ export class DrizzlePricingRepository implements PricingRepository {
         reasons: jsonValue(value.reasons),
         canonical: value.canonical,
         methodology_version: value.methodologyVersion,
+        round_id: value.roundId?.toString() ?? null,
+        answered_in_round: value.answeredInRound?.toString() ?? null,
+        oracle_paused: value.oraclePaused ?? false,
+        sequencer_up: value.sequencerUp ?? null,
+        sequencer_recovered_at:
+          value.sequencerRecoveredAt === undefined
+            ? null
+            : new Date(Number(value.sequencerRecoveredAt) * 1000),
         updated_at: new Date(),
       })
       .onConflictDoUpdate({
@@ -273,6 +295,14 @@ export class DrizzlePricingRepository implements PricingRepository {
           authoritative: value.authoritative,
           reasons: jsonValue(value.reasons),
           canonical: value.canonical,
+          round_id: value.roundId?.toString() ?? null,
+          answered_in_round: value.answeredInRound?.toString() ?? null,
+          oracle_paused: value.oraclePaused ?? false,
+          sequencer_up: value.sequencerUp ?? null,
+          sequencer_recovered_at:
+            value.sequencerRecoveredAt === undefined
+              ? null
+              : new Date(Number(value.sequencerRecoveredAt) * 1000),
           updated_at: new Date(),
         },
       });
@@ -294,6 +324,32 @@ export class DrizzlePricingRepository implements PricingRepository {
             schema.deterministicPriceObservations.quote_asset_address,
             quoteAssetAddress.toLowerCase(),
           ),
+          eq(schema.deterministicPriceObservations.canonical, true),
+        ),
+      )
+      .orderBy(desc(schema.deterministicPriceObservations.observed_at))
+      .limit(1);
+    const row = rows[0];
+    return row === undefined ? null : mapObservation(row);
+  }
+
+  async findLatestOracleStatus(
+    chainId: number,
+    tokenAddress: string,
+    quoteAssetAddress: string,
+  ): Promise<PriceObservation | null> {
+    const rows = await this.db
+      .select()
+      .from(schema.deterministicPriceObservations)
+      .where(
+        and(
+          eq(schema.deterministicPriceObservations.chain_id, chainId),
+          eq(schema.deterministicPriceObservations.token_address, tokenAddress.toLowerCase()),
+          eq(
+            schema.deterministicPriceObservations.quote_asset_address,
+            quoteAssetAddress.toLowerCase(),
+          ),
+          eq(schema.deterministicPriceObservations.source_type, 'chainlink'),
           eq(schema.deterministicPriceObservations.canonical, true),
         ),
       )

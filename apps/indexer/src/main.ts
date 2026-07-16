@@ -25,6 +25,7 @@ import {
   BlockFetcher,
   BlockIndexer,
   BlockPersister,
+  ChainlinkJobProducer,
   CheckpointManager,
   GapScanner,
   ReorgDetector,
@@ -259,6 +260,12 @@ async function main() {
       pricingRepository,
     );
     const gapScanner = new GapScanner(db, config, logger);
+    const chainlinkJobProducer = new ChainlinkJobProducer({
+      chainId: env.ROBINHOOD_CHAIN_ID,
+      repository: pricingRepository,
+      publisher: jobPublisher,
+      logger,
+    });
 
     indexer = new BlockIndexer(
       db,
@@ -271,6 +278,7 @@ async function main() {
       logger,
       protocolEvents.handler,
       jobPublisher,
+      chainlinkJobProducer,
     );
 
     protocolEvents.validation.startPeriodicRevalidation();

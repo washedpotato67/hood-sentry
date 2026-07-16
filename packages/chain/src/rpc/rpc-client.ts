@@ -698,6 +698,10 @@ export class RPCClient {
   getProviderRanking() {
     return this.providerSelector.getProviderRanking();
   }
+
+  getPrimaryProviderUrl(): string {
+    return this.config.primary.url;
+  }
 }
 
 export function calculateSerializedTransactionHash(signedTransaction: Hex): Hash {

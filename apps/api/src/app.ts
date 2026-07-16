@@ -3,6 +3,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import {
   type DexAdapter,
+  OracleClient,
   ProtocolValidationService,
   RPCClient,
   ResilientProtocolClient,
@@ -100,6 +101,44 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     secondaryRpcUrl: rpcProviders.secondary?.url,
     preferManaged: true,
   });
+  const chainDefinition = getChainDefinition(env.ROBINHOOD_CHAIN_ID);
+  const healthRpcClient = new RPCClient(chainDefinition, {
+    chainId: env.ROBINHOOD_CHAIN_ID,
+    primary: {
+      url: rpcProviders.primary.url,
+      type: 'http',
+      role: 'primary',
+      timeout: env.RPC_TIMEOUT_MS,
+    },
+    secondary: rpcProviders.secondary
+      ? {
+          url: rpcProviders.secondary.url,
+          type: 'http',
+          role: 'secondary',
+          timeout: env.RPC_TIMEOUT_MS,
+        }
+      : undefined,
+    healthCheck: {
+      intervalMs: 30_000,
+      timeoutMs: env.RPC_TIMEOUT_MS,
+      maxBlockLag: 100,
+    },
+    circuitBreaker: {
+      failureThreshold: 5,
+      resetTimeoutMs: 30_000,
+      halfOpenMaxRequests: 3,
+    },
+    retry: {
+      maxAttempts: env.RPC_MAX_RETRIES + 1,
+      baseDelayMs: 1_000,
+      maxDelayMs: 10_000,
+      backoffMultiplier: 2,
+    },
+  });
+  const oracleClient = new OracleClient({
+    rpcClient: healthRpcClient,
+    chainId: env.ROBINHOOD_CHAIN_ID,
+  });
   const commentaryProvider =
     env.AI_PROVIDER_API_KEY === undefined
       ? null
@@ -193,7 +232,6 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   );
   let tradingRuntime: TradingRuntime | null = null;
   if (env.TRADING_ENABLED) {
-    const chainDefinition = getChainDefinition(env.ROBINHOOD_CHAIN_ID);
     const rpcClient = new RPCClient(chainDefinition, {
       chainId: env.ROBINHOOD_CHAIN_ID,
       primary: {
@@ -367,6 +405,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
         rpcTimeoutMs: env.RPC_TIMEOUT_MS,
         blockscoutApiBaseUrl: env.BLOCKSCOUT_API_BASE,
         blockscoutApiKey: env.BLOCKSCOUT_API_KEY,
+        oracleClient,
         optionalProviderConfiguration: [
           {
             providerId: 'market-data',
@@ -555,6 +594,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   });
 
   app.addHook('onClose', async () => {
+    await healthRpcClient.disconnect();
     await database.close();
   });
 

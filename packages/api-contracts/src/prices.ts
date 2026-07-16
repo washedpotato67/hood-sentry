@@ -38,3 +38,32 @@ export const priceResponseSchema = z.object({
   warnings: z.array(z.string()),
   methodologyVersion: z.string().nullable(),
 });
+
+export const oracleSourceStatusResponseSchema = z.object({
+  tokenAddress: evmAddressSchema,
+  quoteAssetAddress: evmAddressSchema,
+  sourceKey: z.string().nullable(),
+  sourceType: z
+    .enum([
+      'chainlink',
+      'launchpadBondingCurve',
+      'stablecoinPool',
+      'wethRoute',
+      'directDex',
+      'multihop',
+      'externalProvider',
+      'unavailable',
+    ])
+    .nullable(),
+  sourceContractAddress: evmAddressSchema.nullable(),
+  answerRaw: rawIntegerSchema.nullable(),
+  decimals: z.number().int().nonnegative().nullable(),
+  updatedAt: z.string().datetime().nullable(),
+  heartbeatSeconds: z.number().int().positive().nullable(),
+  sequencerUp: z.boolean().nullable(),
+  oraclePaused: z.boolean().nullable(),
+  roundId: rawIntegerSchema.nullable(),
+  answeredInRound: rawIntegerSchema.nullable(),
+  status: z.enum(['available', 'lowConfidence', 'unavailable']),
+  reasons: z.array(z.string()),
+});

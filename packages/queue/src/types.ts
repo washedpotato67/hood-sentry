@@ -48,9 +48,11 @@ export function derivedJobIdempotencyKey(
   job: Pick<DerivedJobInput, 'type' | 'chainId' | 'blockHash'> & {
     transactionHash?: string;
     logIndex?: number | bigint;
+    sourceKey?: string;
   },
 ): string {
   const tx = job.transactionHash ?? '';
   const logIndex = job.logIndex === undefined ? '' : job.logIndex.toString();
-  return `${job.chainId.toString()}:${job.blockHash}:${tx}:${logIndex}:${job.type}`;
+  const suffix = job.sourceKey === undefined ? '' : `:${job.sourceKey}`;
+  return `${job.chainId.toString()}:${job.blockHash}:${tx}:${logIndex}:${job.type}${suffix}`;
 }

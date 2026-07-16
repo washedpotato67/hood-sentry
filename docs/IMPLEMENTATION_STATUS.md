@@ -17,6 +17,26 @@ surface".
 
 ## Recent changes (2026-07-16)
 
+- Added the Chainlink oracle price pipeline as the deterministic foundation for blocker 9. The chain
+  package gains an `OracleClient` that reads `AggregatorV3Interface` feeds, sequencer uptime, and
+  `paused()` state through the shared RPC client as pinned `eth_call`s. The worker gains a
+  `ChainlinkSourceVerifier` (non-zero code, callable selectors, sequencer feed presence) that gates a
+  source before activation, and a `chainlink-pricing` processor that builds observations and flags
+  `ORACLE_ANSWER_INVALID`, `ORACLE_STALE`, `ORACLE_PAUSED`, `SEQUENCER_DOWN`, and `ABNORMAL_PRICE_JUMP`.
+  The indexer's `ChainlinkJobProducer` emits a `new-price-observation` derived job per enabled feed per
+  block, routed to the processor through the closed `DERIVED_JOB_TYPES` union. Migration 029 records
+  oracle heartbeat, sequencer feed linkage, and observed round/pause/sequencer state. `GET /v1/price`
+  now returns oracle source status, and a live oracle dependency health probe checks freshness and a
+  positive answer without exposing provider URLs.
+- Verified green end to end: format, lint (32 pre-existing complexity warnings), typecheck (46 tasks),
+  unit tests (46 tasks, including oracle-client 6, oracle-evidence 8, chainlink-pricing 4, and
+  chainlink-job-producer 3), the integration suite against live PostgreSQL 16 and Redis 7 (21 tasks,
+  migration 029 applied on a clean database), and build (30 tasks). Browser E2E and Forge were not
+  re-run; this change touches neither the public pages nor the contracts.
+- Blocker 9 stays open: the verification mechanism now exists, but no Chainlink feed, sequencer, or
+  heartbeat has been independently verified for Robinhood Chain, so no oracle source is configured or
+  enabled. Oracle risk *rules* for blocker 4 (market/oracle findings) remain absent; this change
+  delivers oracle-backed pricing verification, not a new risk finding family.
 - Committed the accumulated working tree as `c80365d` (providers, health probes, risk context
   loaders, product routes and screens, notification delivery, deployment templates).
 - Gated aggregate risk scoring behind `RISK_SCORES_ENABLED` (default false). `completeness`
