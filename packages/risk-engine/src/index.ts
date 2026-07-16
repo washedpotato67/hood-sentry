@@ -19,6 +19,7 @@ export * from './liquidity-rules.js';
 export * from './oracle-types.js';
 export * from './oracle-rules.js';
 export * from './market-integrity-types.js';
+export * from './market-integrity-rules.js';
 export * from './relationships.js';
 export * from './deterministic-score.js';
 export * from './solidity-parser.js';
