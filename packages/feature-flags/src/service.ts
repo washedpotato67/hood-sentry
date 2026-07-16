@@ -20,6 +20,7 @@ export class InMemoryFlagStore implements FlagStore {
       'MAINNET_WRITES_ENABLED',
       'PROJECT_CLAIMS_ENABLED',
       'COMMUNITY_REPORTS_ENABLED',
+      'RISK_SCORES_ENABLED',
     ] as const) {
       this.flags.set(name, {
         enabled: initial?.[name] ?? false,

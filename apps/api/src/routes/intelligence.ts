@@ -29,6 +29,7 @@ export type IntelligenceRouteOptions = {
   risk: RiskRepository;
   intelligence: IntelligenceRepository;
   nativeBalance: (address: `0x${string}`) => Promise<bigint>;
+  riskScoresEnabled: boolean;
 };
 
 function target(request: { params: unknown; query: unknown }, defaultChainId: 4663 | 46630) {
@@ -93,8 +94,35 @@ async function riskReport(
   };
 }
 
-function serializeRisk(report: Awaited<ReturnType<typeof riskReport>>): Record<string, unknown> {
+/**
+ * `completeness` measures the rules that ran, not the rules the methodology declares, so a
+ * ruleset covering only part of RISK_CATEGORIES still reports `complete` and grades a token.
+ * Until blocker 4 closes, `riskScoresEnabled` withholds the aggregate. Findings stay: each one
+ * is an evidence-backed fact about a rule that did run, which no missing rule family can falsify.
+ */
+export function serializeRisk(
+  report: Awaited<ReturnType<typeof riskReport>>,
+  riskScoresEnabled: boolean,
+): Record<string, unknown> {
   if (report.status === 'unavailable') return report;
+  if (!riskScoresEnabled) {
+    return {
+      status: report.status,
+      scanId: report.scan.id,
+      targetType: report.scan.targetType,
+      engineVersion: report.scan.engineVersion,
+      rulesetVersion: report.scan.rulesetVersion,
+      methodologyVersion: report.scan.methodologyVersion,
+      sourceBlock: report.scan.sourceBlock.toString(),
+      sourceBlockHash: report.scan.sourceBlockHash,
+      completedAt: report.scan.completedAt?.toISOString() ?? null,
+      score: null,
+      scoreStatus: 'WITHHELD_PENDING_RULE_COVERAGE',
+      findings: report.findings.map(riskFinding),
+      notice:
+        'Risk scoring is not yet published. Individual signals are evidence-based and do not constitute an audit or financial advice.',
+    };
+  }
   return {
     status: report.status,
     scanId: report.scan.id,
@@ -163,7 +191,7 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
         contract:
           contract === null ? null : { verified: contract.verified, isProxy: contract.isProxy },
         poolCount: pools.length,
-        risk: serializeRisk(report),
+        risk: serializeRisk(report, options.riskScoresEnabled),
       },
     };
   });
@@ -221,7 +249,12 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
 
   app.get('/tokens/:address/risk', async (request) => {
     const input = target(request, options.defaultChainId);
-    return { data: serializeRisk(await riskReport(options.risk, input.chainId, input.identity)) };
+    return {
+      data: serializeRisk(
+        await riskReport(options.risk, input.chainId, input.identity),
+        options.riskScoresEnabled,
+      ),
+    };
   });
 
   app.get('/tokens/:address/contract', async (request) => {
@@ -439,7 +472,12 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
 
   app.get('/wallets/:address/risk', async (request) => {
     const input = target(request, options.defaultChainId);
-    return { data: serializeRisk(await riskReport(options.risk, input.chainId, input.identity)) };
+    return {
+      data: serializeRisk(
+        await riskReport(options.risk, input.chainId, input.identity),
+        options.riskScoresEnabled,
+      ),
+    };
   });
 
   app.get('/wallets/:address/labels', async (request) => {

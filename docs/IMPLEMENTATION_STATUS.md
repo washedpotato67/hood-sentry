@@ -1,16 +1,59 @@
 # Hood Sentry Implementation Status
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 Current phase: Foundation, provider integration, indexer hardening, protocol adapters,
 deterministic market data, discovery rankings, risk-engine framework, proxy analysis, source
 privilege analysis, fork simulation, pinned liquidity context, package decomposition, and live
 database bring-up
 
-Launch audit status: local gates pass except production-backed integration and E2E evidence. All
-write, launchpad, token-gating, sponsorship, and notification paths remain disabled.
+Launch audit status: local gates pass, including the full integration suite against live
+PostgreSQL and Redis. E2E remains unverified. All write, launchpad, token-gating, sponsorship, and
+notification paths remain disabled, and aggregate risk scoring is now gated off as well.
 
-Release readiness: Not ready for production
+Release readiness: Not ready for production. A read-only launch is viable; see "Read-only launch
+surface".
+
+## Recent changes (2026-07-16)
+
+- Committed the accumulated working tree as `c80365d` (providers, health probes, risk context
+  loaders, product routes and screens, notification delivery, deployment templates).
+- Gated aggregate risk scoring behind `RISK_SCORES_ENABLED` (default false). `completeness`
+  measures the rules that ran, not the categories `RISK_CATEGORIES` declares, so a ruleset covering
+  2 of 12 categories reported itself `complete` and graded a token `A`. That grade reached users
+  through three surfaces: the token page `Risk grade` stat, `/v1` intelligence responses, and the
+  discovery feed, which both returns `riskGrade` per item and accepts a `riskGrades` filter. While
+  the flag is off the API returns `score: null` with
+  `scoreStatus: 'WITHHELD_PENDING_RULE_COVERAGE'`, the feed strips `riskGrade` and
+  `riskCompletenessBps`, scoring filters return 503, and the token page states why no grade is
+  shown. Per-rule findings still publish: each is evidence about a rule that did run, which a
+  missing rule family cannot falsify. This is blocker 4's requirement enforced in code rather than
+  by convention.
+- Fixed the indexer gap-repair integration test, which asserted the pre-refactor publishing
+  contract. `publishDerivedJobs` no longer emits a generic job per transaction and log; it routes
+  logs through `ProtocolEventsHandler` and publishes typed discovery jobs. The synthetic chain
+  emitted an opaque topic, so no job was recognised and the assertion could never hold. The fixture
+  now emits a well-formed ERC-20 Transfer, which exercises the path production actually runs.
+  The test had been passing vacuously: its body returned early whenever PostgreSQL was
+  unavailable, so the mismatch survived the refactor unseen.
+- Ran the full integration suite against live PostgreSQL 16 and Redis 7: 21/21 tasks, 127 tests
+  (worker 73, indexer 23, db 16, queue 9, api 6), all 28 migrations applied to a clean database.
+
+## Read-only launch surface
+
+Ships: discovery feeds and search (without risk grades), token pages, contract verification state,
+pools, indexed holders and transfers, wallet and portfolio views, USDG pricing, chain status, and
+per-rule risk findings with evidence and provenance.
+
+Stays dark: aggregate risk score and grade (`RISK_SCORES_ENABLED`), trading (`TRADING_ENABLED`,
+`MAINNET_WRITES_ENABLED`), token gating, gas sponsorship, AI commentary, webhooks, project claims,
+and community reports. Trading and token-gate routes are not registered when their flag is off;
+the remainder return 503 `FEATURE_DISABLED`.
+
+Verified: every flag defaults to false in `packages/config/src/schema.ts`, and the deployment
+configs set none of them, so production is fail-closed by default. Note that the repository's
+local `.env` enables `WEBHOOKS_ENABLED`, `PROJECT_CLAIMS_ENABLED`, and `COMMUNITY_REPORTS_ENABLED`;
+that file is gitignored, but it must not seed the launch environment.
 
 ## Recent changes (2026-07-15)
 
@@ -446,7 +489,12 @@ worker, and alert-path integration evidence also remains pending.
    versioned partial rulesets, pinned chain validation, and persistent risk storage. Pool and token
    events run this internal path. Still absent: deployer, identity, market, oracle, metadata, and
    launchpad rules, verified lock adapters for production venues, and the evidence-backed report
-   APIs. Risk scores stay unexposed until this blocker closes.
+   APIs. Risk scores stay unexposed until this blocker closes; `RISK_SCORES_ENABLED` (default
+   false) now enforces that in code across the intelligence routes, the discovery feed, and the
+   token page. Do not enable it by declaring the remaining families out of scope: `completeness`
+   divides by the rules that ran, so removing a category from the ruleset raises the reported
+   completeness instead of lowering it. The flag should open only when every category in
+   `RISK_CATEGORIES` has rules, or when completeness is redefined to measure declared coverage.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
@@ -469,6 +517,7 @@ All transactional feature flags should stay disabled until their related blocker
 - `WEBHOOKS_ENABLED`: disabled
 - `PROJECT_CLAIMS_ENABLED`: disabled
 - `COMMUNITY_REPORTS_ENABLED`: disabled
+- `RISK_SCORES_ENABLED`: disabled until blocker 4 closes
 - launchpad adapters: disabled until verified production contracts exist
 
 ## Security review summary
