@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import type { OracleBehaviorResult, RiskScanContext } from '../index.js';
 import { createOracleRiskRules } from '../oracle-rules.js';
 import { ORACLE_OBSERVATION_SOURCE, serializeOracleResult } from '../oracle-types.js';
-import type { OracleBehaviorResult, RiskScanContext } from '../index.js';
 
 const RESULT: OracleBehaviorResult = {
   applicable: true,
@@ -33,7 +33,8 @@ function context(overrides: Partial<OracleBehaviorResult> = {}): RiskScanContext
 
 const abort = new AbortController().signal;
 const rule = (code: string) =>
-  createOracleRiskRules().find((r) => r.ruleId === `oracle.${code}`) ?? (() => {
+  createOracleRiskRules().find((r) => r.ruleId === `oracle.${code}`) ??
+  (() => {
     throw new Error(`missing rule oracle.${code}`);
   })();
 
@@ -52,7 +53,10 @@ describe('oracle behavior rules', () => {
   });
 
   it('fails on a non-positive answer', async () => {
-    const evaluation = await rule('oracle_answer_invalid').evaluate(context({ answerRaw: 0n }), abort);
+    const evaluation = await rule('oracle_answer_invalid').evaluate(
+      context({ answerRaw: 0n }),
+      abort,
+    );
     expect(evaluation.status).toBe('fail');
   });
 
@@ -70,14 +74,21 @@ describe('oracle behavior rules', () => {
   });
 
   it('fails when the sequencer is down', async () => {
-    const evaluation = await rule('sequencer_down').evaluate(context({ sequencerUp: false }), abort);
+    const evaluation = await rule('sequencer_down').evaluate(
+      context({ sequencerUp: false }),
+      abort,
+    );
     expect(evaluation.status).toBe('fail');
     expect(evaluation.severity).toBe('critical');
   });
 
   it('warns inside the sequencer grace period', async () => {
     const evaluation = await rule('sequencer_grace_period').evaluate(
-      context({ sequencerUp: true, sequencerRecoveredAtSeconds: 1_752_000_000n, scanTimeSeconds: 1_752_000_030n }),
+      context({
+        sequencerUp: true,
+        sequencerRecoveredAtSeconds: 1_752_000_000n,
+        scanTimeSeconds: 1_752_000_030n,
+      }),
       abort,
     );
     expect(evaluation.status).toBe('warning');
