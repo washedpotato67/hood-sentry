@@ -1,4 +1,4 @@
-import type { ProtocolReadClient } from '@hood-sentry/chain';
+import type { OracleClient, ProtocolReadClient } from '@hood-sentry/chain';
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import type { DerivedJobPayload } from '@hood-sentry/queue';
@@ -15,6 +15,7 @@ export interface ProcessorContext {
   poolRefresh: Pick<PoolRefreshJob, 'run'>;
   chainReader: Pick<ProtocolReadClient, 'getBytecode' | 'readContract'>;
   protocolEnrichment: Pick<ProtocolEnrichmentJob, 'run'>;
+  oracleClient?: OracleClient;
   alertDelivery?: Pick<AlertDeliveryService, 'deliver'>;
   riskAlerts: RiskAlertEvaluator;
 }

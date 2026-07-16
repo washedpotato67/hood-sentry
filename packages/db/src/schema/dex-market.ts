@@ -674,6 +674,8 @@ export const priceSourceConfigs = pgTable(
     confidence_rules: jsonb('confidence_rules').notNull(),
     route: jsonb('route').notNull(),
     methodology_version: text('methodology_version').notNull(),
+    oracle_heartbeat_seconds: integer('oracle_heartbeat_seconds'),
+    sequencer_feed_address: text('sequencer_feed_address'),
     ...timestamps,
   },
   (table) => [
@@ -719,6 +721,11 @@ export const deterministicPriceObservations = pgTable(
     reasons: jsonb('reasons').notNull(),
     canonical: boolean('canonical').notNull().default(true),
     methodology_version: text('methodology_version').notNull(),
+    round_id: numeric('round_id', { precision: 78, scale: 0 }),
+    answered_in_round: numeric('answered_in_round', { precision: 78, scale: 0 }),
+    oracle_paused: boolean('oracle_paused').notNull().default(false),
+    sequencer_up: boolean('sequencer_up'),
+    sequencer_recovered_at: timestamp('sequencer_recovered_at', { withTimezone: true }),
     ...timestamps,
   },
   (table) => [

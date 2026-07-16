@@ -1,5 +1,6 @@
 import {
   BlockscoutClient,
+  OracleClient,
   ProtocolValidationService,
   RPCClient,
   ResilientProtocolClient,
@@ -10,9 +11,11 @@ import {
 import { getEnv } from '@hood-sentry/config';
 import {
   DatabaseBlockscoutCache,
+  DrizzlePricingRepository,
   DrizzleProtocolRepositoryImpl,
   createDatabase,
 } from '@hood-sentry/db';
+import { PriceSourceActivationService } from '@hood-sentry/market-engine';
 import { createLogger } from '@hood-sentry/observability';
 import {
   ResendEmailProvider,
@@ -28,6 +31,7 @@ import { ProtocolEnrichmentJob } from './jobs/protocol-enrichment.js';
 import { createRiskAnalysisRuntime } from './jobs/risk-runtime.js';
 import { AlertDeliveryService } from './notifications/alert-delivery.js';
 import { RiskAlertService } from './notifications/risk-alerts.js';
+import { ChainlinkSourceVerifier } from './verifiers/chainlink.js';
 
 async function main() {
   const env = getEnv();
@@ -80,6 +84,29 @@ async function main() {
       backoffMultiplier: 2,
     },
   });
+  const oracleClient = new OracleClient({
+    rpcClient,
+    chainId: env.ROBINHOOD_CHAIN_ID,
+  });
+
+  const pricingRepository = new DrizzlePricingRepository(database.db);
+  const chainlinkVerifier = new ChainlinkSourceVerifier({ oracleClient });
+  const chainlinkActivation = new PriceSourceActivationService(chainlinkVerifier);
+  const chainlinkConfigs = (
+    await pricingRepository.listSourceConfigs(env.ROBINHOOD_CHAIN_ID)
+  ).filter((config) => config.sourceType === 'chainlink');
+  const activationResults = await chainlinkActivation.validate(chainlinkConfigs);
+  const failedActivations = activationResults.filter((result) => !result.active);
+  if (failedActivations.length > 0) {
+    for (const failure of failedActivations) {
+      logger.fatal('Chainlink source verification failed', {
+        sourceKey: failure.config.sourceKey,
+        reason: failure.reason,
+      });
+    }
+    throw new Error('CHAINLINK_SOURCE_VERIFICATION_FAILED');
+  }
+
   const metadataProvider = new BlockscoutClient({
     apiBaseUrl: env.BLOCKSCOUT_API_BASE,
     apiKey: env.BLOCKSCOUT_API_KEY,
@@ -187,6 +214,7 @@ async function main() {
       riskAlerts,
       chainReader: protocolClient,
       protocolEnrichment,
+      oracleClient,
     }),
     onDeadLetter: (record) => {
       logger.error('Derived job dead-lettered after exhausting retries', {

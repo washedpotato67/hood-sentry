@@ -58,6 +58,7 @@ export function createDerivedJobRouter(
     | 'riskAlerts'
     | 'chainReader'
     | 'protocolEnrichment'
+    | 'oracleClient'
   >,
 ): DerivedJobHandler {
   const context: ProcessorContext = {
@@ -69,6 +70,7 @@ export function createDerivedJobRouter(
     riskAlerts: services.riskAlerts,
     chainReader: services.chainReader,
     protocolEnrichment: services.protocolEnrichment,
+    oracleClient: services.oracleClient,
   };
 
   return async (payload: DerivedJobPayload): Promise<void> => {

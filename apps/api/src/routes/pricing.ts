@@ -13,7 +13,12 @@ const tokenParamsSchema = z.object({ tokenAddress: evmAddressSchema });
 
 export type PricingReadRepository = Pick<
   PricingRepository,
-  'getCurrentPrice' | 'getPriceHistory' | 'getCandles' | 'getLatestMetrics'
+  | 'getCurrentPrice'
+  | 'getPriceHistory'
+  | 'getCandles'
+  | 'getLatestMetrics'
+  | 'findLatestOracleStatus'
+  | 'listSourceConfigs'
 >;
 
 export async function pricingRoutes(
@@ -108,6 +113,60 @@ export async function pricingRoutes(
       query.window,
     );
     return { data: serialize(value) };
+  });
+
+  app.get('/tokens/:tokenAddress/price/source-status', async (request) => {
+    const { tokenAddress } = tokenParamsSchema.parse(request.params);
+    const query = priceQuerySchema.parse(request.query);
+    const [value, configs] = await Promise.all([
+      options.repository.findLatestOracleStatus(
+        query.chainId,
+        tokenAddress,
+        query.quoteAssetAddress,
+      ),
+      options.repository.listSourceConfigs(query.chainId, tokenAddress),
+    ]);
+    const config = configs.find((candidate) => candidate.sourceKey === value?.sourceKey);
+    if (value === null) {
+      return {
+        data: {
+          tokenAddress,
+          quoteAssetAddress: query.quoteAssetAddress,
+          sourceKey: null,
+          sourceType: null,
+          sourceContractAddress: null,
+          answerRaw: null,
+          decimals: null,
+          updatedAt: null,
+          heartbeatSeconds: null,
+          sequencerUp: null,
+          oraclePaused: null,
+          roundId: null,
+          answeredInRound: null,
+          status: 'unavailable',
+          reasons: ['NO_ORACLE_OBSERVATION'],
+        },
+      };
+    }
+    return {
+      data: serialize({
+        tokenAddress: value.tokenAddress,
+        quoteAssetAddress: value.quoteAssetAddress,
+        sourceKey: value.sourceKey,
+        sourceType: value.sourceType,
+        sourceContractAddress: value.sourceContractAddress,
+        answerRaw: value.priceRaw,
+        decimals: value.priceDecimals,
+        updatedAt: value.sourceTimestamp,
+        heartbeatSeconds: config?.oracleHeartbeatSeconds ?? null,
+        sequencerUp: value.sequencerUp ?? null,
+        oraclePaused: value.oraclePaused ?? false,
+        roundId: value.roundId ?? null,
+        answeredInRound: value.answeredInRound ?? null,
+        status: value.status,
+        reasons: value.reasons,
+      }),
+    };
   });
 }
 

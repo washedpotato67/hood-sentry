@@ -59,6 +59,8 @@ export const priceSourceConfigSchema = z.object({
     }),
   ),
   methodologyVersion: z.string().min(1),
+  oracleHeartbeatSeconds: z.number().int().positive().optional(),
+  sequencerFeedAddress: addressSchema.nullable().optional(),
 });
 
 export function parsePriceSourceConfig(input: unknown): PriceSourceConfig {
@@ -99,6 +101,23 @@ export function validateSourceRegistry(configs: readonly PriceSourceConfig[]): v
     }
     if (config.sourceType === 'unavailable' && config.enabled) {
       throw new Error(`Unavailable source cannot be enabled: ${config.sourceKey}`);
+    }
+    if (config.sourceType === 'chainlink') {
+      if (config.sourceContractAddress === null) {
+        throw new Error(`Chainlink source requires a verified feed contract: ${config.sourceKey}`);
+      }
+      if (config.oracleHeartbeatSeconds === undefined || config.oracleHeartbeatSeconds <= 0) {
+        throw new Error(
+          `Chainlink source requires a positive oracleHeartbeatSeconds: ${config.sourceKey}`,
+        );
+      }
+    }
+    if (
+      config.sequencerFeedAddress !== undefined &&
+      config.sequencerFeedAddress !== null &&
+      config.sequencerFeedAddress.toLowerCase() === zeroAddress
+    ) {
+      throw new Error(`Sequencer feed address cannot be the zero address: ${config.sourceKey}`);
     }
   }
 }

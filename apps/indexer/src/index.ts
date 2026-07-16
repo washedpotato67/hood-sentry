@@ -6,3 +6,4 @@ export * from './reorg-detector.js';
 export * from './gap-scanner.js';
 export * from './block-indexer.js';
 export * from './handlers/protocol-events.js';
+export * from './chainlink-job-producer.js';
