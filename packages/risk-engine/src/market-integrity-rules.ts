@@ -67,7 +67,8 @@ const PRICE_SPECS: readonly Spec[] = [
     description: 'Independent price sources disagree beyond the configured threshold.',
     severity: 'medium',
     firedStatus: 'warning',
-    whenPresent: 'Independent price sources disagree beyond the configured threshold at this block.',
+    whenPresent:
+      'Independent price sources disagree beyond the configured threshold at this block.',
     whenAbsent: 'Independent price sources agree within the configured threshold.',
     remediation: 'Treat the price as uncertain until the sources reconcile.',
     source: MARKET_PRICE_RELIABILITY_SOURCE,
@@ -92,7 +93,8 @@ const PRICE_SPECS: readonly Spec[] = [
     description: 'The price appears set by a single transaction.',
     severity: 'high',
     firedStatus: 'fail',
-    whenPresent: 'The price appears to have been set by a single transaction rather than a real market.',
+    whenPresent:
+      'The price appears to have been set by a single transaction rather than a real market.',
     whenAbsent: 'The price was not attributable to a single manipulating transaction.',
     remediation: 'Do not trust this price; it is consistent with a one-transaction move.',
     source: MARKET_PRICE_RELIABILITY_SOURCE,
@@ -100,10 +102,14 @@ const PRICE_SPECS: readonly Spec[] = [
   },
 ];
 
-const SIGNAL_COPY: Record<MarketIntegritySignalCode, { title: string; present: string; absent: string; remediation: string }> = {
+const SIGNAL_COPY: Record<
+  MarketIntegritySignalCode,
+  { title: string; present: string; absent: string; remediation: string }
+> = {
   SELF_TRADING: {
     title: 'Wash trading (self-trading)',
-    present: 'Trades where the buyer and seller are the same party were observed, consistent with wash trading.',
+    present:
+      'Trades where the buyer and seller are the same party were observed, consistent with wash trading.',
     absent: 'No self-trading was observed in the pinned window.',
     remediation: 'Discount reported volume; it includes self-trading.',
   },
@@ -121,7 +127,8 @@ const SIGNAL_COPY: Record<MarketIntegritySignalCode, { title: string; present: s
   },
   CIRCULAR_WALLET_VOLUME: {
     title: 'Circular wallet volume',
-    present: 'Volume circulates among a closed group of wallets, consistent with fabricated activity.',
+    present:
+      'Volume circulates among a closed group of wallets, consistent with fabricated activity.',
     absent: 'No circular wallet volume was observed.',
     remediation: 'Discount circular volume when judging real demand.',
   },
@@ -191,7 +198,10 @@ function evaluationFor(spec: Spec, context: Readonly<RiskScanContext>): RiskRule
             : spec.whenAbsent,
     evidence: [
       {
-        evidenceType: spec.source === MARKET_PRICE_RELIABILITY_SOURCE ? 'price_reliability' : 'trade_manipulation',
+        evidenceType:
+          spec.source === MARKET_PRICE_RELIABILITY_SOURCE
+            ? 'price_reliability'
+            : 'trade_manipulation',
         summary: fired ? spec.whenPresent : spec.whenAbsent,
         data: {
           activeSourceCount: result.priceReliability.activeSourceCount,

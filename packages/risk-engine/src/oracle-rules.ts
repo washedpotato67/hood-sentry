@@ -1,6 +1,6 @@
 import {
-  type OracleBehaviorResult,
   ORACLE_OBSERVATION_SOURCE,
+  type OracleBehaviorResult,
   deserializeOracleResult,
 } from './oracle-types.js';
 import type {
@@ -41,7 +41,8 @@ const SPECS: Record<OracleRuleCode, Spec> = {
     status: 'fail',
     title: 'Oracle price is stale',
     description: 'The feed has not updated within its configured heartbeat.',
-    whenPresent: 'The oracle last updated longer ago than its heartbeat allows, so its price is stale.',
+    whenPresent:
+      'The oracle last updated longer ago than its heartbeat allows, so its price is stale.',
     whenAbsent: 'The oracle updated within its heartbeat window.',
     remediation: 'Do not rely on this price until the feed updates within its heartbeat.',
     sequencerRule: false,
@@ -61,7 +62,8 @@ const SPECS: Record<OracleRuleCode, Spec> = {
     status: 'warning',
     title: 'Oracle round is incomplete',
     description: 'answeredInRound is behind the latest roundId.',
-    whenPresent: 'The latest round has no fresh answer yet; the price is carried from an earlier round.',
+    whenPresent:
+      'The latest round has no fresh answer yet; the price is carried from an earlier round.',
     whenAbsent: 'The latest round carries its own answer.',
     remediation: 'Prefer a source whose latest round is complete.',
     sequencerRule: false,
@@ -81,7 +83,8 @@ const SPECS: Record<OracleRuleCode, Spec> = {
     status: 'fail',
     title: 'Sequencer is down',
     description: 'The L2 sequencer uptime feed reports the sequencer as down.',
-    whenPresent: 'The sequencer uptime feed reports the sequencer down, so on-chain prices are unreliable.',
+    whenPresent:
+      'The sequencer uptime feed reports the sequencer down, so on-chain prices are unreliable.',
     whenAbsent: 'The sequencer uptime feed reports the sequencer up.',
     remediation: 'Do not rely on on-chain prices while the sequencer is down.',
     sequencerRule: true,
@@ -91,7 +94,8 @@ const SPECS: Record<OracleRuleCode, Spec> = {
     status: 'warning',
     title: 'Sequencer recently recovered',
     description: 'The sequencer recovered within the grace period.',
-    whenPresent: 'The sequencer recovered recently and is still inside its grace period, so prices may lag.',
+    whenPresent:
+      'The sequencer recovered recently and is still inside its grace period, so prices may lag.',
     whenAbsent: 'The sequencer has been up beyond its grace period.',
     remediation: 'Wait for the grace period to elapse before relying on fresh prices.',
     sequencerRule: true,
@@ -163,7 +167,10 @@ function statusFor(code: OracleRuleCode, r: OracleBehaviorResult): RiskFindingSt
   return triggered(code, r) ? spec.status : 'pass';
 }
 
-function evaluationFor(code: OracleRuleCode, context: Readonly<RiskScanContext>): RiskRuleEvaluation {
+function evaluationFor(
+  code: OracleRuleCode,
+  context: Readonly<RiskScanContext>,
+): RiskRuleEvaluation {
   const serialized = context.data[ORACLE_OBSERVATION_SOURCE];
   const result = deserializeOracleResult(serialized);
   const spec = SPECS[code];

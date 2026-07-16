@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { RiskScanContext } from '../index.js';
 import { createMarketIntegrityRiskRules } from '../market-integrity-rules.js';
 import {
   MARKET_PRICE_RELIABILITY_SOURCE,
@@ -6,7 +7,6 @@ import {
   type MarketIntegrityResult,
   serializeMarketIntegrityResult,
 } from '../market-integrity-types.js';
-import type { RiskScanContext } from '../index.js';
 
 const RESULT: MarketIntegrityResult = {
   priceReliability: {
@@ -44,14 +44,17 @@ function context(overrides: Partial<MarketIntegrityResult> = {}): RiskScanContex
 
 const abort = new AbortController().signal;
 const rule = (id: string) =>
-  createMarketIntegrityRiskRules().find((r) => r.ruleId === id) ?? (() => {
+  createMarketIntegrityRiskRules().find((r) => r.ruleId === id) ??
+  (() => {
     throw new Error(`missing ${id}`);
   })();
 
 describe('market integrity rules', () => {
   it('warns when sources disagree', async () => {
     const e = await rule('market.source_price_disagreement').evaluate(
-      context({ priceReliability: { ...RESULT.priceReliability, disagreementSourceKeys: ['dex'] } }),
+      context({
+        priceReliability: { ...RESULT.priceReliability, disagreementSourceKeys: ['dex'] },
+      }),
       abort,
     );
     expect(e.status).toBe('warning');
@@ -67,7 +70,9 @@ describe('market integrity rules', () => {
 
   it('fails on one-transaction price manipulation', async () => {
     const e = await rule('market.single_transaction_price_manipulation').evaluate(
-      context({ priceReliability: { ...RESULT.priceReliability, oneTransactionManipulation: true } }),
+      context({
+        priceReliability: { ...RESULT.priceReliability, oneTransactionManipulation: true },
+      }),
       abort,
     );
     expect(e.status).toBe('fail');
@@ -75,7 +80,9 @@ describe('market integrity rules', () => {
 
   it('fails on observed self-trading', async () => {
     const e = await rule('market.self_trading').evaluate(
-      context({ tradeManipulation: { ...RESULT.tradeManipulation, observedSignalCodes: ['SELF_TRADING'] } }),
+      context({
+        tradeManipulation: { ...RESULT.tradeManipulation, observedSignalCodes: ['SELF_TRADING'] },
+      }),
       abort,
     );
     expect(e.status).toBe('fail');
@@ -103,6 +110,7 @@ describe('market integrity rules', () => {
   });
 
   it('caps every rule penalty at the category cap', () => {
-    for (const r of createMarketIntegrityRiskRules()) expect(r.maxPenaltyBps).toBeLessThanOrEqual(3000);
+    for (const r of createMarketIntegrityRiskRules())
+      expect(r.maxPenaltyBps).toBeLessThanOrEqual(3000);
   });
 });
