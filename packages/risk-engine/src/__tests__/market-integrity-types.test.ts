@@ -18,6 +18,7 @@ const base: MarketIntegrityResult = {
     tradeCount: 42,
     minTradesForAssessment: 20,
     observedSignalCodes: ['SELF_TRADING'],
+    insufficientSignalCodes: ['THIN_POOL_PRICE_MANIPULATION'],
     methodologyVersion: 'manipulation-v1',
   },
   sourceBlock: 200n,

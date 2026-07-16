@@ -21,6 +21,7 @@ const RESULT: MarketIntegrityResult = {
     tradeCount: 42,
     minTradesForAssessment: 20,
     observedSignalCodes: [],
+    insufficientSignalCodes: [],
     methodologyVersion: 'manipulation-v1',
   },
   sourceBlock: 200n,
@@ -99,6 +100,19 @@ describe('market integrity rules', () => {
       abort,
     );
     expect(e.status).toBe('not_applicable');
+  });
+
+  it('marks a manipulation rule unknown when its signal could not be assessed', async () => {
+    const e = await rule('market.thin_pool_price_manipulation').evaluate(
+      context({
+        tradeManipulation: {
+          ...RESULT.tradeManipulation,
+          insufficientSignalCodes: ['THIN_POOL_PRICE_MANIPULATION'],
+        },
+      }),
+      abort,
+    );
+    expect(e.status).toBe('unknown');
   });
 
   it('marks price rules unknown when price data is unavailable', async () => {

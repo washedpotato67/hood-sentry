@@ -47,6 +47,10 @@ function tradeStatus(
   if (r.tradeManipulation.tradeCount < r.tradeManipulation.minTradesForAssessment) {
     return 'not_applicable';
   }
+  // The analyzer ran, but this specific signal lacked the inputs to reach a
+  // verdict (e.g. thin-pool with no liquidity reading). Reporting `unknown`
+  // keeps a never-run check from reading as a confident `pass`.
+  if (r.tradeManipulation.insufficientSignalCodes.includes(code)) return 'unknown';
   return r.tradeManipulation.observedSignalCodes.includes(code) ? firedStatus : 'pass';
 }
 
