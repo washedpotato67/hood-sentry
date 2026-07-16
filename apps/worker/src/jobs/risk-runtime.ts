@@ -2,6 +2,7 @@ import type { ProtocolAdapterManager } from '@hood-sentry/chain';
 import type { Database } from '@hood-sentry/db';
 import {
   DrizzleBlockRepositoryImpl,
+  DrizzlePricingRepository,
   DrizzleProtocolRepositoryImpl,
   DrizzleRiskRepository,
 } from '@hood-sentry/db';
@@ -30,6 +31,14 @@ import {
   LiquidityRiskContextLoader,
   VerifiedProtocolPoolStateReader,
 } from './liquidity-context.js';
+import {
+  DrizzleMarketDataSource,
+  MarketIntegrityContextLoader,
+} from './market-integrity-context.js';
+import {
+  DrizzleOracleObservationSource,
+  OracleBehaviorContextLoader,
+} from './oracle-behavior-context.js';
 import {
   BaseRiskContextLoader,
   CanonicalRiskContextLoader,
@@ -134,8 +143,16 @@ export function createRiskAnalysisRuntime(input: {
       protocolRepository,
     ),
   );
-  const pinnedContext = new CanonicalRiskContextLoader(
+  const oracleContext = new OracleBehaviorContextLoader(
     liquidityContext,
+    new DrizzleOracleObservationSource(new DrizzlePricingRepository(input.database.db)),
+  );
+  const marketContext = new MarketIntegrityContextLoader(
+    oracleContext,
+    new DrizzleMarketDataSource(input.database),
+  );
+  const pinnedContext = new CanonicalRiskContextLoader(
+    marketContext,
     input.chainId,
     new DrizzleBlockRepositoryImpl(input.database.db),
     input.chainClient,
