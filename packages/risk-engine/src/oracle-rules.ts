@@ -98,8 +98,33 @@ const SPECS: Record<OracleRuleCode, Spec> = {
   },
 };
 
-function readingMissing(r: OracleBehaviorResult): boolean {
-  return r.answerRaw === null || r.updatedAtSeconds === null || r.scanTimeSeconds === null;
+/**
+ * Whether a price-feed rule is missing a field it needs to reach a verdict. Each rule
+ * depends on a different subset of the observation, so a blanket check would let a rule
+ * resolve to `pass` when the very data it needs (e.g. the heartbeat) is absent. Reporting
+ * `unknown` instead keeps absence of evidence from reading as a healthy feed. Sequencer
+ * rules are not consulted here; `statusFor` handles their missing state via `sequencerUp`.
+ */
+function requiredReadingMissing(code: OracleRuleCode, r: OracleBehaviorResult): boolean {
+  switch (code) {
+    case 'oracle_stale':
+      return (
+        r.answerRaw === null ||
+        r.updatedAtSeconds === null ||
+        r.scanTimeSeconds === null ||
+        r.heartbeatSeconds === null
+      );
+    case 'oracle_answer_invalid':
+      return r.answerRaw === null;
+    case 'oracle_incomplete_round':
+      return r.roundId === null || r.answeredInRound === null;
+    case 'oracle_paused':
+      // oraclePaused is a non-nullable boolean, so this verdict is always reachable.
+      return false;
+    case 'sequencer_down':
+    case 'sequencer_grace_period':
+      return false;
+  }
 }
 
 function triggered(code: OracleRuleCode, r: OracleBehaviorResult): boolean {
@@ -133,7 +158,7 @@ function statusFor(code: OracleRuleCode, r: OracleBehaviorResult): RiskFindingSt
   const spec = SPECS[code];
   if (!r.applicable) return 'not_applicable';
   if (spec.sequencerRule && !r.sequencerConfigured) return 'not_applicable';
-  if (!spec.sequencerRule && readingMissing(r)) return 'unknown';
+  if (!spec.sequencerRule && requiredReadingMissing(code, r)) return 'unknown';
   if (spec.sequencerRule && r.sequencerUp === null) return 'unknown';
   return triggered(code, r) ? spec.status : 'pass';
 }

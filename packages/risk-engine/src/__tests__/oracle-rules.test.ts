@@ -101,6 +101,36 @@ describe('oracle behavior rules', () => {
     expect(evaluation.status).toBe('unknown');
   });
 
+  it('reports unknown for oracle_stale when heartbeatSeconds is missing but the reading is present', async () => {
+    const evaluation = await rule('oracle_stale').evaluate(
+      context({ heartbeatSeconds: null }),
+      abort,
+    );
+    expect(evaluation.status).toBe('unknown');
+  });
+
+  it('reports unknown for oracle_incomplete_round when roundId and answeredInRound are missing', async () => {
+    const evaluation = await rule('oracle_incomplete_round').evaluate(
+      context({ roundId: null, answeredInRound: null }),
+      abort,
+    );
+    expect(evaluation.status).toBe('unknown');
+  });
+
+  it('does not become unknown for oracle_paused when an unrelated field (heartbeatSeconds) is missing', async () => {
+    const passing = await rule('oracle_paused').evaluate(
+      context({ heartbeatSeconds: null, oraclePaused: false }),
+      abort,
+    );
+    expect(passing.status).toBe('pass');
+
+    const failing = await rule('oracle_paused').evaluate(
+      context({ heartbeatSeconds: null, oraclePaused: true }),
+      abort,
+    );
+    expect(failing.status).toBe('fail');
+  });
+
   it('gives not_applicable/unknown rules a zero max penalty', () => {
     for (const r of createOracleRiskRules()) {
       expect(r.maxPenaltyBps).toBeLessThanOrEqual(3000);
