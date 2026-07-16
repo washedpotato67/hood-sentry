@@ -47,6 +47,22 @@ function confidenceString(basisPoints: number): string {
   return `0.${hundredths.toString().padStart(2, '0')}`;
 }
 
+/**
+ * The `evidence` and `dataProvenance` fields carry the risk engine's domain
+ * types verbatim, which use `bigint` for on-chain quantities (e.g. every
+ * `RiskDataSource.sourceBlock`). Postgres jsonb columns go through
+ * `JSON.stringify` on the way in, which throws on a raw `bigint`, so it has to
+ * be converted to a string before it reaches the repository.
+ */
+function jsonSafe(value: unknown): unknown {
+  if (typeof value === 'bigint') return value.toString();
+  if (Array.isArray(value)) return value.map(jsonSafe);
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, jsonSafe(v)]));
+  }
+  return value;
+}
+
 function findingRecord(scanRunId: string, finding: RiskFinding) {
   return {
     scanRunId,
@@ -59,9 +75,9 @@ function findingRecord(scanRunId: string, finding: RiskFinding) {
     confidenceDetail: finding.confidence,
     title: finding.title,
     explanation: finding.explanation,
-    evidence: finding.evidence,
+    evidence: jsonSafe(finding.evidence),
     remediation: finding.remediation,
-    sourceProvenance: finding.dataProvenance,
+    sourceProvenance: jsonSafe(finding.dataProvenance),
     sourceBlock: finding.sourceBlock,
     sourceBlockHash: finding.sourceBlockHash,
     fingerprint: finding.fingerprint,

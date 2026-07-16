@@ -17,6 +17,30 @@ surface".
 
 ## Recent changes (2026-07-16)
 
+- Wired the oracle-behavior and market-integrity context loaders into the risk scan runtime.
+  `OracleBehaviorContextLoader` and `MarketIntegrityContextLoader` already existed but were never
+  chained into `createRiskAnalysisRuntime`'s decorator sequence, so the `Oracle behavior` and
+  `Market integrity` rules already registered in `ALL_RULES` ran against a scan context that never
+  carried their data sources, reporting every finding `unknown` (`DATA_DEPENDENCY_UNAVAILABLE`)
+  instead of a real evaluation. The chain is now `contractContext -> holderContext ->
+  liquidityContext -> oracleContext (OracleBehaviorContextLoader over DrizzleOracleObservationSource
+  / DrizzlePricingRepository) -> marketContext (MarketIntegrityContextLoader over
+  DrizzleMarketDataSource) -> pinnedContext (CanonicalRiskContextLoader)`. This also surfaced and
+  fixed a latent bug: `RiskScanJob`'s `findingRecord` wrote `finding.evidence` and
+  `finding.dataProvenance` straight into jsonb columns; every `RiskDataSource` carries a `bigint
+  sourceBlock`, and Postgres jsonb serialization cannot encode a raw `bigint`, so
+  `DrizzleRiskRepository.insertFindings` threw `Do not know how to serialize a BigInt` for any scan
+  that reached persistence. No prior test had exercised a full scan through the real risk
+  repository, so this was never caught; added a `jsonSafe` conversion in `findingRecord` before
+  insert. A new integration test (`apps/worker/src/__tests__/risk-scan.integration.test.ts`) runs a
+  real token scan through `createRiskAnalysisRuntime` against live PostgreSQL and asserts the
+  `Oracle behavior` and `Market integrity` categories are present with `not_applicable` findings (no
+  oracle configured; trade count below the manipulation-assessment minimum) rather than `unknown` --
+  the signal that actually distinguishes the loaders being wired from the rules merely being
+  registered in the ruleset.
+- Deployer history, Identity, Metadata quality, and Launchpad behavior risk rules remain absent.
+  `RISK_SCORES_ENABLED` stays closed: closing blocker 4 requires every category in
+  `RISK_CATEGORIES` to have rules, and four categories still do not, so the flag cannot open yet.
 - Added the Chainlink oracle price pipeline as the deterministic foundation for blocker 9. The chain
   package gains an `OracleClient` that reads `AggregatorV3Interface` feeds, sequencer uptime, and
   `paused()` state through the shared RPC client as pinned `eth_call`s. The worker gains a
@@ -375,8 +399,10 @@ Hood Sentry targets Robinhood Chain token discovery, evidence-based contract ris
 - The API exposes health, external protocol, price, candle, market-metric, discovery, and search
   read routes. Most authenticated product routes remain absent.
 - The web app exposes a static product title only.
-- Deterministic proxy, source privilege, liquidity, and holder rules exist. Deployer, identity,
-  market, oracle, and launchpad risk rules remain absent.
+- Deterministic proxy, source privilege, liquidity, holder, oracle behavior, and market integrity
+  rules exist. The oracle and market integrity rule families are now wired end to end through
+  `createRiskAnalysisRuntime`, not just registered in the ruleset. Deployer history, identity,
+  metadata quality, and launchpad behavior risk rules remain absent.
 
 ### Skeleton or absent
 
@@ -526,14 +552,19 @@ worker, and alert-path integration evidence also remains pending.
    evidence carry canonical source blocks, while reorg reconciliation invalidates affected state.
    The worker now constructs `RiskScanJob`, `ContractAnalysisContextLoader`, holder context,
    versioned partial rulesets, pinned chain validation, and persistent risk storage. Pool and token
-   events run this internal path. Still absent: deployer, identity, market, oracle, metadata, and
-   launchpad rules, verified lock adapters for production venues, and the evidence-backed report
-   APIs. Risk scores stay unexposed until this blocker closes; `RISK_SCORES_ENABLED` (default
+   events run this internal path. Oracle behavior (6 rules) and Market integrity (10 rules) are now
+   also wired end to end: `OracleBehaviorContextLoader` and `MarketIntegrityContextLoader` are
+   chained into `createRiskAnalysisRuntime` between the liquidity context and the pinned-block
+   validator, so both rule families evaluate real (if empty) pinned evidence instead of reporting
+   `unknown` for missing data. Still absent: deployer history, identity, metadata quality, and
+   launchpad behavior rules, verified lock adapters for production venues, and the evidence-backed
+   report APIs. Risk scores stay unexposed until this blocker closes; `RISK_SCORES_ENABLED` (default
    false) now enforces that in code across the intelligence routes, the discovery feed, and the
-   token page. Do not enable it by declaring the remaining families out of scope: `completeness`
-   divides by the rules that ran, so removing a category from the ruleset raises the reported
-   completeness instead of lowering it. The flag should open only when every category in
-   `RISK_CATEGORIES` has rules, or when completeness is redefined to measure declared coverage.
+   token page, and it stays closed today -- four risk categories still have no rules. Do not enable
+   it by declaring the remaining families out of scope: `completeness` divides by the rules that
+   ran, so removing a category from the ruleset raises the reported completeness instead of
+   lowering it. The flag should open only when every category in `RISK_CATEGORIES` has rules, or
+   when completeness is redefined to measure declared coverage.
 5. Build token, wallet, portfolio, alert, project, report, and trading API routes and product screens.
 6. Keep project verification, reports, and token access offchain. Sentry has no application-owned
    contract dependency. Verify the external launchpad-created `$SENTRY` address, creation
