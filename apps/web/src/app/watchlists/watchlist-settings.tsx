@@ -1,23 +1,16 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { apiRequest, chainId, compactAddress } from '../../lib/api';
+import { apiRequest, chainId } from '../../lib/api';
 import { useSession } from '../use-session';
 
 type Watchlist = {
   id: string;
   name: string;
   isDefault: boolean;
-  items: readonly {
-    id: string;
-    targetAddress: string;
-    targetType: 'token' | 'wallet' | 'contract' | 'project';
-    notes: string | null;
-  }[];
 };
 
-export function WatchlistDashboard() {
+export function WatchlistSettings() {
   const { session } = useSession();
   const [lists, setLists] = useState<readonly Watchlist[]>([]);
   const [name, setName] = useState('Research');
@@ -145,24 +138,6 @@ export function WatchlistDashboard() {
           </button>
         </div>
       </section>
-      {lists.map((list) => (
-        <section className="panel" key={list.id}>
-          <h2>
-            {list.name} {list.isDefault ? <span className="badge">Default</span> : null}
-          </h2>
-          {list.items.length === 0 ? <p className="muted">No targets.</p> : null}
-          {list.items.map((item) => (
-            <div className="metric-row" key={item.id}>
-              <Link
-                href={`/${item.targetType === 'wallet' ? 'wallet' : 'token'}/${item.targetAddress}`}
-              >
-                {compactAddress(item.targetAddress)}
-              </Link>
-              <span className="badge">{item.targetType}</span>
-            </div>
-          ))}
-        </section>
-      ))}
       {error === null ? null : <section className="panel danger">{error}</section>}
     </div>
   );

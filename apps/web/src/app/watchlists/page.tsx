@@ -1,12 +1,15 @@
+import Link from 'next/link';
 import { Page } from '../components';
-import { WatchlistDashboard } from './watchlist-dashboard';
+import { WatchlistList } from './watchlist-list';
+
 export default function Watchlists() {
   return (
     <Page title="Watchlists">
-      <p className="lede">
-        Group tokens and wallets, then attach alert rules to the targets you track.
-      </p>
-      <WatchlistDashboard />
+      <p className="lede">The tokens and wallets you track.</p>
+      <div className="actions">
+        <Link href="/watchlists/settings">Manage watchlists</Link>
+      </div>
+      <WatchlistList />
     </Page>
   );
 }
