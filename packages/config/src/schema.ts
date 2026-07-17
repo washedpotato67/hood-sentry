@@ -123,9 +123,14 @@ const chainSchema = z.object({
   // explicit block; empty keeps the genesis default.
   INDEXER_START_BLOCK: z.preprocess(
     (value) => (value === '' ? undefined : value),
-    z.union([z.literal('latest'), z.string().regex(/^\d+$/, 'Must be "latest" or a block number')])
+    z
+      .union([z.literal('latest'), z.string().regex(/^\d+$/, 'Must be "latest" or a block number')])
       .optional(),
   ),
+  // Maximum concurrent block fetches while draining a backlog. Low by default so
+  // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
+  // provider has the compute-unit budget for more parallelism.
+  INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
 });
 
 const providersSchema = z.object({

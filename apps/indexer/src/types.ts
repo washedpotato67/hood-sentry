@@ -15,6 +15,12 @@ export interface IndexerConfig {
   workerId: string;
   mode: IndexerMode;
   batchSize: number;
+  /**
+   * Maximum concurrent block fetches during catch-up. Kept low by default so a
+   * rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
+   * provider has the compute-unit budget to serve the extra parallelism.
+   */
+  maxConcurrency: number;
   pollIntervalMs: number;
   leaseDurationMs: number;
   leaseRenewalMs: number;

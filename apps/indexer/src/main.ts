@@ -244,6 +244,7 @@ async function main() {
       workerId: `indexer-${process.pid}-${Date.now()}`,
       mode,
       batchSize: batchSize ? Number.parseInt(batchSize) : 10,
+      maxConcurrency: env.INDEXER_MAX_CONCURRENCY,
       pollIntervalMs: 1000,
       leaseDurationMs: 60000,
       leaseRenewalMs: 30000,

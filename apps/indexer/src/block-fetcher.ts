@@ -185,19 +185,36 @@ export class BlockFetcher {
   }
 
   /**
-   * Fetch a contiguous window of blocks concurrently, returned in ascending
-   * order. Used by live catch-up to drain a finalized backlog far faster than
-   * the strictly-sequential {@link fetchBlockRange}. A hole (a null within the
-   * window) truncates the result at the gap so the caller never advances past a
-   * block it failed to fetch.
+   * Fetch a contiguous window of blocks, returned in ascending order, with at
+   * most `concurrency` fetches in flight. Used by live catch-up to drain a
+   * finalized backlog faster than the strictly-sequential {@link fetchBlockRange}
+   * without flooding a rate-limited provider. A hole (a null within the window)
+   * truncates the result at the gap so the caller never advances past a block it
+   * failed to fetch.
    */
-  async fetchBlockWindow(fromBlock: bigint, toBlock: bigint): Promise<BlockData[]> {
+  async fetchBlockWindow(
+    fromBlock: bigint,
+    toBlock: bigint,
+    concurrency: number,
+  ): Promise<BlockData[]> {
     const numbers: bigint[] = [];
     for (let n = fromBlock; n <= toBlock; n++) {
       numbers.push(n);
     }
 
-    const results = await Promise.all(numbers.map((n) => this.fetchBlock(n)));
+    const results: (BlockData | null)[] = new Array(numbers.length).fill(null);
+    let cursor = 0;
+    const worker = async (): Promise<void> => {
+      while (true) {
+        const index = cursor++;
+        const blockNumber = numbers[index];
+        if (blockNumber === undefined) return;
+        results[index] = await this.fetchBlock(blockNumber);
+      }
+    };
+
+    const workerCount = Math.max(1, Math.min(concurrency, numbers.length));
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
     const blocks: BlockData[] = [];
     for (const blockData of results) {
