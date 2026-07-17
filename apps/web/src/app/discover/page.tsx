@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { apiRequest, chainId } from '../../lib/api';
 import { ErrorPanel, Page, Stat } from '../components';
 import { type DiscoveryItem, DiscoveryTable } from '../discovery-table';
@@ -57,13 +58,13 @@ export default async function Discover({
         <section className="panel">
           <div className="actions">
             {FEEDS.map((entry) => (
-              <a
+              <Link
                 className={entry.value === feed ? 'badge status-ready' : 'badge'}
                 href={`?feed=${entry.value}`}
                 key={entry.value}
               >
                 {entry.label}
-              </a>
+              </Link>
             ))}
           </div>
           <DiscoveryTable items={items} />
