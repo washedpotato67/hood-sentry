@@ -24,14 +24,6 @@ type AlertRule = {
   enabled: boolean;
 };
 type AlertPage = { data: readonly AlertRule[] };
-type AlertEvent = {
-  id: string;
-  alertRuleId: string;
-  blockNumber: string;
-  transactionHash: string | null;
-  triggeredAt: string;
-  severity: string;
-};
 type NotificationChannel = {
   id: string;
   channelType: ChannelType;
@@ -122,10 +114,9 @@ function applicationServerKey(value: string): ArrayBuffer {
   return buffer;
 }
 
-export function AlertDashboard() {
+export function AlertSettings() {
   const { session } = useSession();
   const [rules, setRules] = useState<readonly AlertRule[]>([]);
-  const [events, setEvents] = useState<readonly AlertEvent[]>([]);
   const [targetAddress, setTargetAddress] = useState('');
   const [selectedRuleType, setSelectedRuleType] = useState<RuleType>('price_change');
   const [primaryValue, setPrimaryValue] = useState('1000');
@@ -146,15 +137,13 @@ export function AlertDashboard() {
   const [verificationCode, setVerificationCode] = useState('');
 
   const load = useCallback(async () => {
-    const [ruleResult, eventResult, channelResult, capabilityResult] = await Promise.all([
+    const [ruleResult, channelResult, capabilityResult] = await Promise.all([
       apiRequest<AlertPage>('/v1/alerts?limit=100'),
-      apiRequest<readonly AlertEvent[]>('/v1/alert-events?limit=50'),
       apiRequest<readonly NotificationChannel[]>('/v1/notification-channels'),
       apiRequest<ChannelCapabilities>('/v1/notification-channels/capabilities'),
     ]);
     if (ruleResult.ok) setRules(ruleResult.data.data);
     else setError(ruleResult.message);
-    if (eventResult.ok) setEvents(eventResult.data);
     if (channelResult.ok) setChannels(channelResult.data);
     if (capabilityResult.ok) setCapabilities(capabilityResult.data);
   }, []);
@@ -575,25 +564,6 @@ export function AlertDashboard() {
                 Delete
               </button>
             </span>
-          </div>
-        ))}
-      </section>
-
-      <section className="panel">
-        <h2>Recent evidence events</h2>
-        {events.length === 0 ? <p className="muted">No alert events yet.</p> : null}
-        {events.map((event) => (
-          <div className="metric-row" key={event.id}>
-            <span>
-              <strong>{event.severity}</strong> at block {event.blockNumber}
-              <br />
-              <small className="muted">{new Date(event.triggeredAt).toLocaleString()}</small>
-            </span>
-            <code>
-              {event.transactionHash === null
-                ? 'No transaction'
-                : compactAddress(event.transactionHash)}
-            </code>
           </div>
         ))}
       </section>
