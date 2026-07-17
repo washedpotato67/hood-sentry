@@ -50,7 +50,7 @@ export interface MarketIntegrityResult {
     readonly observedSignalCodes: readonly string[];
     /**
      * Signal codes the manipulation analyzer could not assess at this block
-     * (its required inputs were missing — e.g. thin-pool with no liquidity
+     * (its required inputs were missing - e.g. thin-pool with no liquidity
      * reading). The rules map these to `unknown` rather than reporting a
      * confident `pass` on a check that never actually ran.
      */

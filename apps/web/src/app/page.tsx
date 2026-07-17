@@ -15,7 +15,7 @@ const DOMAINS = [
   {
     n: '02',
     title: 'Liquidity',
-    body: 'Pool depth, lock status, and thin-pool exposure — how easily the floor can be pulled.',
+    body: 'Pool depth, lock status, and thin-pool exposure: how easily the floor can be pulled.',
   },
   {
     n: '03',
@@ -57,7 +57,7 @@ export default async function Home() {
             <h1>Know the risk before you sign.</h1>
             <p className="lede">
               Sentry inspects token contracts, liquidity, holders, oracles, and the live trade
-              record on Robinhood Chain — then shows you the evidence behind every verdict, not a
+              record on Robinhood Chain, then shows you the evidence behind every verdict, not a
               black-box score.
             </p>
             <div className="actions">

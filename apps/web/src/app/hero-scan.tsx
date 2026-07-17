@@ -1,4 +1,4 @@
-// Bespoke on-chain risk-scan visualization — the landing hero's instrument.
+// Bespoke on-chain risk-scan visualization: the landing hero's instrument.
 // Pure SVG + CSS (animations live in globals.css under .scan-*), so it renders
 // server-side, needs no client JS, makes no network requests, and degrades to a
 // static readout under prefers-reduced-motion.
@@ -19,7 +19,6 @@ export function HeroScan() {
   return (
     <figure className="scan reveal reveal-2" aria-hidden="true">
       <div className="scan-head">
-        <span className="scan-tag">● LIVE SCAN</span>
         <span className="scan-tag scan-tag-dim">chain 4663</span>
       </div>
       <svg viewBox="0 0 420 300" className="scan-svg" role="presentation">

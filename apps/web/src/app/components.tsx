@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ChainStatus } from './chain-status';
 import { SearchBox } from './search-box';
 import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -17,10 +16,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/projects">Projects</Link>
           <Link href="/reports">Reports</Link>
           <Link href="/trade">Trade</Link>
-          <Link href="/methodology">Methodology</Link>
         </div>
         <SearchBox />
-        <ChainStatus />
         <WalletConnect />
       </nav>
       <main className="main">{children}</main>

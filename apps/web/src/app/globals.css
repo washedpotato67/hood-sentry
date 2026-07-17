@@ -1,4 +1,4 @@
-/* Hood Sentry — threat-grade instrument
+/* Hood Sentry - threat-grade instrument
    Deep blue-black console. Luminous cobalt identity, brass signal for alerts,
    a severity ramp for risk evidence. Type: Archivo (grotesk) + JetBrains Mono.
    Instrument textures (fine grid, scanline glow) carry the forensic-console
@@ -7,7 +7,7 @@
 :root {
   color-scheme: dark;
 
-  /* Architecture — deep blue-black, cool cast */
+  /* Architecture - deep blue-black, cool cast */
   --bg: oklch(0.171 0.021 264);
   --bg-2: oklch(0.196 0.023 264);
   --surface: oklch(0.222 0.025 264);
@@ -19,7 +19,7 @@
   --ink-soft: oklch(0.83 0.013 265);
   --muted: oklch(0.665 0.018 265);
 
-  /* Identity — luminous cobalt */
+  /* Identity - luminous cobalt */
   --brand: oklch(0.7 0.152 258);
   --brand-strong: oklch(0.62 0.16 258);
   --brand-dim: oklch(0.5 0.12 258);
@@ -27,12 +27,12 @@
   --brand-glow: oklch(0.7 0.152 258 / 0.32);
   --brand-wash: oklch(0.7 0.15 258 / 0.1);
 
-  /* Signal — brass/amber, the instrument's alert light */
+  /* Signal - brass/amber, the instrument's alert light */
   --brass: oklch(0.8 0.128 76);
   --brass-strong: oklch(0.74 0.14 72);
   --brass-glow: oklch(0.8 0.128 76 / 0.3);
 
-  /* Severity ramp — risk evidence only, never decoration */
+  /* Severity ramp - risk evidence only, never decoration */
   --safe: oklch(0.79 0.15 158);
   --safe-wash: oklch(0.79 0.15 158 / 0.13);
   --caution: oklch(0.82 0.135 82);
@@ -262,6 +262,18 @@ textarea:focus-visible {
 
 /* ─── Typography ──────────────────────────────────────────────────────── */
 
+/* Headlines, the wordmark, and big numeric readouts use the display face;
+   all normal text stays in the humanist body font. */
+h1,
+h2,
+h3,
+.brand,
+.panel-value,
+.grid > .panel > .muted + div,
+.scan-gauge-num {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
 h1 {
   margin: 0 0 12px;
   font-size: 30px;
@@ -284,7 +296,7 @@ h3 {
 p {
   text-wrap: pretty;
 }
-/* Cap prose line length for readability (65–75ch). Scoped to content
+/* Cap prose line length for readability (65-75ch). Scoped to content
    paragraphs; tables, fields, metric rows, and KPI tiles use other elements. */
 .main p {
   max-width: 72ch;
@@ -305,7 +317,7 @@ p {
   font-weight: 500;
 }
 
-/* Meta / instrument label — small mono readout used for section eyebrows */
+/* Meta / instrument label - small mono readout used for section eyebrows */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -356,7 +368,7 @@ p {
   margin-top: 20px;
 }
 
-/* First-load choreography — enhances an already-visible layout */
+/* First-load choreography - enhances an already-visible layout */
 @media (prefers-reduced-motion: no-preference) {
   .reveal {
     animation: rise 0.72s var(--ease-out) both;
@@ -601,7 +613,7 @@ p {
 
 .pillars {
   display: grid;
-  /* fixed column counts that 6 items divide into evenly — no orphan cells */
+  /* fixed column counts that 6 items divide into evenly - no orphan cells */
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
@@ -691,7 +703,7 @@ a.primary:hover,
 
 .panel {
   position: relative;
-  /* clean gradient for depth — no grid/texture */
+  /* clean gradient for depth - no grid/texture */
   background: linear-gradient(165deg, var(--surface), var(--bg-2) 62%);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -710,7 +722,7 @@ a.primary:hover,
   margin-top: 16px;
 }
 
-/* KPI panel: instrument readout — mono label, large tabular figure, hairline
+/* KPI panel: instrument readout - mono label, large tabular figure, hairline
    top accent */
 .grid > .panel {
   padding: 18px;
@@ -722,7 +734,7 @@ a.primary:hover,
   border-color: var(--line-strong);
   box-shadow: var(--shadow-sm), 0 0 0 1px var(--brand-wash);
 }
-/* neutral corner registration brackets — forensic viewfinder framing */
+/* neutral corner registration brackets - forensic viewfinder framing */
 .grid > .panel::before,
 .grid > .panel::after {
   content: "";
@@ -793,7 +805,7 @@ a.primary:hover,
   color: var(--muted);
 }
 
-/* Evidence severity ramp — badge sev-<level> */
+/* Evidence severity ramp - badge sev-<level> */
 .sev-critical,
 .sev-high {
   color: var(--danger);

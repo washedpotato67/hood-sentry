@@ -32,7 +32,7 @@ type Nonce = {
  * same thing to the user: the backend isn't answering right now. */
 function friendlyApiError(result: { code: string; message: string; status: number }): string {
   if (result.code === 'SERVICE_UNREACHABLE' || result.status === 404 || result.status >= 500) {
-    return "Wallet sign-in is unavailable right now — the Sentry API isn't responding. Please try again shortly.";
+    return "Wallet sign-in is unavailable right now. The Sentry API isn't responding. Please try again shortly.";
   }
   return result.message;
 }

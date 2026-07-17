@@ -12,7 +12,7 @@ let frozen = false;
 export class ConfigurationError extends Error {
   constructor(public readonly issues: Array<{ path: string; message: string }>) {
     const summary = issues.map((i) => `${i.path}: ${i.message}`).join('; ');
-    super(`Invalid environment configuration — ${summary}`);
+    super(`Invalid environment configuration - ${summary}`);
     this.name = 'ConfigurationError';
   }
 }

@@ -1,11 +1,19 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Archivo, JetBrains_Mono } from 'next/font/google';
+import { Archivo, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 
-const sans = Archivo({
+// Body / normal text — warm, refined humanist sans.
+const sans = Hanken_Grotesk({
   subsets: ['latin'],
   variable: '--font-sans',
-  weight: ['400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+// Display / headlines — industrial grotesk, for contrast against the body.
+const display = Archivo({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['600', '700', '800', '900'],
   display: 'swap',
 });
 const mono = JetBrains_Mono({
@@ -23,7 +31,7 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );
