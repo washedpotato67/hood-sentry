@@ -17,8 +17,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link href="/projects">Projects</Link>
           <Link href="/reports">Reports</Link>
           <Link href="/trade">Trade</Link>
-          <Link href="/api">API</Link>
-          <Link href="/admin">Admin</Link>
           <Link href="/methodology">Methodology</Link>
         </div>
         <SearchBox />
@@ -26,7 +24,55 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <WalletConnect />
       </nav>
       <main className="main">{children}</main>
+      <SiteFooter />
     </div>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <div className="footer-inner">
+        <div className="footer-brand">
+          <Link className="brand" href="/">
+            SENTRY
+          </Link>
+          <p className="muted">Evidence-based token intelligence for Robinhood Chain.</p>
+        </div>
+        <nav className="footer-cols" aria-label="Footer">
+          <div className="footer-col">
+            <h4>Research</h4>
+            <Link href="/discover">Discover</Link>
+            <Link href="/trade">Trade</Link>
+            <Link href="/portfolio">Portfolio</Link>
+            <Link href="/watchlists">Watchlists</Link>
+            <Link href="/alerts">Alerts</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Intelligence</h4>
+            <Link href="/projects">Projects</Link>
+            <Link href="/reports">Reports</Link>
+            <Link href="/methodology">Methodology</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Developers</h4>
+            <Link href="/api">API</Link>
+            <Link href="/api-terms">API terms</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Legal</h4>
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/risk-disclosure">Risk disclosure</Link>
+            <Link href="/acceptable-use">Acceptable use</Link>
+          </div>
+        </nav>
+      </div>
+      <div className="footer-bottom">
+        <span className="muted">© {new Date().getFullYear()} Hood Sentry</span>
+        <span className="muted">Evidence, not guarantees. Not financial advice.</span>
+      </div>
+    </footer>
   );
 }
 export function Unavailable({ label }: { label: string }) {

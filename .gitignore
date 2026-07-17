@@ -32,3 +32,8 @@ Thumbs.db
 apps/e2e/test-results/
 apps/e2e/playwright-report/
 apps/e2e/blob-report/
+
+# Local tooling / agent artifacts
+.claude/
+.playwright-mcp/
+home.png
