@@ -113,8 +113,8 @@ button {
   padding: 8px 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.16s var(--ease-out), background 0.16s var(--ease-out),
-    color 0.16s var(--ease-out), box-shadow 0.16s var(--ease-out);
+  transition: border-color 0.16s var(--ease-out), background 0.16s var(--ease-out), color 0.16s
+    var(--ease-out), box-shadow 0.16s var(--ease-out);
 }
 button:hover:not(:disabled) {
   border-color: var(--brand);
@@ -245,6 +245,52 @@ textarea:focus-visible {
   background: var(--danger-wash);
   box-shadow: var(--shadow);
   z-index: var(--z-tooltip);
+}
+
+.wallet-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 224px;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: var(--z-tooltip);
+}
+.wallet-menu-label {
+  padding: 8px 10px 6px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wallet-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-weight: 500;
+  text-align: left;
+}
+.wallet-option:hover:not(:disabled) {
+  background: var(--bg-2);
+  border-color: var(--line);
+  box-shadow: none;
+  color: var(--ink);
+}
+.wallet-option img {
+  border-radius: 5px;
+  flex-shrink: 0;
 }
 
 .main {
@@ -412,10 +458,7 @@ p {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    oklch(0.965 0.007 264 / 0.025) 0 1px,
-    transparent 1px 4px
-  );
+  background: repeating-linear-gradient(oklch(0.965 0.007 264 / 0.025) 0 1px, transparent 1px 4px);
   mix-blend-mode: overlay;
 }
 .scan-head {
@@ -682,8 +725,8 @@ a.primary,
   align-items: center;
   gap: 8px;
   box-shadow: 0 0 30px var(--brand-glow);
-  transition: background 0.16s var(--ease-out), transform 0.16s var(--ease-out),
-    box-shadow 0.16s var(--ease-out);
+  transition: background 0.16s var(--ease-out), transform 0.16s var(--ease-out), box-shadow 0.16s
+    var(--ease-out);
 }
 a.primary:hover,
 .primary:hover:not(:disabled) {

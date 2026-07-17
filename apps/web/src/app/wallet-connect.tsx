@@ -1,15 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiRequest, compactAddress } from '../lib/api';
 
 export type EthereumProvider = {
   request(input: { method: string; params?: readonly unknown[] }): Promise<unknown>;
 };
 
+// EIP-6963: Multi Injected Provider Discovery. Every injected EVM wallet
+// announces itself with an info block and its EIP-1193 provider, so we can
+// list them all and let the user choose instead of relying on whichever
+// extension happened to win `window.ethereum`.
+type ProviderInfo = { uuid: string; name: string; icon: string; rdns: string };
+type ProviderDetail = { info: ProviderInfo; provider: EthereumProvider };
+
 declare global {
   interface Window {
     ethereum?: EthereumProvider;
+  }
+  interface WindowEventMap {
+    'eip6963:announceProvider': CustomEvent<ProviderDetail>;
   }
 }
 
@@ -77,8 +87,11 @@ async function selectChain(provider: EthereumProvider, chainId: number): Promise
 
 export function WalletConnect() {
   const [session, setSession] = useState<Session | null>(null);
+  const [wallets, setWallets] = useState<readonly ProviderDetail[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const controlRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void apiRequest<Session>('/v1/auth/session').then((result) => {
@@ -86,12 +99,35 @@ export function WalletConnect() {
     });
   }, []);
 
-  async function connect() {
-    const provider = window.ethereum;
-    if (provider === undefined) {
-      setError('Install an EVM wallet extension to sign in.');
-      return;
-    }
+  // Discover every injected EVM wallet via EIP-6963, de-duplicated by rdns.
+  useEffect(() => {
+    const found = new Map<string, ProviderDetail>();
+    const onAnnounce = (event: WindowEventMap['eip6963:announceProvider']) => {
+      const detail = event.detail;
+      if (detail?.info?.rdns) {
+        found.set(detail.info.rdns, detail);
+        setWallets([...found.values()]);
+      }
+    };
+    window.addEventListener('eip6963:announceProvider', onAnnounce);
+    window.dispatchEvent(new Event('eip6963:requestProvider'));
+    return () => window.removeEventListener('eip6963:announceProvider', onAnnounce);
+  }, []);
+
+  // Close the picker on an outside click.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (event: MouseEvent) => {
+      if (controlRef.current && !controlRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
+
+  const connect = useCallback(async (provider: EthereumProvider) => {
+    setMenuOpen(false);
     setBusy(true);
     setError(null);
     try {
@@ -119,10 +155,11 @@ export function WalletConnect() {
       if (!verified.ok) throw new Error(friendlyApiError(verified));
       setSession(verified.data);
     } catch (caught) {
-      // EIP-1193 user rejection (e.g. MetaMask "Cancel") surfaces as code 4001.
-      const rejected = typeof caught === 'object' && caught !== null && 'code' in caught
-        ? (caught as { code?: number }).code === 4001
-        : false;
+      // EIP-1193 user rejection (e.g. wallet "Cancel") surfaces as code 4001.
+      const rejected =
+        typeof caught === 'object' && caught !== null && 'code' in caught
+          ? (caught as { code?: number }).code === 4001
+          : false;
       setError(
         rejected
           ? 'Sign-in canceled.'
@@ -133,6 +170,28 @@ export function WalletConnect() {
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  function onConnectClick() {
+    setError(null);
+    // One wallet: connect directly. Several: let the user pick. None announced:
+    // fall back to a legacy single injected provider, else prompt to install.
+    const only = wallets[0];
+    if (wallets.length === 1 && only) {
+      void connect(only.provider);
+      return;
+    }
+    if (wallets.length === 0) {
+      if (typeof window !== 'undefined' && window.ethereum) {
+        void connect(window.ethereum);
+        return;
+      }
+      setError(
+        'No EVM wallet detected. Install one (MetaMask, Rabby, Coinbase Wallet, …) to sign in.',
+      );
+      return;
+    }
+    setMenuOpen((open) => !open);
   }
 
   async function logout() {
@@ -147,16 +206,41 @@ export function WalletConnect() {
 
   const wallet = session?.wallets.find((entry) => entry.isPrimary) ?? session?.wallets[0];
   return (
-    <div className="wallet-control">
+    <div className="wallet-control" ref={controlRef}>
       {session?.authenticated && wallet !== undefined ? (
         <button type="button" onClick={logout} disabled={busy} title="Sign out">
           {compactAddress(wallet.address)}
         </button>
       ) : (
-        <button type="button" onClick={connect} disabled={busy}>
+        <button
+          type="button"
+          onClick={onConnectClick}
+          disabled={busy}
+          aria-haspopup={wallets.length > 1 ? 'menu' : undefined}
+          aria-expanded={wallets.length > 1 ? menuOpen : undefined}
+        >
           {busy ? 'Connecting…' : 'Connect wallet'}
         </button>
       )}
+      {menuOpen && wallets.length > 1 ? (
+        <div className="wallet-menu" role="menu">
+          <div className="wallet-menu-label">Choose a wallet</div>
+          {wallets.map((entry) => (
+            <button
+              type="button"
+              role="menuitem"
+              className="wallet-option"
+              key={entry.info.rdns}
+              onClick={() => connect(entry.provider)}
+              disabled={busy}
+            >
+              {/* icons are data: or https: URIs, both allowed by the CSP */}
+              <img src={entry.info.icon} alt="" width={20} height={20} />
+              <span>{entry.info.name}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       {error === null ? null : <span className="inline-error">{error}</span>}
     </div>
   );
