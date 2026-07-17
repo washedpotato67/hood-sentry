@@ -8,6 +8,18 @@ type Feed = {
 };
 type Search = { data: readonly { item: DiscoveryItem }[] };
 
+// The API feed keys double as URL params, so they stay camelCase on the wire.
+// These are the human labels shown wherever a key would otherwise surface.
+const FEEDS = [
+  { value: 'trending', label: 'Trending' },
+  { value: 'newTokens', label: 'New tokens' },
+  { value: 'newPools', label: 'New pools' },
+  { value: 'volumeGainers', label: 'Volume gainers' },
+  { value: 'liquidityGainers', label: 'Liquidity gainers' },
+  { value: 'recentlyMigrated', label: 'Recently migrated' },
+  { value: 'recentCriticalRisk', label: 'Critical risk' },
+] as const;
+
 export default async function Discover({
   searchParams,
 }: {
@@ -15,16 +27,9 @@ export default async function Discover({
 }) {
   const query = await searchParams;
   const chain = chainId();
-  const feeds = new Set([
-    'newTokens',
-    'newPools',
-    'trending',
-    'volumeGainers',
-    'liquidityGainers',
-    'recentlyMigrated',
-    'recentCriticalRisk',
-  ]);
+  const feeds = new Set<string>(FEEDS.map((entry) => entry.value));
   const feed = query.feed !== undefined && feeds.has(query.feed) ? query.feed : 'trending';
+  const feedLabel = FEEDS.find((entry) => entry.value === feed)?.label ?? feed;
   let items: readonly DiscoveryItem[] = [];
   let error: { code: string; message: string } | null = null;
   if (query.query !== undefined && query.query.length > 0) {
@@ -44,20 +49,20 @@ export default async function Discover({
         Organic rankings keep score components, confidence, and warnings visible.
       </p>
       <div className="grid">
-        <Stat label="View" value={query.query ? `Search: ${query.query}` : feed} />
+        <Stat label="View" value={query.query ? `Search: ${query.query}` : feedLabel} />
         <Stat label="Results" value={items.length.toString()} />
         <Stat label="Chain ID" value={chain.toString()} />
       </div>
       {error === null ? (
         <section className="panel">
           <div className="actions">
-            {Array.from(feeds).map((value) => (
+            {FEEDS.map((entry) => (
               <a
-                className={value === feed ? 'badge status-ready' : 'badge'}
-                href={`?feed=${value}`}
-                key={value}
+                className={entry.value === feed ? 'badge status-ready' : 'badge'}
+                href={`?feed=${entry.value}`}
+                key={entry.value}
               >
-                {value}
+                {entry.label}
               </a>
             ))}
           </div>
