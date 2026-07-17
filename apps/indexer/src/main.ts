@@ -173,16 +173,6 @@ async function main() {
       secondaryWebsocketUrl: env.ROBINHOOD_WS_SECONDARY,
     });
 
-    logger.info('Indexer starting', {
-      mode,
-      chainId: env.ROBINHOOD_CHAIN_ID,
-      primaryRpcProvider: rpcProviders.primary.providerId,
-      secondaryRpcConfigured: rpcProviders.secondary !== null,
-      startBlock,
-      endBlock,
-      batchSize,
-    });
-
     const db = createDatabase(env.DATABASE_URL);
 
     const chain = getChainDefinition(env.ROBINHOOD_CHAIN_ID);
@@ -220,6 +210,35 @@ async function main() {
       },
     });
 
+    const finalityConfirmations = 64n;
+    // Precedence: an explicit --start-block wins for one-off runs; otherwise
+    // INDEXER_START_BLOCK decides where a checkpoint-less live indexer begins.
+    // `latest` resolves to a confirmed block just behind the head so we index
+    // recent activity immediately instead of crawling from genesis.
+    let resolvedStartBlock: bigint | undefined;
+    if (startBlock !== undefined) {
+      resolvedStartBlock = BigInt(startBlock);
+    } else if (env.INDEXER_START_BLOCK === 'latest') {
+      const head = await rpcClient.getBlockNumber();
+      resolvedStartBlock = head > finalityConfirmations ? head - finalityConfirmations : 0n;
+      logger.info('Resolved start block from chain head', {
+        head: head.toString(),
+        startBlock: resolvedStartBlock.toString(),
+      });
+    } else if (env.INDEXER_START_BLOCK !== undefined) {
+      resolvedStartBlock = BigInt(env.INDEXER_START_BLOCK);
+    }
+
+    logger.info('Indexer starting', {
+      mode,
+      chainId: env.ROBINHOOD_CHAIN_ID,
+      primaryRpcProvider: rpcProviders.primary.providerId,
+      secondaryRpcConfigured: rpcProviders.secondary !== null,
+      startBlock: resolvedStartBlock?.toString(),
+      endBlock,
+      batchSize,
+    });
+
     const config: IndexerConfig = {
       chainId: BigInt(env.ROBINHOOD_CHAIN_ID),
       workerId: `indexer-${process.pid}-${Date.now()}`,
@@ -230,9 +249,9 @@ async function main() {
       leaseRenewalMs: 30000,
       maxRetries: 3,
       retryDelayMs: 1000,
-      startBlock: startBlock ? BigInt(startBlock) : undefined,
+      startBlock: resolvedStartBlock,
       endBlock: endBlock ? BigInt(endBlock) : undefined,
-      finalityConfirmations: 64,
+      finalityConfirmations: Number(finalityConfirmations),
       safeConfirmations: 32,
     };
 

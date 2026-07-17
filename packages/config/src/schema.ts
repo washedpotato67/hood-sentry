@@ -117,6 +117,15 @@ const chainSchema = z.object({
   RPC_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   RPC_MAX_RETRIES: z.coerce.number().int().min(0).default(3),
   INDEXER_CONFIRMATION_MODE: z.enum(['soft', 'finalized']).default('soft'),
+  // Where a fresh live indexer begins when it has no checkpoint. On a chain
+  // millions of blocks deep, genesis is infeasible: `latest` starts near the
+  // current head so recent activity is indexed immediately. A number pins an
+  // explicit block; empty keeps the genesis default.
+  INDEXER_START_BLOCK: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.union([z.literal('latest'), z.string().regex(/^\d+$/, 'Must be "latest" or a block number')])
+      .optional(),
+  ),
 });
 
 const providersSchema = z.object({
