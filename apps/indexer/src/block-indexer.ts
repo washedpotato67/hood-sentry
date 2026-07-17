@@ -1,6 +1,7 @@
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
+import type { Hash } from 'viem';
 import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
 import type { ChainlinkJobProducer } from './chainlink-job-producer.js';
@@ -179,50 +180,16 @@ export class BlockIndexer {
         }
 
         // Catch-up tier: when a finalized backlog has built up, drain it in
-        // concurrent windows instead of one block per poll. Every block up to
-        // `safeCeiling` is at least finalityConfirmations behind the head, so it
-        // cannot reorg — we skip parent-hash validation and per-block finality
-        // probes and mark the whole window finalized. Single-block tailing below
-        // still handles the last finalityConfirmations blocks near the tip.
-        const safeCeiling = latestBlock - BigInt(this.config.finalityConfirmations);
-        if (currentBlock <= safeCeiling) {
-          const requestedEnd = currentBlock + BigInt(this.config.batchSize) - 1n;
-          const windowEnd = requestedEnd > safeCeiling ? safeCeiling : requestedEnd;
-
-          const blocks = await this.blockFetcher.fetchBlockWindow(currentBlock, windowEnd);
-          const firstBlock = blocks[0];
-          const lastBlock = blocks[blocks.length - 1];
-          if (firstBlock === undefined || lastBlock === undefined) {
-            await this.sleep(this.config.retryDelayMs);
-            continue;
-          }
-
-          for (const blockData of blocks) {
-            await this.blockPersister.persistBlockData(blockData, 'finalized', true);
-            this.metrics.blocksIndexed++;
-            this.metrics.transactionsIndexed += blockData.transactions.length;
-            this.metrics.logsIndexed += blockData.logs.length;
-            await this.publishDerivedJobs(blockData);
-          }
-
-          // fetchBlockWindow returns a contiguous prefix starting at currentBlock,
-          // so the count alone tells us how far we advanced.
-          currentBlock += BigInt(blocks.length);
-          lastBlockHash = lastBlock.block.hash;
-          this.metrics.lastBlockNumber = lastBlock.block.number ?? this.metrics.lastBlockNumber;
-
-          await this.checkpointManager.createOrUpdateCheckpoint(
-            streamName,
-            currentBlock,
-            lastBlockHash,
-          );
-
-          this.logger.info('Catch-up window indexed', {
-            fromBlock: firstBlock.block.number?.toString(),
-            toBlock: lastBlock.block.number?.toString(),
-            count: blocks.length,
-            lag: this.metrics.lag,
-          });
+        // concurrent windows instead of one block per poll. Single-block tailing
+        // below still handles the near-head window where reorgs are possible.
+        const backlog = await this.drainFinalizedBacklog(streamName, currentBlock, latestBlock);
+        if (backlog.status === 'retry') {
+          await this.sleep(this.config.retryDelayMs);
+          continue;
+        }
+        if (backlog.status === 'advanced') {
+          currentBlock = backlog.nextBlock;
+          lastBlockHash = backlog.lastBlockHash;
           continue;
         }
 
@@ -287,6 +254,66 @@ export class BlockIndexer {
     }
 
     await this.checkpointManager.releaseLease(streamName);
+  }
+
+  /**
+   * Drain a finalized backlog in one concurrent window. Every block up to
+   * `safeCeiling` sits at least finalityConfirmations behind the head, so it
+   * cannot reorg: parent-hash validation and per-block finality probes are
+   * skipped and the whole window is marked finalized.
+   *
+   * - `tail`: no finalized backlog; the caller should tail one block at a time.
+   * - `retry`: the window came back empty (a provider gap); the caller waits.
+   * - `advanced`: the window persisted; the caller adopts `nextBlock`/`lastBlockHash`.
+   */
+  private async drainFinalizedBacklog(
+    streamName: string,
+    currentBlock: bigint,
+    latestBlock: bigint,
+  ): Promise<
+    | { status: 'tail' }
+    | { status: 'retry' }
+    | { status: 'advanced'; nextBlock: bigint; lastBlockHash: Hash | null }
+  > {
+    const safeCeiling = latestBlock - BigInt(this.config.finalityConfirmations);
+    if (currentBlock > safeCeiling) {
+      return { status: 'tail' };
+    }
+
+    const requestedEnd = currentBlock + BigInt(this.config.batchSize) - 1n;
+    const windowEnd = requestedEnd > safeCeiling ? safeCeiling : requestedEnd;
+
+    const blocks = await this.blockFetcher.fetchBlockWindow(currentBlock, windowEnd);
+    const firstBlock = blocks[0];
+    const lastBlock = blocks[blocks.length - 1];
+    if (firstBlock === undefined || lastBlock === undefined) {
+      return { status: 'retry' };
+    }
+
+    for (const blockData of blocks) {
+      await this.blockPersister.persistBlockData(blockData, 'finalized', true);
+      this.metrics.blocksIndexed++;
+      this.metrics.transactionsIndexed += blockData.transactions.length;
+      this.metrics.logsIndexed += blockData.logs.length;
+      await this.publishDerivedJobs(blockData);
+    }
+
+    // fetchBlockWindow returns a contiguous prefix starting at currentBlock, so
+    // the count alone tells us how far we advanced.
+    const nextBlock = currentBlock + BigInt(blocks.length);
+    const lastBlockHash = lastBlock.block.hash;
+    this.metrics.lastBlockNumber = lastBlock.block.number ?? this.metrics.lastBlockNumber;
+
+    await this.checkpointManager.createOrUpdateCheckpoint(streamName, nextBlock, lastBlockHash);
+
+    this.logger.info('Catch-up window indexed', {
+      fromBlock: firstBlock.block.number?.toString(),
+      toBlock: lastBlock.block.number?.toString(),
+      count: blocks.length,
+      lag: this.metrics.lag,
+    });
+
+    return { status: 'advanced', nextBlock, lastBlockHash };
   }
 
   private async runHistoricalMode(): Promise<void> {

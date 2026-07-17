@@ -82,10 +82,13 @@ export class BlockFetcher {
           received: receipts.length,
         });
       } catch (error) {
-        this.logger.warn('eth_getBlockReceipts unavailable, falling back to per-transaction fetch', {
-          blockNumber: (block.number ?? 0n).toString(),
-          error: error instanceof Error ? error.message : String(error),
-        });
+        this.logger.warn(
+          'eth_getBlockReceipts unavailable, falling back to per-transaction fetch',
+          {
+            blockNumber: (block.number ?? 0n).toString(),
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
       }
     }
 

@@ -281,7 +281,9 @@ export class RPCClient {
   }): Promise<TransactionReceipt[]> {
     return this.executeWithFailover('eth_getBlockReceipts', async (client) => {
       if (params.blockHash) {
-        return (await client.getBlockReceipts({ blockHash: params.blockHash })) as TransactionReceipt[];
+        return (await client.getBlockReceipts({
+          blockHash: params.blockHash,
+        })) as TransactionReceipt[];
       }
       return (await client.getBlockReceipts({
         blockNumber: params.blockNumber,
