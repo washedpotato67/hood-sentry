@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run --no-file-parallelism",
-    "migrate": "node --loader ts-node/esm src/migrate.ts",
+    "migrate": "node --env-file-if-exists=../../.env --loader ts-node/esm src/migrate.ts",
     "migrate:reset": "node --loader ts-node/esm src/migrate-reset.ts",
     "seed": "echo 'No seeds yet'",
     "clean": "rm -rf dist *.tsbuildinfo"
