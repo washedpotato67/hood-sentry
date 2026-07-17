@@ -36,6 +36,13 @@ const ethereumAddressSchema = z
     message: 'Zero address is not allowed',
   });
 
+// An unset key and a key present-but-empty mean the same thing: not configured.
+// `.env.example` ships optional keys as bare `KEY=`, so both must parse as undefined.
+const optionalAddressSchema = z.preprocess(
+  (value) => (value === '' ? undefined : value),
+  ethereumAddressSchema.optional(),
+);
+
 const chainIdSchema = z.coerce
   .number()
   .int()
@@ -84,7 +91,7 @@ const applicationSchema = z.object({
   PRODUCT_DOMAIN: z.string().default('hoodsentry.com'),
   PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   SUPPORT_EMAIL: z.string().email().default('support@hoodsentry.com'),
-  STATUS_PAGE_URL: z.string().url().optional(),
+  STATUS_PAGE_URL: optionalUrlSchema,
   LEGAL_ENTITY_NAME: z.string().default('Hood Sentry'),
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_HOST: z.string().default('0.0.0.0'),
@@ -133,23 +140,26 @@ const authSchema = z.object({
 });
 
 const storageSchema = z.object({
-  OBJECT_STORAGE_ENDPOINT: z.string().url().optional(),
+  OBJECT_STORAGE_ENDPOINT: optionalUrlSchema,
   OBJECT_STORAGE_BUCKET: z.string().optional(),
   OBJECT_STORAGE_REGION: z.string().default('auto'),
   OBJECT_STORAGE_ACCESS_KEY_ID: z.string().optional(),
   OBJECT_STORAGE_SECRET_ACCESS_KEY: z.string().optional(),
 });
 
+// Callers gate each delivery channel on `=== undefined`, then hand the value to
+// a provider that rejects a blank key. An empty `KEY=` must therefore parse as
+// undefined, or the channel is built with no credential and fails at boot.
 const notificationsSchema = z.object({
-  TELEGRAM_BOT_TOKEN: z.string().optional(),
-  EMAIL_PROVIDER_API_KEY: z.string().optional(),
-  WEB_PUSH_PUBLIC_KEY: z.string().optional(),
-  WEB_PUSH_PRIVATE_KEY: z.string().optional(),
-  WEBHOOK_SIGNING_SECRET: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: optionalNonemptyStringSchema,
+  EMAIL_PROVIDER_API_KEY: optionalNonemptyStringSchema,
+  WEB_PUSH_PUBLIC_KEY: optionalNonemptyStringSchema,
+  WEB_PUSH_PRIVATE_KEY: optionalNonemptyStringSchema,
+  WEBHOOK_SIGNING_SECRET: optionalNonemptyStringSchema,
 });
 
 const contractsSchema = z.object({
-  SENTRY_TOKEN_ADDRESS: ethereumAddressSchema.optional(),
+  SENTRY_TOKEN_ADDRESS: optionalAddressSchema,
   SENTRY_TOKEN_RUNTIME_BYTECODE_HASH: z.preprocess(
     (value) => (value === '' ? undefined : value),
     z
@@ -185,7 +195,7 @@ const contractsSchema = z.object({
   ),
   TOKEN_ENTITLEMENT_CACHE_SECONDS: z.coerce.number().int().positive().default(60),
   TOKEN_ENTITLEMENT_MINIMUM_HOLDING_SECONDS: z.coerce.number().int().nonnegative().default(86_400),
-  TREASURY_SAFE_ADDRESS: ethereumAddressSchema.optional(),
+  TREASURY_SAFE_ADDRESS: optionalAddressSchema,
 });
 
 const booleanStringSchema = z.preprocess((val) => {
@@ -213,7 +223,7 @@ const featureFlagsSchema = z.object({
 
 const observabilitySchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: optionalUrlSchema,
   OTEL_SERVICE_NAME: z.string().default('hood-sentry'),
 });
 

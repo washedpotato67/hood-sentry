@@ -156,6 +156,63 @@ describe('Configuration Schema', () => {
       expect(result.success).toBe(true);
       if (result.success) expect(result.data.ROBINHOOD_RPC_PRIMARY).toBeUndefined();
     });
+
+    it('should treat empty optional keys as unset, the way .env.example ships them', () => {
+      const config = {
+        ...validBaseConfig,
+        STATUS_PAGE_URL: '',
+        OBJECT_STORAGE_ENDPOINT: '',
+        OTEL_EXPORTER_OTLP_ENDPOINT: '',
+        SENTRY_TOKEN_ADDRESS: '',
+        TREASURY_SAFE_ADDRESS: '',
+      };
+
+      const result = envSchema.safeParse(config);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.STATUS_PAGE_URL).toBeUndefined();
+        expect(result.data.OBJECT_STORAGE_ENDPOINT).toBeUndefined();
+        expect(result.data.OTEL_EXPORTER_OTLP_ENDPOINT).toBeUndefined();
+        expect(result.data.SENTRY_TOKEN_ADDRESS).toBeUndefined();
+        expect(result.data.TREASURY_SAFE_ADDRESS).toBeUndefined();
+      }
+    });
+
+    it('should treat empty notification credentials as unset', () => {
+      // Callers build a delivery channel whenever these are not undefined, and
+      // the providers reject a blank key, so '' must not survive parsing.
+      const config = {
+        ...validBaseConfig,
+        TELEGRAM_BOT_TOKEN: '',
+        EMAIL_PROVIDER_API_KEY: '',
+        WEB_PUSH_PUBLIC_KEY: '',
+        WEB_PUSH_PRIVATE_KEY: '',
+        WEBHOOK_SIGNING_SECRET: '',
+      };
+
+      const result = envSchema.safeParse(config);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.TELEGRAM_BOT_TOKEN).toBeUndefined();
+        expect(result.data.EMAIL_PROVIDER_API_KEY).toBeUndefined();
+        expect(result.data.WEB_PUSH_PUBLIC_KEY).toBeUndefined();
+        expect(result.data.WEB_PUSH_PRIVATE_KEY).toBeUndefined();
+        expect(result.data.WEBHOOK_SIGNING_SECRET).toBeUndefined();
+      }
+    });
+
+    it('should still reject a malformed optional address rather than ignore it', () => {
+      const result = envSchema.safeParse({ ...validBaseConfig, TREASURY_SAFE_ADDRESS: '0xnope' });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(
+          result.error.issues.some((i: ZodIssue) => i.path.includes('TREASURY_SAFE_ADDRESS')),
+        ).toBe(true);
+      }
+    });
   });
 
   describe('URL Validation', () => {
