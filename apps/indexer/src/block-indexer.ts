@@ -178,6 +178,54 @@ export class BlockIndexer {
           continue;
         }
 
+        // Catch-up tier: when a finalized backlog has built up, drain it in
+        // concurrent windows instead of one block per poll. Every block up to
+        // `safeCeiling` is at least finalityConfirmations behind the head, so it
+        // cannot reorg — we skip parent-hash validation and per-block finality
+        // probes and mark the whole window finalized. Single-block tailing below
+        // still handles the last finalityConfirmations blocks near the tip.
+        const safeCeiling = latestBlock - BigInt(this.config.finalityConfirmations);
+        if (currentBlock <= safeCeiling) {
+          const requestedEnd = currentBlock + BigInt(this.config.batchSize) - 1n;
+          const windowEnd = requestedEnd > safeCeiling ? safeCeiling : requestedEnd;
+
+          const blocks = await this.blockFetcher.fetchBlockWindow(currentBlock, windowEnd);
+          const firstBlock = blocks[0];
+          const lastBlock = blocks[blocks.length - 1];
+          if (firstBlock === undefined || lastBlock === undefined) {
+            await this.sleep(this.config.retryDelayMs);
+            continue;
+          }
+
+          for (const blockData of blocks) {
+            await this.blockPersister.persistBlockData(blockData, 'finalized', true);
+            this.metrics.blocksIndexed++;
+            this.metrics.transactionsIndexed += blockData.transactions.length;
+            this.metrics.logsIndexed += blockData.logs.length;
+            await this.publishDerivedJobs(blockData);
+          }
+
+          // fetchBlockWindow returns a contiguous prefix starting at currentBlock,
+          // so the count alone tells us how far we advanced.
+          currentBlock += BigInt(blocks.length);
+          lastBlockHash = lastBlock.block.hash;
+          this.metrics.lastBlockNumber = lastBlock.block.number ?? this.metrics.lastBlockNumber;
+
+          await this.checkpointManager.createOrUpdateCheckpoint(
+            streamName,
+            currentBlock,
+            lastBlockHash,
+          );
+
+          this.logger.info('Catch-up window indexed', {
+            fromBlock: firstBlock.block.number?.toString(),
+            toBlock: lastBlock.block.number?.toString(),
+            count: blocks.length,
+            lag: this.metrics.lag,
+          });
+          continue;
+        }
+
         const blockData = await this.blockFetcher.fetchBlock(currentBlock);
         if (!blockData) {
           this.logger.warn('Block not found, retrying', { blockNumber: currentBlock.toString() });

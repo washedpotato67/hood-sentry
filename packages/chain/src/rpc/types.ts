@@ -131,6 +131,7 @@ export type RPCMethod =
   | 'eth_getBlockByHash'
   | 'eth_getTransactionByHash'
   | 'eth_getTransactionReceipt'
+  | 'eth_getBlockReceipts'
   | 'eth_getLogs'
   | 'eth_getCode'
   | 'eth_getStorageAt'

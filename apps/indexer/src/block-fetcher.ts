@@ -61,6 +61,46 @@ export class BlockFetcher {
     logs: Log[];
   }> {
     const transactions = block.transactions as Transaction[];
+
+    if (transactions.length === 0) {
+      return { transactions, receipts: [], logs: [] };
+    }
+
+    // One call for every receipt in the block. We pin it to the block hash so a
+    // reorg between the getBlock and the receipt fetch surfaces as a mismatch
+    // rather than silently mixing receipts from a different block.
+    if (block.hash !== null) {
+      try {
+        const receipts = await this.rpcClient.getBlockReceipts({ blockHash: block.hash });
+        if (receipts.length === transactions.length) {
+          const logs = receipts.flatMap((receipt) => receipt.logs);
+          return { transactions, receipts, logs };
+        }
+        this.logger.warn('Block receipts count mismatch, falling back to per-transaction fetch', {
+          blockNumber: (block.number ?? 0n).toString(),
+          expected: transactions.length,
+          received: receipts.length,
+        });
+      } catch (error) {
+        this.logger.warn('eth_getBlockReceipts unavailable, falling back to per-transaction fetch', {
+          blockNumber: (block.number ?? 0n).toString(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return this.fetchBlockBodiesPerTransaction(transactions);
+  }
+
+  /**
+   * Receipts carry the logs, so a receipt that fails to load would silently yield a
+   * block with missing logs. Fail the whole fetch instead and let the caller retry.
+   */
+  private async fetchBlockBodiesPerTransaction(transactions: Transaction[]): Promise<{
+    transactions: Transaction[];
+    receipts: TransactionReceipt[];
+    logs: Log[];
+  }> {
     const receipts: TransactionReceipt[] = [];
     const logs: Log[] = [];
 
@@ -136,6 +176,30 @@ export class BlockFetcher {
           blocks.push(blockData);
         }
       }
+    }
+
+    return blocks;
+  }
+
+  /**
+   * Fetch a contiguous window of blocks concurrently, returned in ascending
+   * order. Used by live catch-up to drain a finalized backlog far faster than
+   * the strictly-sequential {@link fetchBlockRange}. A hole (a null within the
+   * window) truncates the result at the gap so the caller never advances past a
+   * block it failed to fetch.
+   */
+  async fetchBlockWindow(fromBlock: bigint, toBlock: bigint): Promise<BlockData[]> {
+    const numbers: bigint[] = [];
+    for (let n = fromBlock; n <= toBlock; n++) {
+      numbers.push(n);
+    }
+
+    const results = await Promise.all(numbers.map((n) => this.fetchBlock(n)));
+
+    const blocks: BlockData[] = [];
+    for (const blockData of results) {
+      if (!blockData) break;
+      blocks.push(blockData);
     }
 
     return blocks;

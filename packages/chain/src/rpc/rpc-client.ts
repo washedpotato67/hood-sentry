@@ -270,6 +270,25 @@ export class RPCClient {
     });
   }
 
+  /**
+   * All receipts for a block in a single round-trip. Fetching them per
+   * transaction turns one block into dozens of sequential calls, which is the
+   * dominant cost when indexing dense blocks; this collapses that to one call.
+   */
+  async getBlockReceipts(params: {
+    blockNumber?: bigint;
+    blockHash?: Hash;
+  }): Promise<TransactionReceipt[]> {
+    return this.executeWithFailover('eth_getBlockReceipts', async (client) => {
+      if (params.blockHash) {
+        return (await client.getBlockReceipts({ blockHash: params.blockHash })) as TransactionReceipt[];
+      }
+      return (await client.getBlockReceipts({
+        blockNumber: params.blockNumber,
+      })) as TransactionReceipt[];
+    });
+  }
+
   async getLogs(params: {
     address?: Address | Address[];
     fromBlock?: bigint;
