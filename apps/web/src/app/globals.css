@@ -998,6 +998,89 @@ code {
   resize: vertical;
 }
 
+/* ─── Select controls ─────────────────────────────────────────────────────
+   The popup is drawn by the browser, not by us, so it takes two things to
+   keep it on-theme: color-scheme tells the engine to render its chrome dark,
+   and explicit option colors cover the engines that ignore it. Without both,
+   a light system menu opens over the dark console.
+   The chevron is a background image because ::after can't paint inside a
+   select; its color is baked to match --muted (this console is dark-only). */
+.field select {
+  appearance: none;
+  color-scheme: dark;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' stroke='%239aa1b3' stroke-width='1.6' stroke-linecap='square'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  cursor: pointer;
+}
+.field select:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background-color: var(--surface);
+}
+.field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.field select option {
+  background-color: var(--bg-2);
+  color: var(--ink);
+}
+.field select option:disabled {
+  color: var(--muted);
+}
+
+/* Chrome 135+ renders the picker in-page once the select opts in, so the menu
+   can finally match the panels instead of the OS. Everything above stays the
+   fallback for engines without it. */
+@supports (appearance: base-select) {
+  .field select {
+    appearance: base-select;
+    /* the engine draws its own chevron here; drop ours and the space it held */
+    background-image: none;
+    padding-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .field select::picker-icon {
+    color: var(--muted);
+  }
+  /* The global reduce block only reaches *, ::before and ::after, so this
+     pseudo-element has to opt in to motion rather than out of it. */
+  @media (prefers-reduced-motion: no-preference) {
+    .field select::picker-icon {
+      transition: transform 0.16s var(--ease-out);
+    }
+  }
+  .field select:open::picker-icon {
+    transform: rotate(180deg);
+  }
+  .field select::picker(select) {
+    /* the picker opts in separately; without this it stays an OS menu */
+    appearance: base-select;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 18px 40px oklch(0.12 0.02 264 / 0.55);
+    padding: 4px;
+    margin-top: 4px;
+  }
+  .field select option {
+    border-radius: calc(var(--radius) - 2px);
+    padding: 7px 10px;
+    background-color: transparent;
+  }
+  .field select option:hover:not(:disabled) {
+    background-color: var(--surface-2);
+  }
+  .field select option:checked {
+    background-color: var(--brand-wash);
+    color: var(--ink);
+  }
+}
+
 .channel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));

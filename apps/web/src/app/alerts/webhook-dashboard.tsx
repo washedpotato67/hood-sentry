@@ -84,9 +84,11 @@ export function WebhookDashboard() {
           </select>
         </label>
       </div>
-      <button type="button" onClick={create} disabled={busy || url.length === 0}>
-        Create webhook
-      </button>
+      <div className="actions">
+        <button type="button" onClick={create} disabled={busy || url.length === 0}>
+          Create webhook
+        </button>
+      </div>
       {secret === null ? null : (
         <div className="secret-panel">
           <strong>Save this signing secret now</strong>
