@@ -192,7 +192,13 @@ textarea:focus-visible {
 .navlinks::-webkit-scrollbar {
   display: none;
 }
+/* Nav items behave like an instrument's channel selector: hovering sweeps a
+   cobalt scan line under the label (acquiring), and the current section stays
+   locked inside registration brackets, the same 1px corner ticks the panels
+   use. Reusing that vocabulary keeps the nav part of the console rather than a
+   generic pill menu. */
 .navlinks a {
+  position: relative;
   color: var(--muted);
   white-space: nowrap;
   padding: 6px 11px;
@@ -201,9 +207,50 @@ textarea:focus-visible {
   font-size: 14px;
   transition: color 0.16s var(--ease-out), background 0.16s var(--ease-out);
 }
+/* The scan line. Scales from the left on hover, and stays put once current. */
+.navlinks a::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--brand);
+  box-shadow: 0 0 9px var(--brand-glow);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.22s var(--ease-out);
+}
 .navlinks a:hover {
   color: var(--ink);
   background: var(--surface);
+}
+.navlinks a:hover::after,
+.navlinks a:focus-visible::after {
+  transform: scaleX(1);
+}
+/* Locked on: brackets frame the label and the scan line holds at full width. */
+.navlinks a[aria-current="page"] {
+  color: var(--ink);
+  background: var(--brand-wash);
+}
+.navlinks a[aria-current="page"]::after {
+  transform: scaleX(1);
+}
+.navlinks a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Two 1px ticks per corner, top-left and bottom-right, drawn as gradients so
+     a single pseudo-element carries the whole bracket. */
+  background-image: linear-gradient(var(--brand), var(--brand)),
+    linear-gradient(var(--brand), var(--brand)), linear-gradient(var(--brand), var(--brand)),
+    linear-gradient(var(--brand), var(--brand));
+  background-size: 7px 1px, 1px 7px, 7px 1px, 1px 7px;
+  background-position: left top, left top, right bottom, right bottom;
+  background-repeat: no-repeat;
 }
 
 .search-form {

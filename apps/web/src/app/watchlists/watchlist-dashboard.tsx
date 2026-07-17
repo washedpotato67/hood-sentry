@@ -97,10 +97,20 @@ export function WatchlistDashboard() {
       </section>
       <section className="panel">
         <h2>Add target</h2>
+        {lists.length === 0 ? (
+          <p className="muted">Create a watchlist first. Every target belongs to a list.</p>
+        ) : null}
         <div className="form-grid">
           <label className="field">
             Watchlist
-            <select value={selected} onChange={(event) => setSelected(event.target.value)}>
+            <select
+              value={selected}
+              onChange={(event) => setSelected(event.target.value)}
+              disabled={lists.length === 0}
+            >
+              {/* Without a placeholder the picker opens as an empty sliver and
+                  reads as broken rather than as "nothing to choose yet". */}
+              {lists.length === 0 ? <option value="">No watchlists yet</option> : null}
               {lists.map((list) => (
                 <option value={list.id} key={list.id}>
                   {list.name}

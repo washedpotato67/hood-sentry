@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { NavLinks } from './nav-links';
 import { SearchBox } from './search-box';
 import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -8,15 +9,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link className="brand" href="/">
           SENTRY
         </Link>
-        <div className="navlinks">
-          <Link href="/discover">Discover</Link>
-          <Link href="/portfolio">Portfolio</Link>
-          <Link href="/watchlists">Watchlists</Link>
-          <Link href="/alerts">Alerts</Link>
-          <Link href="/projects">Projects</Link>
-          <Link href="/reports">Reports</Link>
-          <Link href="/trade">Trade</Link>
-        </div>
+        <NavLinks />
         <SearchBox />
         <WalletConnect />
       </nav>
