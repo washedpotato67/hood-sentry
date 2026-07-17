@@ -128,7 +128,9 @@ export default async function Token({ params }: { params: Promise<{ address: str
             {(risk.findings ?? []).map((finding) => (
               <li className="risk-item" key={finding.id}>
                 <div className="actions">
-                  <span className="badge">{finding.severity}</span>
+                  <span className={`badge sev-${finding.severity.toLowerCase()}`}>
+                    {finding.severity}
+                  </span>
                   <span className="badge">Confidence {finding.confidence}</span>
                 </div>
                 <strong>{finding.title}</strong>

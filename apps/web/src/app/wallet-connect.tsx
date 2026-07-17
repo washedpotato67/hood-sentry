@@ -27,6 +27,16 @@ type Nonce = {
   expirationTime: string;
 };
 
+/** Turn an API failure into something a person can act on. Connectivity and
+ * server faults (unreachable, 5xx, or an empty 404 from the proxy) all mean the
+ * same thing to the user: the backend isn't answering right now. */
+function friendlyApiError(result: { code: string; message: string; status: number }): string {
+  if (result.code === 'SERVICE_UNREACHABLE' || result.status === 404 || result.status >= 500) {
+    return "Wallet sign-in is unavailable right now — the Sentry API isn't responding. Please try again shortly.";
+  }
+  return result.message;
+}
+
 function chainMetadata(chainId: number) {
   return chainId === 4663
     ? {
@@ -89,7 +99,7 @@ export function WalletConnect() {
         method: 'POST',
         body: '{}',
       });
-      if (!nonceResult.ok) throw new Error(nonceResult.message);
+      if (!nonceResult.ok) throw new Error(friendlyApiError(nonceResult));
       const nonce = nonceResult.data;
       await selectChain(provider, nonce.chainId);
       const accounts = await provider.request({ method: 'eth_requestAccounts' });
@@ -106,10 +116,20 @@ export function WalletConnect() {
         method: 'POST',
         body: JSON.stringify({ message, signature }),
       });
-      if (!verified.ok) throw new Error(verified.message);
+      if (!verified.ok) throw new Error(friendlyApiError(verified));
       setSession(verified.data);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Wallet sign-in failed.');
+      // EIP-1193 user rejection (e.g. MetaMask "Cancel") surfaces as code 4001.
+      const rejected = typeof caught === 'object' && caught !== null && 'code' in caught
+        ? (caught as { code?: number }).code === 4001
+        : false;
+      setError(
+        rejected
+          ? 'Sign-in canceled.'
+          : caught instanceof Error
+            ? caught.message
+            : 'Wallet sign-in failed.',
+      );
     } finally {
       setBusy(false);
     }
