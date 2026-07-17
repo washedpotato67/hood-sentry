@@ -13,6 +13,10 @@ import type {
   PersistedTransaction,
 } from './types.js';
 
+// Logs carry ~14 bound parameters each; 1000 rows keeps a single insert far
+// below Postgres' 65535-parameter limit while still collapsing the round-trips.
+const LOG_INSERT_CHUNK_SIZE = 1000;
+
 export class BlockPersister {
   private readonly drizzle: Database['db'];
 
@@ -47,19 +51,44 @@ export class BlockPersister {
       canonical,
     });
 
+    // A dense block holds dozens of transactions and hundreds of logs. Writing
+    // them one row at a time is hundreds of sequential round-trips per block and
+    // is the dominant cost when catching up. Batch each table into multi-row
+    // inserts instead. Receipt fields are merged into the transaction row so the
+    // per-transaction follow-up UPDATE disappears too. Rows are immutable for a
+    // finalized block, so onConflictDoNothing is a safe replay guard.
+    const receiptByTxHash = new Map(receipts.map((receipt) => [receipt.transactionHash, receipt]));
+
     await this.drizzle.transaction(async (tx) => {
       await this.persistBlock(tx, blockData, finalityState, canonical);
 
-      for (const transaction of transactions) {
-        await this.persistTransaction(tx, transaction, blockNumber, blockHash, canonical);
+      if (transactions.length > 0) {
+        const rows = transactions.map((transaction) =>
+          this.buildTransactionRow(
+            transaction,
+            receiptByTxHash.get(transaction.hash),
+            blockNumber,
+            blockHash,
+            canonical,
+          ),
+        );
+        await tx.insert(schema.transactions).values(rows).onConflictDoNothing();
       }
 
-      for (const receipt of receipts) {
-        await this.persistReceipt(tx, receipt, blockNumber, blockHash);
+      if (receipts.length > 0) {
+        const rows = receipts.map((receipt) =>
+          this.buildReceiptRow(receipt, blockNumber, blockHash),
+        );
+        await tx.insert(schema.transactionReceipts).values(rows).onConflictDoNothing();
       }
 
-      for (const log of logs) {
-        await this.persistLog(tx, log, blockNumber, blockHash, canonical);
+      if (logs.length > 0) {
+        const rows = logs.map((log) => this.buildLogRow(log, blockNumber, blockHash, canonical));
+        // Chunked to stay well under Postgres' bind-parameter ceiling.
+        for (let i = 0; i < rows.length; i += LOG_INSERT_CHUNK_SIZE) {
+          const chunk = rows.slice(i, i + LOG_INSERT_CHUNK_SIZE);
+          await tx.insert(schema.logs).values(chunk).onConflictDoNothing();
+        }
       }
     });
 
@@ -106,17 +135,20 @@ export class BlockPersister {
       .onConflictDoNothing();
   }
 
-  private async persistTransaction(
-    tx: Parameters<Parameters<Database['db']['transaction']>[0]>[0],
+  private buildTransactionRow(
     transaction: BlockData['transactions'][0],
+    receipt: BlockData['receipts'][0] | undefined,
     blockNumber: bigint,
     blockHash: Hash,
     canonical: boolean,
-  ): Promise<void> {
+  ): PersistedTransaction {
     if (transaction.transactionIndex === null) {
       throw new Error('Mined transaction is missing its transaction index');
     }
-    const txData: PersistedTransaction = {
+    // Merge the receipt's authoritative execution result into the row so no
+    // follow-up UPDATE is needed. Without a receipt we fall back to the
+    // transaction's own gas fields and an optimistic success status.
+    return {
       chainId: this.config.chainId,
       hash: transaction.hash,
       transactionIndex: transaction.transactionIndex,
@@ -127,42 +159,20 @@ export class BlockPersister {
       nonce: BigInt(transaction.nonce),
       valueRaw: transaction.value.toString(),
       input: transaction.input,
-      status: 1,
-      gasUsed: transaction.gas ?? 0n,
-      effectiveGasPrice: transaction.gasPrice ?? 0n,
-      contractCreated: null,
+      status: receipt ? (receipt.status === 'success' ? 1 : 0) : 1,
+      gasUsed: receipt?.gasUsed ?? transaction.gas ?? 0n,
+      effectiveGasPrice: receipt?.effectiveGasPrice ?? transaction.gasPrice ?? 0n,
+      contractCreated: receipt?.contractAddress ?? null,
       canonical,
     };
-
-    await tx
-      .insert(schema.transactions)
-      .values({
-        chainId: txData.chainId,
-        hash: txData.hash,
-        transactionIndex: txData.transactionIndex,
-        blockNumber: txData.blockNumber,
-        blockHash: txData.blockHash,
-        fromAddress: txData.fromAddress,
-        toAddress: txData.toAddress,
-        nonce: txData.nonce,
-        valueRaw: txData.valueRaw,
-        input: txData.input,
-        status: txData.status,
-        gasUsed: txData.gasUsed,
-        effectiveGasPrice: txData.effectiveGasPrice,
-        contractCreated: txData.contractCreated,
-        canonical: txData.canonical,
-      })
-      .onConflictDoNothing();
   }
 
-  private async persistReceipt(
-    tx: Parameters<Parameters<Database['db']['transaction']>[0]>[0],
+  private buildReceiptRow(
     receipt: BlockData['receipts'][0],
     blockNumber: bigint,
     blockHash: Hash,
-  ): Promise<void> {
-    const receiptData: PersistedReceipt = {
+  ): PersistedReceipt {
+    return {
       chainId: this.config.chainId,
       transactionHash: receipt.transactionHash,
       blockNumber,
@@ -172,57 +182,19 @@ export class BlockPersister {
       cumulativeGasUsed: receipt.cumulativeGasUsed,
       logsCount: receipt.logs.length,
     };
-
-    await tx
-      .insert(schema.transactionReceipts)
-      .values({
-        chainId: receiptData.chainId,
-        transactionHash: receiptData.transactionHash,
-        blockNumber: receiptData.blockNumber,
-        blockHash: receiptData.blockHash,
-        status: receiptData.status,
-        gasUsed: receiptData.gasUsed,
-        cumulativeGasUsed: receiptData.cumulativeGasUsed,
-        logsCount: receiptData.logsCount,
-      })
-      .onConflictDoUpdate({
-        target: [schema.transactionReceipts.chainId, schema.transactionReceipts.transactionHash],
-        set: {
-          status: receiptData.status,
-          gasUsed: receiptData.gasUsed,
-          cumulativeGasUsed: receiptData.cumulativeGasUsed,
-          logsCount: receiptData.logsCount,
-        },
-      });
-
-    await tx
-      .update(schema.transactions)
-      .set({
-        status: receiptData.status,
-        gasUsed: receiptData.gasUsed,
-        effectiveGasPrice: receipt.effectiveGasPrice,
-        contractCreated: receipt.contractAddress,
-      })
-      .where(
-        and(
-          eq(schema.transactions.chainId, receiptData.chainId),
-          eq(schema.transactions.hash, receiptData.transactionHash),
-        ),
-      );
   }
 
-  private async persistLog(
-    tx: Parameters<Parameters<Database['db']['transaction']>[0]>[0],
+  private buildLogRow(
     log: BlockData['logs'][0],
     blockNumber: bigint,
     blockHash: Hash,
     canonical: boolean,
-  ): Promise<void> {
+  ): PersistedLog {
     if (log.transactionHash === null || log.transactionIndex === null || log.logIndex === null) {
       throw new Error('Log is missing required transaction provenance');
     }
 
-    const logData: PersistedLog = {
+    return {
       chainId: this.config.chainId,
       transactionHash: log.transactionHash,
       transactionIndex: log.transactionIndex,
@@ -238,26 +210,6 @@ export class BlockPersister {
       removed: log.removed,
       canonical,
     };
-
-    await tx
-      .insert(schema.logs)
-      .values({
-        chainId: logData.chainId,
-        transactionHash: logData.transactionHash,
-        transactionIndex: logData.transactionIndex,
-        logIndex: logData.logIndex,
-        blockHash: logData.blockHash,
-        blockNumber: logData.blockNumber,
-        address: logData.address,
-        topic0: logData.topic0,
-        topic1: logData.topic1,
-        topic2: logData.topic2,
-        topic3: logData.topic3,
-        data: logData.data,
-        removed: logData.removed,
-        canonical: logData.canonical,
-      })
-      .onConflictDoNothing();
   }
 
   async updateBlockFinality(
