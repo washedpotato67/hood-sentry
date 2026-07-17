@@ -62,7 +62,7 @@ export function PortfolioDashboard() {
 
   if (session === null) return <p className="muted">Loading session…</p>;
   if (!session.authenticated || wallet === undefined) {
-    return <p className="unavailable">Connect and sign in with a Robinhood Chain wallet.</p>;
+    return <p className="unavailable">Connect and sign in with your wallet.</p>;
   }
   if (error !== null) return <p className="danger">{error}</p>;
   if (portfolio === null) return <p className="muted">Loading indexed portfolio…</p>;
