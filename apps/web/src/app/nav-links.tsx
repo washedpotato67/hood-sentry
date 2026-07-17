@@ -8,7 +8,6 @@ const LINKS = [
   { href: '/portfolio', label: 'Portfolio' },
   { href: '/watchlists', label: 'Watchlists' },
   { href: '/alerts', label: 'Alerts' },
-  { href: '/projects', label: 'Projects' },
   { href: '/reports', label: 'Reports' },
   { href: '/trade', label: 'Trade' },
 ] as const;
