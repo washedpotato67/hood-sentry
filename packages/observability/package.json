@@ -21,7 +21,7 @@
     "@hood-sentry/shared": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
-    "@opentelemetry/resources": "^1.29.0",
+    "@opentelemetry/resources": "^2.9.0",
     "@opentelemetry/sdk-node": "^0.217.0",
     "@opentelemetry/sdk-trace-node": "^1.29.0",
     "@opentelemetry/semantic-conventions": "^1.28.0",
