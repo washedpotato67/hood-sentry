@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { apiRequest, chainId } from '../lib/api';
-import { ErrorPanel, Shell, Stat } from './components';
+import { ErrorPanel, Stat } from './components';
 import { type DiscoveryItem, DiscoveryTable } from './discovery-table';
 import { HeroScan } from './hero-scan';
 
@@ -49,7 +49,7 @@ export default async function Home() {
   const trendingItems = trending.ok ? trending.data.organic.data : [];
   const newItems = newTokens.ok ? newTokens.data.organic.data : [];
   return (
-    <Shell>
+    <>
       <header className="hero">
         <div className="hero-grid">
           <div className="hero-copy reveal reveal-1">
@@ -102,6 +102,6 @@ export default async function Home() {
       ) : (
         <ErrorPanel code={trending.code} message={trending.message} />
       )}
-    </Shell>
+    </>
   );
 }

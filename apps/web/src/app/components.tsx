@@ -77,11 +77,12 @@ export function Stat({ label, value }: { label: string; value?: string }) {
   );
 }
 export function Page({ title, children }: { title: string; children: React.ReactNode }) {
+  // The shell is provided by the root layout; a page only supplies its content.
   return (
-    <Shell>
+    <>
       <h1>{title}</h1>
       {children}
-    </Shell>
+    </>
   );
 }
 

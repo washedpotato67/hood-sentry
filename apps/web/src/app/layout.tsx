@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Archivo, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Shell } from './components';
 
 // Body / normal text — warm, refined humanist sans.
 const sans = Hanken_Grotesk({
@@ -32,7 +33,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {/* Shell lives in the layout so the nav and footer render once and
+            persist across navigations; only the page content below swaps. */}
+        <Shell>{children}</Shell>
+      </body>
     </html>
   );
 }
