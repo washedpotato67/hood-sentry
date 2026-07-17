@@ -37,3 +37,9 @@ apps/e2e/blob-report/
 .claude/
 .playwright-mcp/
 home.png
+
+# Internal docs, prompts, and agent guides (not published)
+/AGENTS.md
+/README_START_HERE.md
+/docs/
+/prompts/
