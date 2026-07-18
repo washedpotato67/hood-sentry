@@ -14,7 +14,7 @@
   },
   "deploy": {
     "restartPolicyType": "ALWAYS",
-    "overlapSeconds": "30",
-    "drainingSeconds": "60"
+    "overlapSeconds": 30,
+    "drainingSeconds": 60
   }
 }
