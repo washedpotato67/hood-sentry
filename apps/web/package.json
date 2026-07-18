@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "node --env-file-if-exists=../../.env node_modules/next/dist/bin/next build",
+    "build": "NODE_ENV=production node --env-file-if-exists=../../.env node_modules/next/dist/bin/next build",
     "dev": "node --env-file-if-exists=../../.env node_modules/next/dist/bin/next dev --port ${PORT:-3000}",
     "start": "next start",
     "typecheck": "tsc --noEmit",

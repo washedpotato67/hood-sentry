@@ -37,14 +37,7 @@ export function HeroScan() {
         {/* instrument dial: glow + concentric rings */}
         <circle cx={CENTER.x} cy={CENTER.y} r="132" fill="url(#scan-glow)" />
         {[132, 100, 68, 36].map((r) => (
-          <circle
-            key={r}
-            cx={CENTER.x}
-            cy={CENTER.y}
-            r={r}
-            className="scan-ring"
-            fill="none"
-          />
+          <circle key={r} cx={CENTER.x} cy={CENTER.y} r={r} className="scan-ring" fill="none" />
         ))}
 
         {/* rotating radar sweep */}

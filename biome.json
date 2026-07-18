@@ -45,6 +45,7 @@
       "dist",
       ".next",
       ".turbo",
+      ".claude",
       "coverage",
       "out",
       "packages/contracts/out",
