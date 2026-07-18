@@ -342,6 +342,18 @@ textarea:focus-visible {
   outline: none;
 }
 
+/* Theme toggle — compact mono chip; inherits the base button styling. */
+.theme-toggle {
+  padding: 7px 11px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 .wallet-control {
   position: relative;
   display: flex;

@@ -29,6 +29,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
+        {/* Re-apply a pinned theme before paint so there's no flash. Dark is the
+            default when nothing is stored (CSS handles OS light preference). */}
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: tiny inline no-flash theme script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}",
+          }}
+        />
         {/* Shell lives in the layout so the nav and footer render once and
             persist across navigations; only the page content below swaps. */}
         <Shell>{children}</Shell>

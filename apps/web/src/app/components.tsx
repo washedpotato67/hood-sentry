@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { SearchBox } from './search-box';
+import { ThemeToggle } from './theme-toggle';
 import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <NavLinks />
         <SearchBox />
         <WalletConnect />
+        <ThemeToggle />
       </nav>
       <main className="main">{children}</main>
       <SiteFooter />
