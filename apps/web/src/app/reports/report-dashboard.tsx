@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { apiRequest, compactAddress } from '../../lib/api';
+import { severityClass } from '../../lib/risk';
+import { EmptyState } from '../components';
 import { useSession } from '../use-session';
 
 type Report = {
@@ -34,7 +36,12 @@ export function ReportDashboard() {
     return <section className="panel">Sign in to view your reports.</section>;
   return (
     <section className="panel">
-      {reports.length === 0 ? <p className="muted">No reports submitted.</p> : null}
+      {reports.length === 0 ? (
+        <EmptyState title="No reports yet">
+          Flag a token's contract, liquidity, or market behavior for review. Your submissions and
+          each moderator decision show up here.
+        </EmptyState>
+      ) : null}
       {reports.map((report) => (
         <div className="metric-row" key={report.id}>
           <span>
@@ -45,7 +52,7 @@ export function ReportDashboard() {
             <code>{compactAddress(report.targetAddress)}</code>
           </span>
           <span className="actions">
-            <span className="badge">{report.severity}</span>
+            <span className={severityClass(report.severity)}>{report.severity}</span>
             <span className={`badge ${report.status === 'upheld' ? 'status-ready' : ''}`}>
               {report.status}
             </span>

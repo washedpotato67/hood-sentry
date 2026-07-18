@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiRequest, chainId, compactAddress, formatRaw } from '../../lib/api';
-import { Stat } from '../components';
+import { EmptyState, Stat } from '../components';
 import { useSession } from '../use-session';
 
 type Portfolio = {
@@ -87,7 +87,10 @@ export function PortfolioDashboard() {
       <section className="panel">
         <h2>Holdings</h2>
         {portfolio.holdings.length === 0 ? (
-          <p className="muted">No positive indexed balances.</p>
+          <EmptyState title="No indexed balances">
+            This wallet holds no tokens Sentry has indexed on Robinhood Chain yet. Balances appear
+            as the indexer reaches the blocks that touch them.
+          </EmptyState>
         ) : null}
         {portfolio.holdings.map((holding) => (
           <div className="metric-row" key={holding.tokenAddress}>

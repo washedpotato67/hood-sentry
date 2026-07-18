@@ -56,16 +56,21 @@ export default async function Discover({
       </div>
       {error === null ? (
         <section className="panel">
-          <div className="actions">
-            {FEEDS.map((entry) => (
-              <Link
-                className={entry.value === feed ? 'badge status-ready' : 'badge'}
-                href={`?feed=${entry.value}`}
-                key={entry.value}
-              >
-                {entry.label}
-              </Link>
-            ))}
+          <div className="toggles" role="tablist" aria-label="Discovery feed">
+            {FEEDS.map((entry) => {
+              const active = entry.value === feed && !query.query;
+              return (
+                <Link
+                  className="toggle"
+                  aria-selected={active}
+                  role="tab"
+                  href={`?feed=${entry.value}`}
+                  key={entry.value}
+                >
+                  {entry.label}
+                </Link>
+              );
+            })}
           </div>
           <DiscoveryTable items={items} />
         </section>

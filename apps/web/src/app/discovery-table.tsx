@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { compactAddress, formatRaw } from '../lib/api';
+import { riskGradeClass } from '../lib/risk';
+import { EmptyState } from './components';
 
 export type DiscoveryItem = {
   address: string;
@@ -18,7 +20,16 @@ export type DiscoveryItem = {
 };
 
 export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
-  if (items.length === 0) return <p className="muted">No indexed tokens match this view.</p>;
+  if (items.length === 0)
+    return (
+      <EmptyState
+        title="Nothing indexed here yet"
+        action={<Link href="/methodology">How ranking works →</Link>}
+      >
+        Sentry is catching up to the chain head — tokens surface here as their on-chain evidence
+        lands. Check back shortly, or read how the ranking works.
+      </EmptyState>
+    );
   return (
     <div className="table-wrap">
       <table className="table">
@@ -47,7 +58,7 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
               <td>{formatRaw(item.volumeRaw)}</td>
               <td>{item.holderCount ?? 'Unavailable'}</td>
               <td>
-                <span className="badge">{item.riskGrade}</span>
+                <span className={riskGradeClass(item.riskGrade)}>{item.riskGrade}</span>
               </td>
             </tr>
           ))}
