@@ -40,4 +40,13 @@ async function main() {
   }
 }
 
-main();
+main().catch((error) => {
+  // Surface boot failures (e.g. bad config, failed dependency wiring) instead of
+  // exiting silently — a silent crash-loop is invisible in deploy logs.
+  // biome-ignore lint/suspicious/noConsole: logger may not be constructed yet at boot failure
+  console.error(
+    'API failed to start:',
+    error instanceof Error ? (error.stack ?? error.message) : error,
+  );
+  process.exit(1);
+});
