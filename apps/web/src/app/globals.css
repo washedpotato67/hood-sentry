@@ -1067,6 +1067,16 @@ a.primary:active,
   background: var(--g-c);
 }
 
+/* Liquidity cell: sparkline sits inline before the figure. */
+.liq-cell {
+  white-space: nowrap;
+}
+.spark {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 9px;
+}
+
 /* ─── Segmented toggle (feed switcher) ────────────────────────────────────
    Mutually exclusive views; the selected tab locks into solid accent. */
 .toggles {

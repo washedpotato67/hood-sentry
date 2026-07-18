@@ -603,6 +603,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   await app.register(tokenSignalRoutes, {
     prefix: '/v1',
     risk: riskRepository,
+    protocol: protocolRepository,
   });
 
   app.addHook('onClose', async () => {

@@ -21,7 +21,52 @@ export type DiscoveryItem = {
   // Attached by best-effort enrichment (finding-severity beads); absent when a
   // token has no scan yet or enrichment failed.
   signals?: { high: number; medium: number; low: number };
+  // Recent liquidity series (oldest→newest) for a sparkline; absent when the
+  // token's pools have too few snapshots.
+  spark?: number[];
 };
+
+// A tiny liquidity trend line, computed server-side (no client JS). Green when
+// the latest point is at or above the first, amber when it's fallen.
+function Sparkline({ points }: { points?: number[] }) {
+  if (!points || points.length < 2) return null;
+  const width = 58;
+  const height = 16;
+  const pad = 2;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const step = (width - pad * 2) / (points.length - 1);
+  const coords = points
+    .map((value, index) => {
+      const x = pad + index * step;
+      const y = pad + (height - pad * 2) * (1 - (value - min) / range);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  const first = points[0] ?? 0;
+  const last = points[points.length - 1] ?? 0;
+  const stroke = last >= first ? 'var(--g-a)' : 'var(--g-d)';
+  return (
+    <svg
+      className="spark"
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      aria-hidden="true"
+    >
+      <polyline
+        points={coords}
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.9"
+      />
+    </svg>
+  );
+}
 
 // Compact severity beads: a colored dot at the worst level present, with counts.
 // "Clean" reads as an em-dash — no scan findings, not missing data.
@@ -78,7 +123,10 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
                 </Link>
               </td>
               <td>{formatRaw(item.priceRaw, item.priceDecimals)}</td>
-              <td>{formatRaw(item.liquidityRaw)}</td>
+              <td className="liq-cell">
+                <Sparkline points={item.spark} />
+                {formatRaw(item.liquidityRaw)}
+              </td>
               <td>{formatRaw(item.volumeRaw)}</td>
               <td>{item.holderCount ?? 'Unavailable'}</td>
               <td>

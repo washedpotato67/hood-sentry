@@ -16,6 +16,7 @@ export type {
   ProtocolRepository,
   ProtocolSummary,
   ProtocolVerificationRecord,
+  TokenLiquiditySeries,
   PricingRepository,
   RiskScanRun,
   RiskFinding,

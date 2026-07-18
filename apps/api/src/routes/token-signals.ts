@@ -1,6 +1,8 @@
-import type { RiskRepository } from '@hood-sentry/db';
+import type { ProtocolRepository, RiskRepository } from '@hood-sentry/db';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+
+const SPARK_POINTS = 12;
 
 const querySchema = z.object({
   chainId: z.coerce
@@ -22,23 +24,36 @@ const querySchema = z.object({
 });
 
 type Signals = { high: number; medium: number; low: number };
+type Enrichment = { signals?: Signals; spark?: number[] };
 
 /**
  * Per-token enrichment for the discovery feed, keyed by lowercased address:
- * finding-severity beads. Findings are per-rule evidence, not aggregate scoring,
- * so this is unaffected by RISK_SCORES_ENABLED. Isolated from the ranking
- * pipeline — the feed page calls it with the addresses it just rendered.
+ * finding-severity beads and a liquidity sparkline. Both are per-rule / raw
+ * evidence, not aggregate scoring, so this is unaffected by RISK_SCORES_ENABLED.
+ * Isolated from the ranking pipeline — the feed page calls it with the addresses
+ * it just rendered.
  */
-export async function tokenSignalRoutes(app: FastifyInstance, options: { risk: RiskRepository }) {
+export async function tokenSignalRoutes(
+  app: FastifyInstance,
+  options: { risk: RiskRepository; protocol: ProtocolRepository },
+) {
   app.get('/discovery/signals', async (request) => {
     const { chainId, addresses } = querySchema.parse(request.query);
     if (addresses.length === 0) return { data: {} };
-    const counts = await options.risk.getFindingSeverityCounts(chainId, addresses);
-    const map: Record<string, { signals: Signals }> = {};
+    const [counts, series] = await Promise.all([
+      options.risk.getFindingSeverityCounts(chainId, addresses),
+      options.protocol.getTokenLiquiditySeries(chainId, addresses, SPARK_POINTS),
+    ]);
+    const map: Record<string, Enrichment> = {};
     for (const row of counts) {
-      map[row.targetAddress] = {
-        signals: { high: row.high, medium: row.medium, low: row.low },
-      };
+      const entry = map[row.targetAddress] ?? {};
+      entry.signals = { high: row.high, medium: row.medium, low: row.low };
+      map[row.targetAddress] = entry;
+    }
+    for (const row of series) {
+      const entry = map[row.tokenAddress] ?? {};
+      entry.spark = row.points;
+      map[row.tokenAddress] = entry;
     }
     return { data: map };
   });

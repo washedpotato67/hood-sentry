@@ -41,7 +41,25 @@ export interface ProtocolVerificationRecord {
   expiresAt: Date;
 }
 
+/** Recent token-side reserve series for a token's deepest pool (feed sparklines). */
+export interface TokenLiquiditySeries {
+  /** Lowercased token address. */
+  tokenAddress: string;
+  /** Token-side reserves oldest→newest, from the pool with the most snapshots. */
+  points: number[];
+}
+
 export interface ProtocolRepository {
+  /**
+   * Recent liquidity series per token for feed sparklines: the token-side reserve
+   * over the last `points` canonical pool-state snapshots of its most-observed
+   * pool. Tokens with fewer than two snapshots are omitted (no line to draw).
+   */
+  getTokenLiquiditySeries(
+    chainId: number,
+    tokenAddresses: readonly string[],
+    points: number,
+  ): Promise<TokenLiquiditySeries[]>;
   saveProtocolValidation(
     definition: ProtocolDefinition,
     result: ProtocolValidationResult,

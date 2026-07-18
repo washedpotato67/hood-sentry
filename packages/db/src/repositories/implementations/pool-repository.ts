@@ -12,7 +12,7 @@ import type {
   ProtocolKind,
   ProtocolValidationResult,
 } from '@hood-sentry/chain';
-import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, or, sql } from 'drizzle-orm';
 import { getAddress, isHash } from 'viem';
 import type { Hash } from 'viem';
 import type { Database } from '../../client.js';
@@ -38,6 +38,7 @@ import type {
   ProtocolRepository as IProtocolRepository,
   ProtocolSummary,
   ProtocolVerificationRecord,
+  TokenLiquiditySeries,
 } from '../interfaces/pool-repository.js';
 
 function parseHash(value: string): `0x${string}` {
@@ -67,6 +68,63 @@ function stateRecord(state: NormalizedPoolState): Record<string, string | number
 
 export class ProtocolRepository implements IProtocolRepository {
   constructor(private readonly db: Database['db']) {}
+
+  async getTokenLiquiditySeries(
+    chainId: number,
+    tokenAddresses: readonly string[],
+    points: number,
+  ): Promise<TokenLiquiditySeries[]> {
+    if (tokenAddresses.length === 0) return [];
+    const list = sql.join(
+      tokenAddresses.map((address) => sql`${address.toLowerCase()}`),
+      sql`, `,
+    );
+    // Union the two token sides so each snapshot contributes the reserve for the
+    // side the listed token sits on; ordered so JS can slice recent points.
+    const rows = (await this.db.execute(sql`
+      SELECT token_address, pool_address, reserve
+      FROM (
+        SELECT lower(p.token0_address) AS token_address, s.pool_address,
+          s.source_block_number AS blk, s.reserve0_raw AS reserve
+        FROM pool_state_snapshots s
+        JOIN pools p ON p.address = s.pool_address AND p.chain_id = s.chain_id
+        WHERE s.chain_id = ${chainId} AND s.canonical = true
+          AND s.reserve0_raw IS NOT NULL AND lower(p.token0_address) IN (${list})
+        UNION ALL
+        SELECT lower(p.token1_address) AS token_address, s.pool_address,
+          s.source_block_number AS blk, s.reserve1_raw AS reserve
+        FROM pool_state_snapshots s
+        JOIN pools p ON p.address = s.pool_address AND p.chain_id = s.chain_id
+        WHERE s.chain_id = ${chainId} AND s.canonical = true
+          AND s.reserve1_raw IS NOT NULL AND lower(p.token1_address) IN (${list})
+      ) sides
+      ORDER BY token_address, pool_address, blk
+    `)) as unknown as Array<{ token_address: string; pool_address: string; reserve: string }>;
+
+    // Group token → pool → ordered reserves, then keep each token's most-observed
+    // pool so the line reflects one pool's depth over time, not a mix.
+    const byToken = new Map<string, Map<string, number[]>>();
+    for (const row of rows) {
+      let pools = byToken.get(row.token_address);
+      if (pools === undefined) {
+        pools = new Map();
+        byToken.set(row.token_address, pools);
+      }
+      const series = pools.get(row.pool_address) ?? [];
+      series.push(Number(row.reserve));
+      pools.set(row.pool_address, series);
+    }
+
+    const result: TokenLiquiditySeries[] = [];
+    for (const [tokenAddress, pools] of byToken) {
+      let best: number[] = [];
+      for (const series of pools.values()) {
+        if (series.length > best.length) best = series;
+      }
+      if (best.length >= 2) result.push({ tokenAddress, points: best.slice(-points) });
+    }
+    return result;
+  }
 
   async saveProtocolValidation(
     definition: ProtocolDefinition,

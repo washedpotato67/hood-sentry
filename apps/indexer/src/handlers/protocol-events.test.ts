@@ -253,6 +253,9 @@ class MemoryProtocolRepository implements ProtocolRepository {
   async getPoolsByToken(): Promise<readonly NormalizedPool[]> {
     return this.pools.filter((pool) => pool.canonical);
   }
+  async getTokenLiquiditySeries(): Promise<[]> {
+    return [];
+  }
   async getSwapsByPool(): Promise<readonly NormalizedSwap[]> {
     return this.swaps.filter((swap) => swap.canonical);
   }
