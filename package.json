@@ -11,7 +11,7 @@
     "build": "turbo run build --filter=!@hood-sentry/contracts",
     "test": "turbo run test --filter=!@hood-sentry/e2e --filter=!@hood-sentry/contracts",
     "test:unit": "turbo run test --filter=!@hood-sentry/e2e --filter=!@hood-sentry/contracts",
-    "test:integration": "turbo run test:integration --concurrency=1",
+    "test:integration": "turbo run test:integration --concurrency=1 --filter=!@hood-sentry/contracts",
     "test:e2e": "pnpm --filter @hood-sentry/e2e test",
     "typecheck": "turbo run typecheck",
     "lint": "biome check . && ./scripts/check-process-env.sh",
