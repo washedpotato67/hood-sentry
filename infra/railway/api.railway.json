@@ -4,6 +4,7 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "infra/docker/Dockerfile.api",
     "watchPatterns": [
+      "infra/railway/**",
       "apps/api/**",
       "packages/**",
       "package.json",

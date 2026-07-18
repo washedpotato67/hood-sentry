@@ -4,6 +4,7 @@
     "builder": "DOCKERFILE",
     "dockerfilePath": "infra/docker/Dockerfile.telegram-bot",
     "watchPatterns": [
+      "infra/railway/**",
       "apps/telegram-bot/**",
       "packages/config/**",
       "packages/observability/**",

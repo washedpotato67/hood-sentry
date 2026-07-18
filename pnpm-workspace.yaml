@@ -1,3 +1,5 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# workspace manifest for pnpm; touched to trigger Railway rebuild of fixed service configs
