@@ -48,4 +48,8 @@ export async function applyMigrations(sql: Sql): Promise<string[]> {
 export async function resetAndMigrate(sql: Sql): Promise<void> {
   await resetSchema(sql);
   await applyMigrations(sql);
+  // The supported-chains migration seeds `chains`, but tests provision their own
+  // chain fixtures (often the same ids), so hand them an empty table to own. No
+  // rows reference it yet on a freshly migrated schema, so the delete is clean.
+  await sql`DELETE FROM chains`;
 }
