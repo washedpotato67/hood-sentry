@@ -68,6 +68,27 @@ function SiteFooter() {
 export function Unavailable({ label }: { label: string }) {
   return <span className="unavailable">{label}: unavailable</span>;
 }
+
+// A named, purposeful empty state: says what's absent and what to do next,
+// instead of a bare line of gray text in a large box.
+export function EmptyState({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="empty">
+      <span className="empty-mark" aria-hidden="true" />
+      <p className="empty-title">{title}</p>
+      <p className="empty-body">{children}</p>
+      {action ? <div className="empty-action">{action}</div> : null}
+    </div>
+  );
+}
 export function Stat({ label, value }: { label: string; value?: string }) {
   return (
     <div className="panel">

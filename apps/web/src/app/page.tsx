@@ -53,8 +53,9 @@ export default async function Home() {
       <header className="hero">
         <div className="hero-grid">
           <div className="hero-copy reveal reveal-1">
-            <span className="eyebrow">◆ Evidence-based intelligence</span>
-            <h1>Know the risk before you sign.</h1>
+            <h1>
+              Know the risk <mark>before you sign.</mark>
+            </h1>
             <p className="lede">
               Sentry inspects token contracts, liquidity, holders, oracles, and the live trade
               record on Robinhood Chain, then shows you the evidence behind every verdict, not a
