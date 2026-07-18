@@ -8,9 +8,10 @@ import {
   decodeCursorAsDate,
 } from '../../core/pagination.js';
 import type { TransactionContext } from '../../core/transaction.js';
-import { blocks, logs } from '../../schema/chain-facts.js';
+import { blocks, chains, indexerCheckpoints, logs } from '../../schema/chain-facts.js';
 import type {
   Block,
+  ChainStatus,
   BlockRepository as IBlockRepository,
   LogRepository as ILogRepository,
   Log,
@@ -115,6 +116,40 @@ export class BlockRepository implements IBlockRepository {
 
     const row = rows[0];
     return row ? mapBlockRow(row) : null;
+  }
+
+  async getChainStatus(chainId: bigint, tx?: TransactionContext): Promise<ChainStatus | null> {
+    const executor = this.resolve(tx);
+    const chainRows = await executor
+      .select({
+        headBlock: chains.headBlockNumber,
+        finalizedBlock: chains.finalizedBlockNumber,
+      })
+      .from(chains)
+      .where(eq(chains.chainId, chainId))
+      .limit(1);
+
+    const chain = chainRows[0];
+    if (!chain) return null;
+
+    // Latest indexed height = the furthest checkpoint's next_block − 1 (next_block
+    // is the block the indexer will read next, so one below it is the last stored).
+    const checkpointRows = await executor
+      .select({ nextBlock: indexerCheckpoints.nextBlock })
+      .from(indexerCheckpoints)
+      .where(eq(indexerCheckpoints.chainId, chainId))
+      .orderBy(desc(indexerCheckpoints.nextBlock))
+      .limit(1);
+
+    const nextBlock = checkpointRows[0]?.nextBlock ?? null;
+    const latestIndexedBlock = nextBlock !== null && nextBlock > 0n ? nextBlock - 1n : null;
+
+    return {
+      chainId,
+      headBlock: chain.headBlock ?? null,
+      finalizedBlock: chain.finalizedBlock ?? null,
+      latestIndexedBlock,
+    };
   }
 
   async getBlockByHash(

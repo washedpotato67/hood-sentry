@@ -416,6 +416,40 @@ textarea:focus-visible {
   flex-shrink: 0;
 }
 
+/* Live readout strip under the nav — the instrument's heartbeat. */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 7px 24px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--bg-elev);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.statusbar::-webkit-scrollbar {
+  display: none;
+}
+.statusbar b {
+  color: var(--text);
+  font-weight: 600;
+}
+.statusbar-item {
+  white-space: nowrap;
+}
+.statusbar-sep {
+  color: var(--hair-2);
+}
+.statusbar-lag {
+  color: var(--g-c);
+  white-space: nowrap;
+}
+
 .main {
   position: relative;
   z-index: 1;

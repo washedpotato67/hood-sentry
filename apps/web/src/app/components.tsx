@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ChainStatusBar } from './chain-status-bar';
 import { NavLinks } from './nav-links';
 import { SearchBox } from './search-box';
 import { ThemeToggle } from './theme-toggle';
@@ -15,6 +16,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <WalletConnect />
         <ThemeToggle />
       </nav>
+      <ChainStatusBar />
       <main className="main">{children}</main>
       <SiteFooter />
     </div>

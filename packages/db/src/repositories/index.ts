@@ -1,6 +1,7 @@
 // Export interfaces
 export type {
   Block,
+  ChainStatus,
   Log,
   BlockRepository,
   LogRepository,

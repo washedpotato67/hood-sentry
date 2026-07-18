@@ -33,8 +33,21 @@ export interface Log {
   updatedAt: Date;
 }
 
+export interface ChainStatus {
+  chainId: bigint;
+  /** Latest chain head the indexer has observed, or null before the first tick. */
+  headBlock: bigint | null;
+  /** Latest finalized block, or null before the first tick. */
+  finalizedBlock: bigint | null;
+  /** Highest block the indexer has persisted (max checkpoint next_block − 1). */
+  latestIndexedBlock: bigint | null;
+}
+
 export interface BlockRepository {
   getBlock(chainId: bigint, blockNumber: bigint, tx?: TransactionContext): Promise<Block | null>;
+
+  /** Chain head, finalized, and latest-indexed heights for a live status readout. */
+  getChainStatus(chainId: bigint, tx?: TransactionContext): Promise<ChainStatus | null>;
 
   getBlockByHash(
     chainId: bigint,

@@ -18,6 +18,7 @@ import {
   DrizzleAlertRepository,
   DrizzleAuthRepository,
   DrizzleBalanceRepository,
+  DrizzleBlockRepositoryImpl,
   DrizzleContractRepositoryImpl,
   DrizzleDiscoveryRepository,
   DrizzleIntelligenceRepository,
@@ -51,6 +52,7 @@ import { RiskCommentaryService } from './risk-commentary-service.js';
 import { adminRoutes } from './routes/admin.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 import { authRoutes } from './routes/auth.js';
+import { chainStatusRoutes } from './routes/chain-status.js';
 import { discoveryRoutes } from './routes/discovery.js';
 import { healthRoutes } from './routes/health.js';
 import { intelligenceRoutes } from './routes/intelligence.js';
@@ -73,6 +75,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   const protocolRepository = new DrizzleProtocolRepositoryImpl(database.db);
   const pricingRepository = new DrizzlePricingRepository(database.db);
   const discoveryRepository = new DrizzleDiscoveryRepository(database.db);
+  const blockRepository = new DrizzleBlockRepositoryImpl(database.db);
   const authRepository = new DrizzleAuthRepository(database.db);
   const tokenRepository = new DrizzleTokenRepositoryImpl(database.db);
   const contractRepository = new DrizzleContractRepositoryImpl(database.db);
@@ -591,6 +594,10 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     prefix: '/v1',
     repository: discoveryRepository,
     riskScoresEnabled: env.RISK_SCORES_ENABLED,
+  });
+  await app.register(chainStatusRoutes, {
+    prefix: '/v1',
+    repository: blockRepository,
   });
 
   app.addHook('onClose', async () => {
