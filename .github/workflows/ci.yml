@@ -109,6 +109,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install contract dependencies
+        run: ./scripts/install-contract-deps.sh
+
       - name: Build contracts
         run: pnpm --filter @hood-sentry/contracts build
 

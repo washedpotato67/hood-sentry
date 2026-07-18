@@ -8,9 +8,9 @@
   },
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test --filter=!@hood-sentry/e2e",
-    "test:unit": "turbo run test --filter=!@hood-sentry/e2e",
+    "build": "turbo run build --filter=!@hood-sentry/contracts",
+    "test": "turbo run test --filter=!@hood-sentry/e2e --filter=!@hood-sentry/contracts",
+    "test:unit": "turbo run test --filter=!@hood-sentry/e2e --filter=!@hood-sentry/contracts",
     "test:integration": "turbo run test:integration --concurrency=1",
     "test:e2e": "pnpm --filter @hood-sentry/e2e test",
     "typecheck": "turbo run typecheck",
@@ -42,7 +42,10 @@
   },
   "pnpm": {
     "overrides": {
-      "protobufjs": "^8.4.1"
+      "protobufjs": "^8.4.1",
+      "@playwright/test": "1.55.1",
+      "playwright": "1.55.1",
+      "playwright-core": "1.55.1"
     }
   }
 }
