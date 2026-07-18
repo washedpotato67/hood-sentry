@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
         {/* Re-apply a pinned theme before paint so there's no flash. Dark is the
             default when nothing is stored (CSS handles OS light preference). */}
