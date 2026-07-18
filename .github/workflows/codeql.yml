@@ -1,10 +1,10 @@
 name: CodeQL
 
+# Code scanning must be enabled in repo settings (GitHub Advanced Security) for
+# the upload to succeed. Until then, don't run on every push/PR — that posts a
+# failing check that can gate deploy integrations. Kept as a manual + weekly run.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
   schedule:
     - cron: '0 6 * * 1'
 
