@@ -1,26 +1,21 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Archivo, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Shell } from './components';
 
-// Body / normal text — warm, refined humanist sans.
+// Body / normal text — warm, refined humanist sans, kept for data legibility.
 const sans = Hanken_Grotesk({
   subsets: ['latin'],
   variable: '--font-sans',
   weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
-// Display / headlines — industrial grotesk, for contrast against the body.
-const display = Archivo({
-  subsets: ['latin'],
-  variable: '--font-display',
-  weight: ['600', '700', '800', '900'],
-  display: 'swap',
-});
+// Display / headlines use a condensed system stack (defined in globals.css),
+// so no web font loads for the big brutalist type — it matches on every OS.
 const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
-  weight: ['400', '500', '600'],
+  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
 });
 
@@ -32,7 +27,7 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`}>
+    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body>
         {/* Shell lives in the layout so the nav and footer render once and
             persist across navigations; only the page content below swaps. */}
