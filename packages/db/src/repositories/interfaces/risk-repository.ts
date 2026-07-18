@@ -144,8 +144,28 @@ export interface RiskSuppressionRecord {
   updatedAt: Date;
 }
 
+/** Per-token finding tallies for the discovery feed's signal beads. */
+export interface TokenSignalCounts {
+  /** Lowercased token address, for case-insensitive matching against feed items. */
+  targetAddress: string;
+  high: number;
+  medium: number;
+  low: number;
+}
+
 export interface RiskRepository {
   getScanRun(id: string, tx?: TransactionContext): Promise<RiskScanRun | null>;
+
+  /**
+   * Non-suppressed finding counts by severity bucket for the latest canonical
+   * scan of each given token. Tokens with no findings are omitted. Used by the
+   * feed's signal beads; independent of aggregate risk scoring.
+   */
+  getFindingSeverityCounts(
+    chainId: number,
+    targetAddresses: readonly string[],
+    tx?: TransactionContext,
+  ): Promise<TokenSignalCounts[]>;
 
   getScansByTarget(
     chainId: number,

@@ -1040,6 +1040,33 @@ a.primary:active,
   border: 1px dashed var(--hair-2);
 }
 
+/* Signal beads — a dot at the worst severity present, with counts. */
+.sig {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.sig .bead {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sig .count {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.bead.b-high {
+  background: var(--g-f);
+}
+.bead.b-med {
+  background: var(--g-d);
+}
+.bead.b-low {
+  background: var(--g-c);
+}
+
 /* ─── Segmented toggle (feed switcher) ────────────────────────────────────
    Mutually exclusive views; the selected tab locks into solid accent. */
 .toggles {

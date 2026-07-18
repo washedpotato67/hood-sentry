@@ -61,6 +61,7 @@ import { productRoutes } from './routes/product.js';
 import { protocolRoutes } from './routes/protocols.js';
 import { riskCommentaryRoutes } from './routes/risk-commentary.js';
 import { tokenEntitlementRoutes } from './routes/token-entitlements.js';
+import { tokenSignalRoutes } from './routes/token-signals.js';
 import { tradingRoutes } from './routes/trading.js';
 import {
   TokenEntitlementService,
@@ -598,6 +599,10 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   await app.register(chainStatusRoutes, {
     prefix: '/v1',
     repository: blockRepository,
+  });
+  await app.register(tokenSignalRoutes, {
+    prefix: '/v1',
+    risk: riskRepository,
   });
 
   app.addHook('onClose', async () => {

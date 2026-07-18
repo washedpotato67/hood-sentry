@@ -18,7 +18,29 @@ export type DiscoveryItem = {
   projectVerified: boolean;
   trending?: { scoreBps?: string };
   warnings?: readonly string[];
+  // Attached by best-effort enrichment (finding-severity beads); absent when a
+  // token has no scan yet or enrichment failed.
+  signals?: { high: number; medium: number; low: number };
 };
+
+// Compact severity beads: a colored dot at the worst level present, with counts.
+// "Clean" reads as an em-dash — no scan findings, not missing data.
+function Signals({ signals }: { signals?: DiscoveryItem['signals'] }) {
+  if (!signals || signals.high + signals.medium + signals.low === 0) {
+    return <span className="muted">—</span>;
+  }
+  const parts: string[] = [];
+  if (signals.high > 0) parts.push(`${signals.high} high`);
+  if (signals.medium > 0) parts.push(`${signals.medium} med`);
+  if (signals.low > 0) parts.push(`${signals.low} low`);
+  const worst = signals.high > 0 ? 'b-high' : signals.medium > 0 ? 'b-med' : 'b-low';
+  return (
+    <span className="sig">
+      <span className={`bead ${worst}`} aria-hidden="true" />
+      <span className="count">{parts.join(' · ')}</span>
+    </span>
+  );
+}
 
 export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
   if (items.length === 0)
@@ -42,6 +64,7 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
             <th>Volume</th>
             <th>Holders</th>
             <th>Risk</th>
+            <th>Signals</th>
           </tr>
         </thead>
         <tbody>
@@ -69,6 +92,9 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
                 >
                   {item.riskGrade ?? '—'}
                 </span>
+              </td>
+              <td>
+                <Signals signals={item.signals} />
               </td>
             </tr>
           ))}

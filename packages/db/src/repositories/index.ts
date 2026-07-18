@@ -23,6 +23,7 @@ export type {
   RiskRulesetVersion,
   RiskRescanRequestRecord,
   RiskSuppressionRecord,
+  TokenSignalCounts,
   RiskRepository,
   Wallet,
   TokenBalance,

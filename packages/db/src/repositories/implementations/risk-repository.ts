@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { and, asc, desc, eq, gt, gte, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, isNull, lt, or, sql } from 'drizzle-orm';
 
 import type { Database } from '../../client.js';
 import {
@@ -25,6 +25,7 @@ import type {
   RiskScanRun,
   RiskScore,
   RiskSuppressionRecord,
+  TokenSignalCounts,
 } from '../interfaces/risk-repository.js';
 
 type ScanRunRow = typeof riskScanRuns.$inferSelect;
@@ -218,6 +219,56 @@ export class DrizzleRiskRepository implements RiskRepository {
         `Failed to get scans for target ${chainId}:${targetAddress}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  async getFindingSeverityCounts(
+    chainId: number,
+    targetAddresses: readonly string[],
+    tx?: TransactionContext,
+  ): Promise<TokenSignalCounts[]> {
+    if (targetAddresses.length === 0) return [];
+    // Match case-insensitively: feed addresses are checksummed, stored targets
+    // may differ in case.
+    const lowered = targetAddresses.map((address) => address.toLowerCase());
+    const list = sql.join(
+      lowered.map((address) => sql`${address}`),
+      sql`, `,
+    );
+    // DISTINCT ON picks the latest canonical scan per token; the join to findings
+    // drops tokens with none (they render as "clean"). Counts arrive as bigint
+    // strings from COUNT(*).
+    const rows = (await this.executor(tx).execute(sql`
+      WITH latest AS (
+        SELECT DISTINCT ON (target_address) id, target_address
+        FROM risk_scan_runs
+        WHERE chain_id = ${chainId}
+          AND target_type = 'token'
+          AND canonical = true
+          AND lower(target_address) IN (${list})
+        ORDER BY target_address, created_at DESC, id DESC
+      )
+      SELECT lower(latest.target_address) AS target_address,
+        COUNT(*) FILTER (WHERE risk_findings.severity IN ('critical', 'high')) AS high,
+        COUNT(*) FILTER (WHERE risk_findings.severity = 'medium') AS medium,
+        COUNT(*) FILTER (WHERE risk_findings.severity IN ('low', 'info')) AS low
+      FROM latest
+      JOIN risk_findings
+        ON risk_findings.scan_run_id = latest.id
+        AND risk_findings.suppressed = false
+      GROUP BY lower(latest.target_address)
+    `)) as unknown as Array<{
+      target_address: string;
+      high: string | number;
+      medium: string | number;
+      low: string | number;
+    }>;
+
+    return rows.map((row) => ({
+      targetAddress: row.target_address,
+      high: Number(row.high),
+      medium: Number(row.medium),
+      low: Number(row.low),
+    }));
   }
 
   async getLatestScan(

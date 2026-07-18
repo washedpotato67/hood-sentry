@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { apiRequest, chainId } from '../../lib/api';
+import { enrichWithSignals } from '../../lib/enrich';
 import { ErrorPanel, Page, Stat } from '../components';
 import { type DiscoveryItem, DiscoveryTable } from '../discovery-table';
 
@@ -44,6 +45,7 @@ export default async function Discover({
     if (result.ok) items = result.data.organic.data;
     else error = result;
   }
+  if (error === null) items = await enrichWithSignals(chain, items);
   return (
     <Page title="Discover">
       <p className="lede">
