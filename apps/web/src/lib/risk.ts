@@ -9,7 +9,10 @@ const GRADE_CLASS: Record<string, string> = {
   F: 'grade grade-f',
 };
 
-export function riskGradeClass(grade: string): string {
+// Grade is absent whenever aggregate scoring is withheld (RISK_SCORES_ENABLED
+// off strips the field), so tolerate null/undefined and fall back to unrated.
+export function riskGradeClass(grade: string | null | undefined): string {
+  if (!grade) return 'grade grade-unrated';
   return GRADE_CLASS[grade.toUpperCase()] ?? 'grade grade-unrated';
 }
 

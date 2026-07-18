@@ -12,7 +12,8 @@ export type DiscoveryItem = {
   liquidityRaw: string | null;
   volumeRaw: string | null;
   holderCount: string | null;
-  riskGrade: string;
+  // Stripped from the feed while aggregate scoring is withheld, so it's optional.
+  riskGrade?: string | null;
   riskCompletenessBps: string | null;
   projectVerified: boolean;
   trending?: { scoreBps?: string };
@@ -58,7 +59,16 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
               <td>{formatRaw(item.volumeRaw)}</td>
               <td>{item.holderCount ?? 'Unavailable'}</td>
               <td>
-                <span className={riskGradeClass(item.riskGrade)}>{item.riskGrade}</span>
+                <span
+                  className={riskGradeClass(item.riskGrade)}
+                  title={
+                    item.riskGrade
+                      ? undefined
+                      : 'Aggregate grade withheld until rule coverage is complete'
+                  }
+                >
+                  {item.riskGrade ?? '—'}
+                </span>
               </td>
             </tr>
           ))}
