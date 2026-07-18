@@ -2,18 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "infra/docker/Dockerfile.telegram-bot",
-    "watchPatterns": [
-      "infra/railway/**",
-      "apps/telegram-bot/**",
-      "packages/config/**",
-      "packages/observability/**",
-      "packages/shared/**",
-      "package.json",
-      "pnpm-lock.yaml",
-      "pnpm-workspace.yaml",
-      "tsconfig.base.json"
-    ]
+    "dockerfilePath": "infra/docker/Dockerfile.telegram-bot"
   },
   "deploy": {
     "restartPolicyType": "ALWAYS",
