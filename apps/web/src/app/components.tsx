@@ -7,7 +7,7 @@ import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
-      <nav className="nav">
+      <nav className="nav" aria-label="Primary">
         <Link className="brand" href="/">
           SENTRY
         </Link>

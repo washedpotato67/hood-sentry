@@ -1,16 +1,19 @@
 import { expect, test } from '@playwright/test';
 
 test('public research pages render through the production Next.js routes', async ({ page }) => {
+  // Scope link lookups to the primary header nav; the footer is a second
+  // navigation landmark that also links to Discover/Trade.
+  const primaryNav = page.getByRole('navigation', { name: 'Primary' });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Know the risk before you sign' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
+  await expect(primaryNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
   await expect(page.getByText('Chain ID').first()).toBeVisible();
 
-  await page.getByRole('link', { name: 'Discover', exact: true }).click();
+  await primaryNav.getByRole('link', { name: 'Discover', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Discover' })).toBeVisible();
   await expect(page.getByText('Organic rankings keep score components')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Trade', exact: true }).click();
+  await primaryNav.getByRole('link', { name: 'Trade', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Trade' })).toBeVisible();
   await expect(page.getByText('Your wallet signs and broadcasts.')).toBeVisible();
 });
@@ -91,7 +94,8 @@ test('authenticated alert controls submit a deterministic multi-channel rule', a
     });
   });
 
-  await page.goto('/alerts');
+  // The alert-creation form lives on the settings route; /alerts now shows the feed.
+  await page.goto('/alerts/settings');
   await expect(page.getByRole('heading', { name: 'New evidence alert' })).toBeVisible();
   await page.getByLabel('Target address').fill('0x2222222222222222222222222222222222222222');
   await page.getByLabel('Rule type').selectOption('large_transfer');
