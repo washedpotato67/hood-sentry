@@ -1,6 +1,7 @@
-import type { Database } from '@hood-sentry/db';
+import { type Database, schema } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
+import { eq } from 'drizzle-orm';
 import type { Hash } from 'viem';
 import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
@@ -59,6 +60,28 @@ export class BlockIndexer {
   ) {
     this.drizzle = database.db;
     this.tokenDiscoveryHandler = new TokenDiscoveryHandler(this.config, this.logger);
+  }
+
+  /**
+   * Persist the head we just observed so the public chain-status readout can
+   * report indexing lag. The indexer is the only component that polls the head
+   * every cycle; without this the stored head stays null and the lag renders as
+   * unknown rather than as the honest number it is.
+   *
+   * A failure here must not stop indexing: this is reporting, not chain state.
+   */
+  private async recordChainHead(headBlock: bigint): Promise<void> {
+    try {
+      await this.drizzle
+        .update(schema.chains)
+        .set({ headBlockNumber: headBlock, updatedAt: new Date() })
+        .where(eq(schema.chains.chainId, this.config.chainId));
+    } catch (error) {
+      this.logger.warn('Failed to record chain head for status reporting', {
+        headBlock: headBlock.toString(),
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   async start(): Promise<void> {
@@ -173,6 +196,7 @@ export class BlockIndexer {
 
         const latestBlock = await this.blockFetcher.getLatestBlockNumber();
         this.metrics.lag = Number(latestBlock - currentBlock);
+        await this.recordChainHead(latestBlock);
 
         if (currentBlock > latestBlock) {
           await this.sleep(this.config.pollIntervalMs);

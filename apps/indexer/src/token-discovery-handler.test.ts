@@ -176,11 +176,14 @@ describe('TokenDiscoveryHandler', () => {
     const logger = { warn: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const otherToken = getAddress('0x7777777777777777777777777777777777777777');
-    const transfer = (address: `0x${string}`, logIndex: number) => ({
+    const transfer = (
+      address: `0x${string}`,
+      logIndex: number,
+    ): DiscoveryBlockData['logs'][number] => ({
       transactionHash: TRANSACTION_HASH,
       logIndex,
       address,
-      topics: [TRANSFER_TOPIC, padHex(FROM_ADDRESS), padHex(TO_ADDRESS)] as const,
+      topics: [TRANSFER_TOPIC, padHex(FROM_ADDRESS), padHex(TO_ADDRESS)],
       data: numberToHex(1n, { size: 32 }),
     });
     const blockData: DiscoveryBlockData = {
