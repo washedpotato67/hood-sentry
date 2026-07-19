@@ -34,6 +34,8 @@ let route: ReturnType<typeof createDerivedJobRouter>;
 let available = false;
 let deliveredAlertIds: string[] = [];
 let tokenMetadataEnabled = false;
+let metadataReads: string[] = [];
+let bytecodeReads = 0;
 
 function job(overrides: Partial<DerivedJobPayload> = {}): DerivedJobPayload {
   return {
@@ -74,6 +76,8 @@ beforeEach(async ({ skip }) => {
   `;
   deliveredAlertIds = [];
   tokenMetadataEnabled = false;
+  metadataReads = [];
+  bytecodeReads = 0;
   route = createDerivedJobRouter(
     createLogger({ level: 'fatal', service: 'worker-test' }),
     database,
@@ -106,12 +110,14 @@ beforeEach(async ({ skip }) => {
           if (!tokenMetadataEnabled) {
             throw new Error('Token metadata was not expected in this test');
           }
+          bytecodeReads++;
           return '0x6000';
         },
         async readContract(request) {
           if (!tokenMetadataEnabled) {
             throw new Error('Token metadata was not expected in this test');
           }
+          metadataReads.push(String(request.functionName));
           if (request.functionName === 'name') return 'Fixture Token';
           if (request.functionName === 'symbol') return 'FIX';
           if (request.functionName === 'decimals') return 18;
@@ -358,6 +364,36 @@ describe('token-metadata processor', () => {
       total_supply_raw: '1000000000000000000000000',
       metadata_status: 'complete',
       first_seen_block: '100',
+    });
+  });
+
+  it('re-reads only mutable supply once a token has cached immutable metadata', async () => {
+    tokenMetadataEnabled = true;
+    const payload = job({ type: 'token-metadata', data: { tokenAddress: TOKEN } });
+
+    await route(payload);
+    expect(metadataReads).toEqual(['name', 'symbol', 'decimals', 'totalSupply']);
+    expect(bytecodeReads).toBe(1);
+
+    // Second sighting: name/symbol/decimals cannot change, so only supply is read
+    // and the bytecode probe is skipped. Five RPC calls collapse to one.
+    metadataReads = [];
+    bytecodeReads = 0;
+    await route(payload);
+
+    expect(metadataReads).toEqual(['totalSupply']);
+    expect(bytecodeReads).toBe(0);
+
+    const rows = await database.client`
+      SELECT name, symbol, decimals, total_supply_raw, metadata_status
+      FROM tokens WHERE chain_id = ${CHAIN_ID} AND address = ${TOKEN}
+    `;
+    expect(rows[0]).toMatchObject({
+      name: 'Fixture Token',
+      symbol: 'FIX',
+      decimals: 18,
+      total_supply_raw: '1000000000000000000000000',
+      metadata_status: 'complete',
     });
   });
 });
