@@ -104,6 +104,14 @@ export class RPCClient {
       chain: this.chain,
       transport: http(config.url, {
         timeout: config.timeout ?? 30000,
+        ...(config.batch === undefined
+          ? {}
+          : {
+              batch: {
+                batchSize: config.batch.maxCallsPerRequest,
+                wait: config.batch.waitMs ?? 20,
+              },
+            }),
       }),
     });
 

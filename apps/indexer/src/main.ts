@@ -176,6 +176,13 @@ async function main() {
     const db = createDatabase(env.DATABASE_URL);
 
     const chain = getChainDefinition(env.ROBINHOOD_CHAIN_ID);
+    // Each block costs two RPC calls (body plus receipts), and the provider's
+    // free tier meters HTTP requests per second, not calls. Batching lets one
+    // request carry a whole window of blocks; a size of 1 disables it.
+    const rpcBatch =
+      env.RPC_BATCH_MAX_CALLS > 1
+        ? { maxCallsPerRequest: env.RPC_BATCH_MAX_CALLS, waitMs: env.RPC_BATCH_WAIT_MS }
+        : undefined;
     const rpcClient = new RPCClient(chain, {
       chainId: env.ROBINHOOD_CHAIN_ID,
       primary: {
@@ -183,6 +190,7 @@ async function main() {
         type: 'http',
         role: 'primary',
         timeout: 30000,
+        batch: rpcBatch,
       },
       secondary: rpcProviders.secondary
         ? {
@@ -190,6 +198,7 @@ async function main() {
             type: 'http',
             role: 'secondary',
             timeout: 30000,
+            batch: rpcBatch,
           }
         : undefined,
       healthCheck: {

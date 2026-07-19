@@ -131,6 +131,14 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // Concurrent RPC calls coalesced into a single JSON-RPC batch request. The
+  // free provider tier meters HTTP requests per second rather than calls, so
+  // batching raises block throughput without raising the call count. Set to 1 to
+  // send one request per call.
+  RPC_BATCH_MAX_CALLS: z.coerce.number().int().positive().max(100).default(1),
+  // How long a batch waits to collect more calls before it is sent. Longer waits
+  // fill batches more fully at the cost of latency on the last call in each one.
+  RPC_BATCH_WAIT_MS: z.coerce.number().int().min(0).max(1000).default(20),
   // Manipulation thresholds applied when ranking a token into the discovery
   // feeds. Both default to 0, which flags nothing: these are product policy, and
   // a guessed threshold would suppress or promote tokens on invented evidence.

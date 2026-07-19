@@ -10,6 +10,16 @@ export interface ProviderConfig {
     requestsPerSecond: number;
     burstSize?: number;
   };
+  /**
+   * Coalesce concurrent calls into JSON-RPC batch requests. Providers meter the
+   * free tier on HTTP requests per second, so batching lifts throughput well
+   * past the per-request ceiling without raising the logical call count. Omit to
+   * send one HTTP request per call.
+   */
+  batch?: {
+    maxCallsPerRequest: number;
+    waitMs?: number;
+  };
 }
 
 export interface RPCClientConfig {
