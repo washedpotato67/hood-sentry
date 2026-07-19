@@ -17,7 +17,7 @@ function baseConfig(batch: { maxCallsPerRequest: number } | undefined): RPCClien
     },
     healthCheck: { intervalMs: 3_600_000, timeoutMs: 10_000, maxBlockLag: 100 },
     circuitBreaker: { failureThreshold: 5, resetTimeoutMs: 30_000, halfOpenMaxRequests: 3 },
-    retry: { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1 },
+    retry: { maxAttempts: 1, baseDelayMs: 1, maxDelayMs: 1, backoffMultiplier: 1 },
   };
 }
 
