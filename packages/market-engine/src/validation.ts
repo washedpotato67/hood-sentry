@@ -14,7 +14,11 @@ const addressSchema = z.string().transform((value, context) => {
 const rawIntegerSchema = z.string().regex(/^\d+$/).transform(BigInt);
 
 export const priceSourceConfigSchema = z.object({
-  sourceKey: z.string().min(1).max(100),
+  // Verified-pool keys are built as `verified-pool-v1:<chainId>:<pool>:<token>:<quote>`,
+  // which is 151 characters with three 0x addresses. A 100-character cap rejected
+  // every key the pricing writer produces, so reading the configs back threw and
+  // stalled the indexer on the block that wrote them.
+  sourceKey: z.string().min(1).max(200),
   sourceType: z.enum([
     'chainlink',
     'launchpadBondingCurve',

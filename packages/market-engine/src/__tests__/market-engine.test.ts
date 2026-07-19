@@ -13,6 +13,7 @@ import {
   externalEvidence,
   median,
   normalizeQuoteAmount,
+  parsePriceSourceConfig,
   poolEvidence,
   poolPriceRaw,
   quoteConstantProductSwap,
@@ -603,5 +604,19 @@ describe('reproducible metrics', () => {
         feeDenominator: 1_000_000n,
       }),
     ).toThrow(/fee/);
+  });
+
+  it('accepts the verified-pool source key the pricing writer actually produces', () => {
+    // Three lowercased addresses plus the prefix and chain id: 151 characters.
+    const sourceKey = ['verified-pool-v1', 4663, SOURCE, TOKEN, QUOTE].join(':').toLowerCase();
+    expect(sourceKey.length).toBeGreaterThan(100);
+    const stored = {
+      ...config({ sourceKey }),
+      minimumLiquidityRaw: '1000000',
+      confidenceRules: Object.fromEntries(
+        Object.entries(rules).map(([key, value]) => [key, value.toString()]),
+      ),
+    };
+    expect(parsePriceSourceConfig(stored).sourceKey).toBe(sourceKey);
   });
 });
