@@ -9,6 +9,13 @@ export interface ChainlinkJobProducerDependencies {
   repository: PricingRepository;
   publisher: DerivedJobPublisher;
   logger: Pick<Logger, 'warn' | 'debug'>;
+  /**
+   * How long a read of the price source configs stays good for. The set changes
+   * only when an operator edits it, but it was being re-read on every indexed
+   * block, which put a database round trip in the hot path of catching up.
+   */
+  sourceConfigCacheMs?: number;
+  now?: () => number;
 }
 
 /**
@@ -17,10 +24,28 @@ export interface ChainlinkJobProducerDependencies {
  * on-chain DEX activity.
  */
 export class ChainlinkJobProducer {
+  private cached: {
+    configs: Awaited<ReturnType<PricingRepository['listSourceConfigs']>>;
+    readAt: number;
+  } | null = null;
+
   constructor(private readonly deps: ChainlinkJobProducerDependencies) {}
 
-  async publishJobsForBlock(blockNumber: bigint, blockHash: Hash): Promise<void> {
+  private async sourceConfigs(): Promise<
+    Awaited<ReturnType<PricingRepository['listSourceConfigs']>>
+  > {
+    const ttl = this.deps.sourceConfigCacheMs ?? 30_000;
+    const now = (this.deps.now ?? Date.now)();
+    if (this.cached !== null && now - this.cached.readAt < ttl) {
+      return this.cached.configs;
+    }
     const configs = await this.deps.repository.listSourceConfigs(this.deps.chainId);
+    this.cached = { configs, readAt: now };
+    return configs;
+  }
+
+  async publishJobsForBlock(blockNumber: bigint, blockHash: Hash): Promise<void> {
+    const configs = await this.sourceConfigs();
     const enabledChainlink = configs.filter(
       (config): config is typeof config & { sourceContractAddress: `0x${string}` } =>
         config.enabled &&

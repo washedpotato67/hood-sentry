@@ -66,6 +66,22 @@ function fakeRepository(configs: readonly PriceSourceConfig[]): PricingRepositor
   } as unknown as PricingRepository;
 }
 
+function countingRepository(configs: readonly PriceSourceConfig[]): {
+  repository: PricingRepository;
+  reads: () => number;
+} {
+  let reads = 0;
+  return {
+    repository: {
+      listSourceConfigs: async () => {
+        reads += 1;
+        return configs;
+      },
+    } as unknown as PricingRepository,
+    reads: () => reads,
+  };
+}
+
 describe('ChainlinkJobProducer', () => {
   it('publishes a job for every enabled Chainlink source', async () => {
     const publisher = new RecordingPublisher();
@@ -94,6 +110,28 @@ describe('ChainlinkJobProducer', () => {
       quoteAssetAddress: QUOTE,
       oracleHeartbeatSeconds: 60,
     });
+  });
+
+  it('reads the source configs once across blocks within the cache window', async () => {
+    const { repository, reads } = countingRepository([chainlinkConfig('feed-a')]);
+    let now = 1_000;
+    const producer = new ChainlinkJobProducer({
+      chainId: 4663,
+      repository,
+      publisher: new RecordingPublisher(),
+      logger: { warn: () => undefined, debug: () => undefined },
+      sourceConfigCacheMs: 30_000,
+      now: () => now,
+    });
+
+    await producer.publishJobsForBlock(100n, BLOCK_HASH);
+    await producer.publishJobsForBlock(101n, BLOCK_HASH);
+    await producer.publishJobsForBlock(102n, BLOCK_HASH);
+    expect(reads()).toBe(1);
+
+    now += 30_001;
+    await producer.publishJobsForBlock(103n, BLOCK_HASH);
+    expect(reads()).toBe(2);
   });
 
   it('skips disabled and non-Chainlink sources', async () => {

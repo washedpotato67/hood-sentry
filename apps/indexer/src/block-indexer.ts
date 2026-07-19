@@ -22,6 +22,27 @@ import type {
 
 type DrizzleDB = Database['db'];
 
+/**
+ * Walk the `cause` chain and join what each level says. Database drivers report
+ * the constraint or type violation only on a nested cause, so the top-level
+ * message alone is not enough to tell why a write failed.
+ */
+function describeCause(error: unknown): string | undefined {
+  const parts: string[] = [];
+  let current: unknown = error instanceof Error ? error.cause : undefined;
+  while (current instanceof Error && parts.length < 5) {
+    const detail = (current as { detail?: unknown }).detail;
+    const code = (current as { code?: unknown }).code;
+    parts.push(
+      [current.message, code === undefined ? null : `code=${String(code)}`, detail ?? null]
+        .filter((part) => part !== null && part !== '')
+        .join(' '),
+    );
+    current = current.cause;
+  }
+  return parts.length === 0 ? undefined : parts.join(' <- ');
+}
+
 export class BlockIndexer {
   private readonly drizzle: DrizzleDB;
   private readonly tokenDiscoveryHandler: TokenDiscoveryHandler;
@@ -645,6 +666,10 @@ export class BlockIndexer {
     this.logger.error('Indexer error', {
       blockNumber: blockNumber?.toString(),
       error: errorMessage,
+      // A driver wraps the real failure in `cause`: a query error's own message
+      // is just the SQL, so without this the actual constraint or type violation
+      // never reaches the logs and the failure cannot be diagnosed from them.
+      cause: describeCause(error),
       stack: errorStack,
     });
 
