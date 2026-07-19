@@ -2,6 +2,11 @@ import { getEnv } from '@hood-sentry/config';
 import { createLogger } from '@hood-sentry/observability';
 import { buildApp } from './app.js';
 
+// Written before any wiring runs so deploy logs prove the container entrypoint
+// executed, even if boot later hangs or dies without reaching the logger.
+// biome-ignore lint/suspicious/noConsole: boot marker, logger does not exist yet
+console.log('[boot] api entrypoint reached');
+
 async function main() {
   const env = getEnv();
   const logger = createLogger({ level: env.LOG_LEVEL as 'info', service: 'api' });
