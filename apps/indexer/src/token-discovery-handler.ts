@@ -61,7 +61,39 @@ export class TokenDiscoveryHandler {
       jobs.push(...this.createTokenEventJobs(log, blockNumber, blockHash));
     }
 
+    jobs.push(...this.createDiscoveryRefreshJobs(jobs, blockNumber, blockHash));
+
     return jobs;
+  }
+
+  /**
+   * One refresh per distinct token per block, not per event. A busy block carries
+   * many transfers of the same token, and the ranking is a function of the block
+   * position rather than the individual transfer, so emitting per event would
+   * multiply queue volume without changing the result.
+   */
+  private createDiscoveryRefreshJobs(
+    jobs: readonly DerivedJob[],
+    blockNumber: bigint,
+    blockHash: Hash,
+  ): DerivedJob[] {
+    const tokenAddresses = new Set<Address>();
+
+    for (const job of jobs) {
+      if (job.type !== 'token-transfer') continue;
+      const tokenAddress = (job.data as { tokenAddress?: Address }).tokenAddress;
+      if (tokenAddress !== undefined) {
+        tokenAddresses.add(tokenAddress);
+      }
+    }
+
+    return [...tokenAddresses].map((tokenAddress) => ({
+      type: 'discovery-refresh' as const,
+      chainId: this.config.chainId,
+      blockNumber,
+      blockHash,
+      data: { tokenAddress },
+    }));
   }
 
   private createContractDiscoveryJobs(

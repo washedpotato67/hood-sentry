@@ -161,8 +161,68 @@ describe('TokenDiscoveryHandler', () => {
           eventType: 'tokenApproval',
         },
       },
+      {
+        type: 'discovery-refresh',
+        chainId: 4663n,
+        blockNumber: 42n,
+        blockHash: BLOCK_HASH,
+        data: { tokenAddress: TOKEN_ADDRESS },
+      },
     ]);
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('emits one discovery refresh per token per block, not per transfer', () => {
+    const logger = { warn: vi.fn() };
+    const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
+    const otherToken = getAddress('0x7777777777777777777777777777777777777777');
+    const transfer = (address: `0x${string}`, logIndex: number) => ({
+      transactionHash: TRANSACTION_HASH,
+      logIndex,
+      address,
+      topics: [TRANSFER_TOPIC, padHex(FROM_ADDRESS), padHex(TO_ADDRESS)] as const,
+      data: numberToHex(1n, { size: 32 }),
+    });
+    const blockData: DiscoveryBlockData = {
+      ...emptyBlockData(),
+      block: { number: 42n, hash: BLOCK_HASH },
+      // Three transfers, two of them for the same token.
+      logs: [transfer(TOKEN_ADDRESS, 1), transfer(TOKEN_ADDRESS, 2), transfer(otherToken, 3)],
+    };
+
+    const refreshes = handler
+      .detectNewContractsAndTokens(blockData)
+      .filter((job) => job.type === 'discovery-refresh');
+
+    expect(refreshes).toHaveLength(2);
+    expect(refreshes.map((job) => (job.data as { tokenAddress: string }).tokenAddress)).toEqual([
+      TOKEN_ADDRESS,
+      otherToken,
+    ]);
+  });
+
+  it('does not emit a discovery refresh for approval-only activity', () => {
+    const logger = { warn: vi.fn() };
+    const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
+    const blockData: DiscoveryBlockData = {
+      ...emptyBlockData(),
+      block: { number: 42n, hash: BLOCK_HASH },
+      logs: [
+        {
+          transactionHash: APPROVAL_TRANSACTION_HASH,
+          logIndex: 2,
+          address: TOKEN_ADDRESS,
+          topics: [APPROVAL_TOPIC, padHex(FROM_ADDRESS), padHex(SPENDER_ADDRESS)],
+          data: numberToHex(500n, { size: 32 }),
+        },
+      ],
+    };
+
+    expect(
+      handler
+        .detectNewContractsAndTokens(blockData)
+        .some((job) => job.type === 'discovery-refresh'),
+    ).toBe(false);
   });
 
   it('skips malformed ERC-20 events without throwing', () => {

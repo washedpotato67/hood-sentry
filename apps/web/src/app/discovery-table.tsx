@@ -94,8 +94,9 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
         title="Nothing indexed here yet"
         action={<Link href="/methodology">How ranking works →</Link>}
       >
-        Sentry is catching up to the chain head — tokens surface here as their on-chain evidence
-        lands. Check back shortly, or read how the ranking works.
+        Tokens surface here as their on-chain evidence lands. Indexing currently trails the chain
+        head — the block Sentry has reached, and how far behind that is, are shown in the status bar
+        above. Nothing is ranked until its evidence is indexed.
       </EmptyState>
     );
   return (

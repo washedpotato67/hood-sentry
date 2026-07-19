@@ -24,6 +24,8 @@ export const DERIVED_JOB_TYPES = [
   'liquidity-metric',
   'protocol-enrichment',
   'bonding-curve-migration-transition',
+  // Ranks a token into the discovery feeds from evidence already persisted.
+  'discovery-refresh',
 ] as const;
 
 export type DerivedJobType = (typeof DERIVED_JOB_TYPES)[number];

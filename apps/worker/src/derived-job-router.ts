@@ -9,6 +9,7 @@ import {
 import { processAlertEvaluation } from './processors/alert-evaluation.js';
 import { processBondingCurveMigrationTransition } from './processors/bonding-curve-migration-transition.js';
 import { processContractCreation } from './processors/contract-creation.js';
+import { processDiscoveryRefresh } from './processors/discovery-refresh.js';
 import { processLiquidityMetric } from './processors/liquidity-metric.js';
 import { processMarketMetric } from './processors/market-metric.js';
 import { processPoolRefresh } from './processors/pool-refresh.js';
@@ -37,6 +38,7 @@ const PROCESSORS: Record<DerivedJobType, Processor> = {
   'protocol-enrichment': processProtocolEnrichment,
   'bonding-curve-migration-transition': processBondingCurveMigrationTransition,
   'wallet-activity': processWalletActivity,
+  'discovery-refresh': processDiscoveryRefresh,
 };
 
 /**
@@ -53,6 +55,7 @@ export function createDerivedJobRouter(
   services: Pick<
     ProcessorContext,
     | 'poolRefresh'
+    | 'discoveryRefresh'
     | 'riskAnalysis'
     | 'alertDelivery'
     | 'riskAlerts'
@@ -65,6 +68,7 @@ export function createDerivedJobRouter(
     database,
     logger,
     poolRefresh: services.poolRefresh,
+    discoveryRefresh: services.discoveryRefresh,
     riskAnalysis: services.riskAnalysis,
     alertDelivery: services.alertDelivery,
     riskAlerts: services.riskAlerts,

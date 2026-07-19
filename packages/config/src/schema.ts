@@ -131,6 +131,26 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // Manipulation thresholds applied when ranking a token into the discovery
+  // feeds. Both default to 0, which flags nothing: these are product policy, and
+  // a guessed threshold would suppress or promote tokens on invented evidence.
+  // Set them deliberately once the intended thresholds are decided.
+  DISCOVERY_MIN_HEALTHY_LIQUIDITY_RAW: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[0-9]+$/)
+      .default('0'),
+  ),
+  DISCOVERY_TINY_TRADE_THRESHOLD_RAW: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .regex(/^[0-9]+$/)
+      .default('0'),
+  ),
+  // Recent trades loaded per candidate when assessing manipulation.
+  DISCOVERY_MAX_RECENT_TRADES: z.coerce.number().int().positive().max(5000).default(500),
 });
 
 const providersSchema = z.object({

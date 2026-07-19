@@ -2,6 +2,7 @@ import type { OracleClient, ProtocolReadClient } from '@hood-sentry/chain';
 import type { Database } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
 import type { DerivedJobPayload } from '@hood-sentry/queue';
+import type { DiscoveryRefreshJob } from '../jobs/discovery-refresh.js';
 import type { PoolRefreshJob } from '../jobs/pool-refresh.js';
 import type { ProtocolEnrichmentJob } from '../jobs/protocol-enrichment.js';
 import type { RiskAnalysisRunner } from '../jobs/risk-runtime.js';
@@ -13,6 +14,7 @@ export interface ProcessorContext {
   logger: Logger;
   riskAnalysis: RiskAnalysisRunner;
   poolRefresh: Pick<PoolRefreshJob, 'run'>;
+  discoveryRefresh: Pick<DiscoveryRefreshJob, 'run'>;
   chainReader: Pick<ProtocolReadClient, 'getBytecode' | 'readContract'>;
   protocolEnrichment: Pick<ProtocolEnrichmentJob, 'run'>;
   oracleClient?: OracleClient;

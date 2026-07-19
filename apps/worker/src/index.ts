@@ -11,6 +11,8 @@ import {
 import { getEnv } from '@hood-sentry/config';
 import {
   DatabaseBlockscoutCache,
+  DrizzleDiscoveryRepository,
+  DrizzleDiscoverySourceRepository,
   DrizzlePricingRepository,
   DrizzleProtocolRepositoryImpl,
   createDatabase,
@@ -26,6 +28,7 @@ import {
 } from '@hood-sentry/providers';
 import { createDerivedJobWorker, createQueueConnection } from '@hood-sentry/queue';
 import { createDerivedJobRouter } from './derived-job-router.js';
+import { DiscoveryRefreshJob } from './jobs/discovery-refresh.js';
 import { PoolRefreshJob } from './jobs/pool-refresh.js';
 import { ProtocolEnrichmentJob } from './jobs/protocol-enrichment.js';
 import { createRiskAnalysisRuntime } from './jobs/risk-runtime.js';
@@ -170,6 +173,14 @@ async function main() {
     metadataProvider,
   });
   const poolRefresh = new PoolRefreshJob(protocolRuntime.manager, protocolRepository);
+  const discoveryRefresh = new DiscoveryRefreshJob(
+    new DrizzleDiscoverySourceRepository(database.db, {
+      minimumHealthyLiquidityRaw: BigInt(env.DISCOVERY_MIN_HEALTHY_LIQUIDITY_RAW),
+      tinyTradeThresholdRaw: BigInt(env.DISCOVERY_TINY_TRADE_THRESHOLD_RAW),
+      maximumRecentTrades: env.DISCOVERY_MAX_RECENT_TRADES,
+    }),
+    new DrizzleDiscoveryRepository(database.db),
+  );
   const protocolEnrichment = new ProtocolEnrichmentJob(
     chainRegistry,
     protocolValidation,
@@ -209,6 +220,7 @@ async function main() {
     deadLetterConnection,
     handler: createDerivedJobRouter(logger, database, {
       poolRefresh,
+      discoveryRefresh,
       riskAnalysis,
       alertDelivery,
       riskAlerts,

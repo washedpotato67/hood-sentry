@@ -83,6 +83,11 @@ beforeEach(async ({ skip }) => {
           throw new Error('Pool refresh was not expected in this test');
         },
       },
+      discoveryRefresh: {
+        async run() {
+          throw new Error('Discovery refresh was not expected in this test');
+        },
+      },
       riskAnalysis: {
         async run() {
           throw new Error('Risk analysis was not expected in this test');
