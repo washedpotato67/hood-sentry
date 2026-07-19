@@ -190,8 +190,11 @@ export class BlockIndexer {
       try {
         const renewed = await this.checkpointManager.renewLease(streamName);
         if (!renewed) {
-          this.logger.error('Failed to renew lease');
-          break;
+          // Throw rather than break: breaking returns from start() normally, the
+          // process exits 0, and an ON_FAILURE restart policy reads that as success
+          // and never restarts — so a single lost lease stops indexing forever.
+          // Failing loudly lets the supervisor restart us to re-acquire the lease.
+          throw new Error('Failed to renew indexer lease');
         }
 
         const latestBlock = await this.blockFetcher.getLatestBlockNumber();
