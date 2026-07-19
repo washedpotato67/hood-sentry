@@ -21,6 +21,12 @@ export interface IndexerConfig {
    * provider has the compute-unit budget to serve the extra parallelism.
    */
   maxConcurrency: number;
+  /**
+   * Drain the catch-up backlog with one `eth_getLogs` call per window instead of
+   * a body and receipt fetch per block. Fast enough to outrun the chain on a
+   * rate-limited provider, at the cost of indexing no transactions or receipts.
+   */
+  logWindowEnabled: boolean;
   pollIntervalMs: number;
   leaseDurationMs: number;
   leaseRenewalMs: number;

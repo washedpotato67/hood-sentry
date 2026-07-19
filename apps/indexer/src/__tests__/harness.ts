@@ -40,6 +40,7 @@ export function testConfig(overrides: Partial<IndexerConfig> = {}): IndexerConfi
     mode: 'live',
     batchSize: 10,
     maxConcurrency: 3,
+    logWindowEnabled: false,
     pollIntervalMs: 5,
     leaseDurationMs: 60_000,
     leaseRenewalMs: 30_000,

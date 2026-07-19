@@ -254,6 +254,7 @@ async function main() {
       mode,
       batchSize: batchSize ? Number.parseInt(batchSize) : 10,
       maxConcurrency: env.INDEXER_MAX_CONCURRENCY,
+      logWindowEnabled: env.INDEXER_LOG_WINDOW_ENABLED,
       pollIntervalMs: 1000,
       leaseDurationMs: 60000,
       leaseRenewalMs: 30000,

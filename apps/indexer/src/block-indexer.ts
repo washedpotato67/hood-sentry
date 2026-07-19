@@ -310,11 +310,16 @@ export class BlockIndexer {
     const requestedEnd = currentBlock + BigInt(this.config.batchSize) - 1n;
     const windowEnd = requestedEnd > safeCeiling ? safeCeiling : requestedEnd;
 
-    const blocks = await this.blockFetcher.fetchBlockWindow(
-      currentBlock,
-      windowEnd,
-      this.config.maxConcurrency,
-    );
+    // The log-only path spends about two RPC requests per window instead of two
+    // per block, which is the difference between trailing the chain and keeping
+    // up with it. It reads no transactions or receipts, so it is opt-in.
+    const blocks = this.config.logWindowEnabled
+      ? await this.blockFetcher.fetchLogWindow(currentBlock, windowEnd)
+      : await this.blockFetcher.fetchBlockWindow(
+          currentBlock,
+          windowEnd,
+          this.config.maxConcurrency,
+        );
     const firstBlock = blocks[0];
     const lastBlock = blocks[blocks.length - 1];
     if (firstBlock === undefined || lastBlock === undefined) {

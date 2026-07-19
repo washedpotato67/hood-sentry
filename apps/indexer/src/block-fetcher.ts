@@ -225,6 +225,59 @@ export class BlockFetcher {
     return blocks;
   }
 
+  /**
+   * Fetch a window as one `eth_getLogs` call plus one header per block, instead
+   * of a body and a receipt set per block. The provider's free tier meters HTTP
+   * requests, and this path spends roughly two requests per ten blocks rather
+   * than twenty, which is what lets live indexing outrun the chain.
+   *
+   * The returned blocks carry no transactions or receipts: this path reads the
+   * event log only. Callers that need per-transaction data must backfill it
+   * separately. As with {@link fetchBlockWindow}, a hole truncates the result so
+   * the caller never advances past a block it failed to read.
+   */
+  async fetchLogWindow(fromBlock: bigint, toBlock: bigint): Promise<BlockData[]> {
+    const numbers: bigint[] = [];
+    for (let n = fromBlock; n <= toBlock; n++) {
+      numbers.push(n);
+    }
+
+    const [logs, headers] = await Promise.all([
+      this.rpcClient.getLogs({ fromBlock, toBlock }),
+      Promise.all(
+        numbers.map((blockNumber) =>
+          this.rpcClient.getBlock({ blockNumber, includeTransactions: false }),
+        ),
+      ),
+    ]);
+
+    const logsByBlock = new Map<bigint, Log[]>();
+    for (const entry of logs) {
+      if (entry.blockNumber === null) continue;
+      const existing = logsByBlock.get(entry.blockNumber);
+      if (existing) {
+        existing.push(entry);
+      } else {
+        logsByBlock.set(entry.blockNumber, [entry]);
+      }
+    }
+
+    const blocks: BlockData[] = [];
+    for (const [index, block] of headers.entries()) {
+      const blockNumber = numbers[index];
+      if (!block || blockNumber === undefined) break;
+      this.assertWellFormed(block, blockNumber.toString());
+      blocks.push({
+        block,
+        transactions: [],
+        receipts: [],
+        logs: logsByBlock.get(blockNumber) ?? [],
+      });
+    }
+
+    return blocks;
+  }
+
   async validateParentHash(block: Block, expectedParentHash: Hash | null): Promise<boolean> {
     if (!expectedParentHash) {
       return true;

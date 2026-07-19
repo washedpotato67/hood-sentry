@@ -7,6 +7,15 @@ const VALID_CHAIN_IDS = [MAINNET_CHAIN_ID, TESTNET_CHAIN_ID] as const;
 const PUBLIC_RPC_PATTERNS = ['rpc.mainnet.chain.robinhood.com', 'rpc.testnet.chain.robinhood.com'];
 const LOCAL_DB_PATTERNS = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
 
+const booleanStringSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    const lower = val.toLowerCase().trim();
+    if (lower === 'true' || lower === '1' || lower === 'yes') return true;
+    if (lower === 'false' || lower === '0' || lower === 'no' || lower === '') return false;
+  }
+  return val;
+}, z.boolean());
+
 const optionalNonemptyStringSchema = z.preprocess(
   (value) => (value === '' ? undefined : value),
   z.string().trim().min(1).optional(),
@@ -131,6 +140,11 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // Drain the indexer backlog with one eth_getLogs call per window rather than a
+  // body and receipt fetch per block. Off by default because it indexes the event
+  // log only: no transactions, no receipts, and so no contract-creation evidence
+  // from receipts. Turn it on where keeping pace with the chain matters more.
+  INDEXER_LOG_WINDOW_ENABLED: booleanStringSchema.default(false),
   // Concurrent RPC calls coalesced into a single JSON-RPC batch request. The
   // free provider tier meters HTTP requests per second rather than calls, so
   // batching raises block throughput without raising the call count. Set to 1 to
@@ -239,15 +253,6 @@ const contractsSchema = z.object({
   TOKEN_ENTITLEMENT_MINIMUM_HOLDING_SECONDS: z.coerce.number().int().nonnegative().default(86_400),
   TREASURY_SAFE_ADDRESS: optionalAddressSchema,
 });
-
-const booleanStringSchema = z.preprocess((val) => {
-  if (typeof val === 'string') {
-    const lower = val.toLowerCase().trim();
-    if (lower === 'true' || lower === '1' || lower === 'yes') return true;
-    if (lower === 'false' || lower === '0' || lower === 'no' || lower === '') return false;
-  }
-  return val;
-}, z.boolean());
 
 const featureFlagsSchema = z.object({
   TRADING_ENABLED: booleanStringSchema.default(false),
