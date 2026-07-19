@@ -42,6 +42,59 @@ export async function processTokenMetadata(
   const identity = data.tokenAddress.toLowerCase();
   const repository = new DrizzleTokenRepositoryImpl(context.database.db);
   const existing = await repository.getToken(chainId, identity);
+
+  // ERC-20 name/symbol/decimals cannot change, so re-reading them on every sighting
+  // spends five RPC calls to learn nothing. Once they are known, refresh only
+  // totalSupply, which does move with mints and burns and feeds supply-based risk.
+  // This turns a token's repeat appearances from 5 calls into 1 — the difference
+  // between fitting the provider's request budget and exhausting it.
+  if (
+    existing !== null &&
+    existing.name !== null &&
+    existing.symbol !== null &&
+    existing.decimals !== null
+  ) {
+    const supplyResult = await Promise.allSettled([
+      readField(context.chainReader, data.tokenAddress, blockNumber, 'totalSupply'),
+    ]);
+    const supply =
+      supplyResult[0].status === 'fulfilled'
+        ? totalSupplyResultSchema.safeParse(supplyResult[0].value)
+        : null;
+
+    await repository.upsertToken({
+      chainId,
+      address: identity,
+      name: existing.name,
+      symbol: existing.symbol,
+      decimals: existing.decimals,
+      totalSupplyRaw:
+        supply?.success === true ? supply.data.toString() : (existing.totalSupplyRaw ?? null),
+      tokenType: existing.tokenType ?? 'erc20',
+      canonicalAssetKey: existing.canonicalAssetKey ?? null,
+      logoUri: existing.logoUri ?? null,
+      // A failed supply read leaves the three immutable fields intact, so the row
+      // is 'partial' rather than 'complete' until supply is readable again.
+      metadataStatus: supply?.success === true ? 'complete' : 'partial',
+      spamStatus: existing.spamStatus ?? 'unknown',
+      firstSeenBlock:
+        existing.firstSeenBlock === null || existing.firstSeenBlock === undefined
+          ? blockNumber
+          : existing.firstSeenBlock < blockNumber
+            ? existing.firstSeenBlock
+            : blockNumber,
+    });
+
+    if (supply?.success !== true) {
+      context.logger.warn('Token supply refresh failed for a token with cached metadata', {
+        chainId,
+        tokenAddress: data.tokenAddress,
+        blockNumber: blockNumber.toString(),
+      });
+    }
+    return;
+  }
+
   const bytecode = await context.chainReader.getBytecode(data.tokenAddress, blockNumber);
 
   if (bytecode === undefined || bytecode === '0x') {

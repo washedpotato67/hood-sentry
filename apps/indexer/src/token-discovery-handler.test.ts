@@ -162,6 +162,13 @@ describe('TokenDiscoveryHandler', () => {
         },
       },
       {
+        type: 'token-metadata',
+        chainId: 4663n,
+        blockNumber: 42n,
+        blockHash: BLOCK_HASH,
+        data: { tokenAddress: TOKEN_ADDRESS },
+      },
+      {
         type: 'discovery-refresh',
         chainId: 4663n,
         blockNumber: 42n,
@@ -170,6 +177,29 @@ describe('TokenDiscoveryHandler', () => {
       },
     ]);
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+
+  it('emits token metadata once per distinct token so repeat transfers stay cheap', () => {
+    const logger = { warn: vi.fn() };
+    const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
+    const transfer = (logIndex: number): DiscoveryBlockData['logs'][number] => ({
+      transactionHash: TRANSACTION_HASH,
+      logIndex,
+      address: TOKEN_ADDRESS,
+      topics: [TRANSFER_TOPIC, padHex(FROM_ADDRESS), padHex(TO_ADDRESS)],
+      data: numberToHex(1n, { size: 32 }),
+    });
+    const blockData: DiscoveryBlockData = {
+      ...emptyBlockData(),
+      block: { number: 42n, hash: BLOCK_HASH },
+      logs: [transfer(1), transfer(2), transfer(3)],
+    };
+
+    const metadata = handler
+      .detectNewContractsAndTokens(blockData)
+      .filter((job) => job.type === 'token-metadata');
+
+    expect(metadata).toHaveLength(1);
   });
 
   it('emits one discovery refresh per token per block, not per transfer', () => {

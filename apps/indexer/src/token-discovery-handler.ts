@@ -61,18 +61,23 @@ export class TokenDiscoveryHandler {
       jobs.push(...this.createTokenEventJobs(log, blockNumber, blockHash));
     }
 
-    jobs.push(...this.createDiscoveryRefreshJobs(jobs, blockNumber, blockHash));
+    jobs.push(...this.createTokenFollowUpJobs(jobs, blockNumber, blockHash));
 
     return jobs;
   }
 
   /**
-   * One refresh per distinct token per block, not per event. A busy block carries
-   * many transfers of the same token, and the ranking is a function of the block
-   * position rather than the individual transfer, so emitting per event would
-   * multiply queue volume without changing the result.
+   * Per-token follow-ups for the transfers in this block: fetch metadata, and
+   * rank the token into the discovery feeds.
+   *
+   * Metadata was previously emitted only from pool and launchpad events, so a
+   * token that merely traded never got a `tokens` row — and every downstream job
+   * needing decimals (wallet activity, price observations, market metrics) failed
+   * with the token unknown. Emitting on transfer closes that gap; the metadata
+   * processor keeps the cost bounded by re-reading only mutable supply once a
+   * token's immutable fields are known.
    */
-  private createDiscoveryRefreshJobs(
+  private createTokenFollowUpJobs(
     jobs: readonly DerivedJob[],
     blockNumber: bigint,
     blockHash: Hash,
@@ -87,13 +92,22 @@ export class TokenDiscoveryHandler {
       }
     }
 
-    return [...tokenAddresses].map((tokenAddress) => ({
-      type: 'discovery-refresh' as const,
-      chainId: this.config.chainId,
-      blockNumber,
-      blockHash,
-      data: { tokenAddress },
-    }));
+    return [...tokenAddresses].flatMap((tokenAddress) => [
+      {
+        type: 'token-metadata' as const,
+        chainId: this.config.chainId,
+        blockNumber,
+        blockHash,
+        data: { tokenAddress },
+      },
+      {
+        type: 'discovery-refresh' as const,
+        chainId: this.config.chainId,
+        blockNumber,
+        blockHash,
+        data: { tokenAddress },
+      },
+    ]);
   }
 
   private createContractDiscoveryJobs(
