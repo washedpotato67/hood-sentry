@@ -54,6 +54,54 @@ export class DexScreenerMarketClient implements MarketDataSource {
     return [];
   }
 
+  async search(chainId: number, query: string): Promise<AggregatorToken[]> {
+    const slug = CHAIN_SLUG_BY_ID[chainId];
+    const trimmed = query.trim();
+    if (slug === undefined || trimmed.length === 0) return [];
+    try {
+      const response = await this.fetchRequest(
+        `${this.baseUrl}/search?q=${encodeURIComponent(trimmed)}`,
+        { headers: { accept: 'application/json' } },
+      );
+      if (!response.ok) return [];
+      const body = asRecord(await response.json());
+      const pairs = Array.isArray(body?.pairs) ? (body?.pairs as unknown[]) : [];
+      const byToken = new Map<string, AggregatorToken>();
+      for (const entry of pairs) {
+        const pair = asRecord(entry);
+        if (pair === null || str(pair.chainId) !== slug) continue;
+        const base = asRecord(pair.baseToken);
+        const tokenAddress = address(base?.address);
+        if (tokenAddress === null) continue;
+        const liquidityUsd = numberString(asRecord(pair.liquidity)?.usd);
+        const candidate: AggregatorToken = {
+          address: tokenAddress,
+          name: str(base?.name),
+          symbol: str(base?.symbol),
+          decimals: null,
+          priceUsd: numberString(pair.priceUsd),
+          liquidityUsd,
+          volume24hUsd: numberString(asRecord(pair.volume)?.h24),
+          primaryPoolAddress: address(pair.pairAddress),
+          poolCreatedAt:
+            typeof pair.pairCreatedAt === 'number'
+              ? new Date(pair.pairCreatedAt).toISOString()
+              : null,
+        };
+        const existing = byToken.get(tokenAddress);
+        if (
+          existing === undefined ||
+          Number(liquidityUsd ?? 0) > Number(existing.liquidityUsd ?? 0)
+        ) {
+          byToken.set(tokenAddress, candidate);
+        }
+      }
+      return [...byToken.values()];
+    } catch {
+      return [];
+    }
+  }
+
   async tokenMarket(chainId: number, tokenAddress: `0x${string}`): Promise<AggregatorToken | null> {
     const pairs = await this.chainPairs(chainId, tokenAddress);
     if (pairs.length === 0) return null;

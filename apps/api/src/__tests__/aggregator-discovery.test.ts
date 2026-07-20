@@ -74,6 +74,7 @@ describe('AggregatorDiscoveryRepository', () => {
     newPools: async () => [token({ address: '0x1111111111111111111111111111111111111111' })],
     tokenMarket: async () => null,
     pools: async () => [],
+    search: async () => [],
   };
 
   it('unions trending and new pools, one entry per token, ranked by input order', async () => {

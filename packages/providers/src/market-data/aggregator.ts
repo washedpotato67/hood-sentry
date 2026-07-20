@@ -39,6 +39,12 @@ export class MarketDataAggregator implements MarketDataSource {
     return fallback ?? primary;
   }
 
+  async search(chainId: number, query: string): Promise<AggregatorToken[]> {
+    const primary = await this.primary.search(chainId, query);
+    if (primary.length > 0) return primary;
+    return this.fallback.search(chainId, query);
+  }
+
   async pools(chainId: number, address: `0x${string}`): Promise<AggregatorPool[]> {
     const primary = await this.primary.pools(chainId, address);
     if (primary.length > 0) return primary;

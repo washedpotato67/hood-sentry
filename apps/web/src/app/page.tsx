@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { apiRequest, chainId } from '../lib/api';
+import { apiRequest, chainId, formatCompactUsd } from '../lib/api';
 import { enrichWithSignals } from '../lib/enrich';
 import { ErrorPanel, Stat } from './components';
 import { type DiscoveryItem, DiscoveryTable } from './discovery-table';
@@ -42,10 +42,9 @@ const DOMAINS = [
 
 export default async function Home() {
   const chain = chainId();
-  const [trending, newTokens, health] = await Promise.all([
+  const [trending, newTokens] = await Promise.all([
     apiRequest<Feed>(`/v1/discovery/trending?chainId=${chain}&limit=8`),
     apiRequest<Feed>(`/v1/discovery/newTokens?chainId=${chain}&limit=8`),
-    apiRequest<{ status: string; checks?: Record<string, { status: string }> }>('/health/ready'),
   ]);
   const [trendingItems, newItems] = await Promise.all([
     trending.ok
@@ -55,6 +54,13 @@ export default async function Home() {
       ? enrichWithSignals(chain, newTokens.data.organic.data)
       : Promise.resolve<readonly DiscoveryItem[]>([]),
   ]);
+  // 24h volume across the trending set: a live signal of chain activity, and a
+  // more meaningful headline than internal API health. Volumes are raw integers
+  // at 18 decimals.
+  const volume24h = trendingItems.reduce(
+    (sum, item) => sum + (item.volumeRaw ? Number(item.volumeRaw) / 1e18 : 0),
+    0,
+  );
   return (
     <>
       <header className="hero">
@@ -82,7 +88,7 @@ export default async function Home() {
       <div className="grid reveal reveal-3">
         <Stat label="Trending tokens" value={trendingItems.length.toString()} />
         <Stat label="New tokens" value={newItems.length.toString()} />
-        <Stat label="API readiness" value={health.ok ? health.data.status : 'Degraded'} />
+        <Stat label="24h volume" value={formatCompactUsd(volume24h)} />
         <Stat label="Chain ID" value={chain.toString()} />
       </div>
 

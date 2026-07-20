@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ChainStatusBar } from './chain-status-bar';
 import { NavLinks } from './nav-links';
 import { SearchBox } from './search-box';
+import { StatusDot } from './status-dot';
 import { ThemeToggle } from './theme-toggle';
 import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -64,6 +65,7 @@ function SiteFooter() {
       </div>
       <div className="footer-bottom">
         <span className="muted">© {new Date().getFullYear()} Hood Sentry</span>
+        <StatusDot />
         <span className="muted">Evidence, not guarantees. Not financial advice.</span>
       </div>
     </footer>

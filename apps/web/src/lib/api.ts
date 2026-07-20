@@ -77,6 +77,16 @@ export function compactAddress(address: string): string {
   return address.length < 14 ? address : `${address.slice(0, 8)}…${address.slice(-6)}`;
 }
 
+/** A short USD figure for headline stats: $1.2M, $12.3K, $0.0000312, or — for none. */
+export function formatCompactUsd(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  if (value === 0) return '$0';
+  return `$${value.toPrecision(3)}`;
+}
+
 export function formatRaw(value: string | null | undefined, decimals: number | null = 18): string {
   if (value === null || value === undefined || decimals === null || !/^-?[0-9]+$/.test(value)) {
     return 'Unavailable';

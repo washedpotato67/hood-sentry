@@ -65,6 +65,20 @@ describe('GeckoTerminalMarketClient', () => {
     });
   });
 
+  it('finds tokens by search, collapsed to one per token', async () => {
+    const client = new GeckoTerminalMarketClient({ fetchRequest: gtStub(GT_TRENDING) });
+
+    const results = await client.search(4663, 'cash');
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ address: TOKEN, symbol: 'CASHCAT' });
+  });
+
+  it('returns nothing for an empty query', async () => {
+    const client = new GeckoTerminalMarketClient({ fetchRequest: gtStub(GT_TRENDING) });
+    expect(await client.search(4663, '   ')).toEqual([]);
+  });
+
   it('returns nothing for a chain it does not cover rather than another chain', async () => {
     const client = new GeckoTerminalMarketClient({ fetchRequest: gtStub(GT_TRENDING) });
     expect(await client.trending(999)).toEqual([]);
@@ -121,6 +135,7 @@ describe('MarketDataAggregator', () => {
     newPools: async () => [],
     tokenMarket: async () => null,
     pools: async () => [],
+    search: async () => [],
   };
 
   it('falls back to the secondary source when the primary has no price', async () => {

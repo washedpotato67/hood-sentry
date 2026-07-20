@@ -38,4 +38,6 @@ export interface MarketDataSource {
   newPools(chainId: number): Promise<AggregatorToken[]>;
   tokenMarket(chainId: number, address: `0x${string}`): Promise<AggregatorToken | null>;
   pools(chainId: number, address: `0x${string}`): Promise<AggregatorPool[]>;
+  /** Free-text token search by name, symbol, or address across the chain. */
+  search(chainId: number, query: string): Promise<AggregatorToken[]>;
 }

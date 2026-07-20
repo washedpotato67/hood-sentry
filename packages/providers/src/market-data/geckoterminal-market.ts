@@ -116,12 +116,27 @@ export class GeckoTerminalMarketClient implements MarketDataSource {
     return pools;
   }
 
+  async search(chainId: number, query: string): Promise<AggregatorToken[]> {
+    const network = NETWORK_BY_CHAIN_ID[chainId];
+    const trimmed = query.trim();
+    if (network === undefined || trimmed.length === 0) return [];
+    const body = await this.getJson(
+      `${this.baseUrl}/search/pools?query=${encodeURIComponent(trimmed)}&network=${network}&include=base_token&page=1`,
+    );
+    return this.tokensFromPools(body);
+  }
+
   private async poolFeed(chainId: number, feed: string): Promise<AggregatorToken[]> {
     const network = NETWORK_BY_CHAIN_ID[chainId];
     if (network === undefined) return [];
     const body = await this.getJson(
       `${this.baseUrl}/networks/${network}/${feed}?include=base_token&page=1`,
     );
+    return this.tokensFromPools(body);
+  }
+
+  /** Collapse a pool list (with included base-token metadata) to one entry per token. */
+  private tokensFromPools(body: unknown | null): AggregatorToken[] {
     if (body === null) return [];
     const data = Array.isArray(asRecord(body)?.data) ? (asRecord(body)?.data as unknown[]) : [];
     const included = Array.isArray(asRecord(body)?.included)

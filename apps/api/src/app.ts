@@ -64,6 +64,7 @@ import { productRoutes } from './routes/product.js';
 import { protocolRoutes } from './routes/protocols.js';
 import { riskCommentaryRoutes } from './routes/risk-commentary.js';
 import { tokenEntitlementRoutes } from './routes/token-entitlements.js';
+import { tokenSearchRoutes } from './routes/token-search.js';
 import { tokenSignalRoutes } from './routes/token-signals.js';
 import { tradingRoutes } from './routes/trading.js';
 import {
@@ -611,6 +612,11 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     prefix: '/v1',
     repository: discoveryRepository,
     riskScoresEnabled: env.RISK_SCORES_ENABLED,
+  });
+  await app.register(tokenSearchRoutes, {
+    prefix: '/v1',
+    market: marketData,
+    cache: readCache,
   });
   await app.register(chainStatusRoutes, {
     prefix: '/v1',
