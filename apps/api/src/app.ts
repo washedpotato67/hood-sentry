@@ -33,6 +33,7 @@ import {
 } from '@hood-sentry/db';
 import { createLogger } from '@hood-sentry/observability';
 import {
+  BlockscoutHoldersClient,
   MarketDataAggregator,
   OpenAiRiskCommentaryProvider,
   ResendEmailProvider,
@@ -80,6 +81,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   // Discovery is served from a market-data aggregator, not an indexed table, so
   // the feed reflects the chain live without the product storing it.
   const marketData = MarketDataAggregator.withDefaults();
+  const holdersClient = new BlockscoutHoldersClient(env.ROBINHOOD_CHAIN_ID);
   const readCache = new RedisCache(createQueueConnection(env.REDIS_URL));
   const discoveryRepository = new AggregatorDiscoveryRepository(marketData, readCache);
   const blockRepository = new DrizzleBlockRepositoryImpl(database.db);
@@ -492,6 +494,9 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     intelligence: intelligenceRepository,
     nativeBalance: (address) => chainClient.getBalance({ address }),
     riskScoresEnabled: env.RISK_SCORES_ENABLED,
+    market: marketData,
+    holders: holdersClient,
+    readCache,
   });
   await app.register(riskCommentaryRoutes, {
     prefix: '/v1',
@@ -597,6 +602,8 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   await app.register(pricingRoutes, {
     prefix: '/v1',
     repository: pricingRepository,
+    market: marketData,
+    readCache,
   });
   await app.register(discoveryRoutes, {
     prefix: '/v1',

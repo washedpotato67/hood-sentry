@@ -9,9 +9,12 @@ import type {
   RiskScore,
   TokenRepository,
 } from '@hood-sentry/db';
+import type { BlockscoutHoldersClient, MarketDataSource } from '@hood-sentry/providers';
+import type { RedisCache } from '@hood-sentry/queue';
 import { NotFoundError, toChecksumAddress } from '@hood-sentry/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { aggregatorToken } from '../token-page.js';
 
 const chainIdSchema = z.union([z.literal(4663), z.literal(46630)]);
 // Validate the shape here rather than letting the checksum helper throw: an
@@ -35,6 +38,14 @@ export type IntelligenceRouteOptions = {
   intelligence: IntelligenceRepository;
   nativeBalance: (address: `0x${string}`) => Promise<bigint>;
   riskScoresEnabled: boolean;
+  /**
+   * Live sources used when the indexed table has no record, which in the
+   * serve-don't-store model is always: token metadata and pools from the
+   * aggregator, holders and supply from the block explorer.
+   */
+  market?: MarketDataSource;
+  holders?: BlockscoutHoldersClient;
+  readCache?: RedisCache;
 };
 
 function target(request: { params: unknown; query: unknown }, defaultChainId: 4663 | 46630) {
@@ -180,14 +191,47 @@ function serialize(value: unknown): unknown {
   );
 }
 
+/**
+ * The indexed token first; the live aggregator when the table is empty, which
+ * under serve-don't-store is the normal path. Preserving the table lookup keeps
+ * the route working either way.
+ */
+async function resolveToken(
+  options: IntelligenceRouteOptions,
+  chainId: number,
+  checksum: `0x${string}`,
+  identity: string,
+): Promise<Awaited<ReturnType<TokenRepository['getToken']>>> {
+  const indexed = await options.tokens.getToken(chainId, identity);
+  if (indexed !== null) return indexed;
+  if (
+    options.market === undefined ||
+    options.holders === undefined ||
+    options.readCache === undefined
+  ) {
+    return null;
+  }
+  return aggregatorToken(chainId, checksum, options.market, options.holders, options.readCache);
+}
+
+async function resolvePoolCount(
+  options: IntelligenceRouteOptions,
+  chainId: number,
+  checksum: `0x${string}`,
+): Promise<number> {
+  const indexed = await options.protocols.getPoolsByToken(chainId, checksum);
+  if (indexed.length > 0 || options.market === undefined) return indexed.length;
+  return (await options.market.pools(chainId, checksum)).length;
+}
+
 export async function intelligenceRoutes(app: FastifyInstance, options: IntelligenceRouteOptions) {
   app.get('/tokens/:address', async (request) => {
     const input = target(request, options.defaultChainId);
-    const token = await options.tokens.getToken(input.chainId, input.identity);
+    const token = await resolveToken(options, input.chainId, input.checksum, input.identity);
     if (token === null) throw new NotFoundError('Token', input.checksum);
-    const [contract, pools, report] = await Promise.all([
+    const [contract, poolCount, report] = await Promise.all([
       options.contracts.getContract(input.chainId, input.identity),
-      options.protocols.getPoolsByToken(input.chainId, input.checksum),
+      resolvePoolCount(options, input.chainId, input.checksum),
       riskReport(options.risk, input.chainId, input.identity),
     ]);
     return {
@@ -195,7 +239,7 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
         ...tokenData(token),
         contract:
           contract === null ? null : { verified: contract.verified, isProxy: contract.isProxy },
-        poolCount: pools.length,
+        poolCount,
         risk: serializeRisk(report, options.riskScoresEnabled),
       },
     };
@@ -203,26 +247,50 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
 
   app.get('/tokens/:address/holders', async (request) => {
     const input = target(request, options.defaultChainId);
-    const token = await options.tokens.getToken(input.chainId, input.identity);
-    if (token === null) throw new NotFoundError('Token', input.checksum);
-    const holders = await options.intelligence.getTokenHolders(
+    const indexed = await options.intelligence.getTokenHolders(
       input.chainId,
       input.identity,
       input.limit,
     );
-    const supply = token.totalSupplyRaw === null ? null : BigInt(token.totalSupplyRaw);
+    if (indexed.length > 0) {
+      const token = await options.tokens.getToken(input.chainId, input.identity);
+      const supply = token?.totalSupplyRaw == null ? null : BigInt(token.totalSupplyRaw);
+      return {
+        data: {
+          tokenAddress: input.checksum,
+          totalSupplyRaw: token?.totalSupplyRaw ?? null,
+          holders: indexed.map((holder) => ({
+            address: toChecksumAddress(holder.walletAddress),
+            balanceRaw: holder.balanceRaw,
+            supplyShareBps:
+              supply === null || supply <= 0n
+                ? null
+                : ((BigInt(holder.balanceRaw) * 10_000n) / supply).toString(),
+            asOfBlock: holder.asOfBlock.toString(),
+          })),
+        },
+      };
+    }
+
+    // No indexed holders: read them live from the block explorer.
+    if (options.holders === undefined) throw new NotFoundError('Token', input.checksum);
+    const explorer = await options.holders.tokenHolders(input.checksum);
+    if (explorer.holders.length === 0 && explorer.totalSupplyRaw === null) {
+      throw new NotFoundError('Token', input.checksum);
+    }
+    const supply = explorer.totalSupplyRaw === null ? null : BigInt(explorer.totalSupplyRaw);
     return {
       data: {
         tokenAddress: input.checksum,
-        totalSupplyRaw: token.totalSupplyRaw,
-        holders: holders.map((holder) => ({
-          address: toChecksumAddress(holder.walletAddress),
+        totalSupplyRaw: explorer.totalSupplyRaw,
+        holders: explorer.holders.map((holder) => ({
+          address: toChecksumAddress(holder.address),
           balanceRaw: holder.balanceRaw,
           supplyShareBps:
             supply === null || supply <= 0n
               ? null
               : ((BigInt(holder.balanceRaw) * 10_000n) / supply).toString(),
-          asOfBlock: holder.asOfBlock.toString(),
+          asOfBlock: null,
         })),
       },
     };

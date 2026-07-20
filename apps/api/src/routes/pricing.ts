@@ -6,8 +6,38 @@ import {
   priceQuerySchema,
 } from '@hood-sentry/api-contracts';
 import type { PricingRepository } from '@hood-sentry/db';
+import { type MarketDataSource, decimalToRaw } from '@hood-sentry/providers';
+import type { RedisCache } from '@hood-sentry/queue';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+
+/** Reads the aggregator's USD price for a token, scaled to 18-decimal raw units. */
+async function aggregatorPrice(
+  options: { market?: MarketDataSource; readCache?: RedisCache },
+  chainId: number,
+  tokenAddress: `0x${string}`,
+): Promise<{ priceRaw: string; priceDecimals: number; observedAt: string } | null> {
+  if (options.market === undefined) return null;
+  const compute = async () => {
+    const market = await options.market?.tokenMarket(chainId, tokenAddress);
+    if (market?.priceUsd == null) return null;
+    try {
+      return {
+        priceRaw: decimalToRaw(market.priceUsd, 18),
+        priceDecimals: 18,
+        observedAt: new Date().toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  };
+  if (options.readCache === undefined) return compute();
+  return options.readCache.getOrCompute(
+    `price:${chainId}:${tokenAddress.toLowerCase()}`,
+    30,
+    compute,
+  );
+}
 
 const tokenParamsSchema = z.object({ tokenAddress: evmAddressSchema });
 
@@ -23,7 +53,11 @@ export type PricingReadRepository = Pick<
 
 export async function pricingRoutes(
   app: FastifyInstance,
-  options: { repository: PricingReadRepository },
+  options: {
+    repository: PricingReadRepository;
+    market?: MarketDataSource;
+    readCache?: RedisCache;
+  },
 ) {
   app.get('/tokens/:tokenAddress/price', async (request) => {
     const { tokenAddress } = tokenParamsSchema.parse(request.params);
@@ -33,6 +67,34 @@ export async function pricingRoutes(
       tokenAddress,
       query.quoteAssetAddress,
     );
+    if (value === null && options.market !== undefined) {
+      // No indexed observation: quote the aggregator's US-dollar price, which is
+      // effectively the price in a dollar-pegged quote asset, attributed as
+      // external data rather than a reserve reading this system observed.
+      const aggregated = await aggregatorPrice(options, query.chainId, tokenAddress);
+      if (aggregated !== null) {
+        return {
+          data: {
+            tokenAddress,
+            quoteAssetAddress: query.quoteAssetAddress,
+            priceRaw: aggregated.priceRaw,
+            priceDecimals: aggregated.priceDecimals,
+            status: 'available',
+            source: 'aggregator',
+            sourceContractAddress: null,
+            sourceBlockNumber: null,
+            sourceBlockHash: null,
+            sourceTimestamp: aggregated.observedAt,
+            observedAt: aggregated.observedAt,
+            freshnessSeconds: 0,
+            stale: false,
+            confidenceBps: '0',
+            warnings: ['EXTERNAL_AGGREGATOR_PRICE'],
+            methodologyVersion: 'aggregator-v1',
+          },
+        };
+      }
+    }
     if (value === null) {
       return {
         data: {
