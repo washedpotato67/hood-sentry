@@ -20,7 +20,6 @@ import {
   DrizzleBalanceRepository,
   DrizzleBlockRepositoryImpl,
   DrizzleContractRepositoryImpl,
-  DrizzleDiscoveryRepository,
   DrizzleIntelligenceRepository,
   DrizzlePricingRepository,
   DrizzleProductRepository,
@@ -34,15 +33,18 @@ import {
 } from '@hood-sentry/db';
 import { createLogger } from '@hood-sentry/observability';
 import {
+  MarketDataAggregator,
   OpenAiRiskCommentaryProvider,
   ResendEmailProvider,
   TelegramBotProvider,
   WebPushProvider,
   resolveRpcProviders,
 } from '@hood-sentry/providers';
+import { RedisCache, createQueueConnection } from '@hood-sentry/queue';
 import { generateRequestId } from '@hood-sentry/shared';
 import Fastify from 'fastify';
 import { erc20Abi, getAddress, isHash } from 'viem';
+import { AggregatorDiscoveryRepository } from './aggregator-discovery.js';
 import { installApiKeyHooks } from './api-key-hooks.js';
 import { ApiKeyService } from './api-key-service.js';
 import { AuthSessionManager } from './auth-session.js';
@@ -75,7 +77,11 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   const database = createDatabase(env.DATABASE_URL, { maxConnections: env.DATABASE_POOL_MAX });
   const protocolRepository = new DrizzleProtocolRepositoryImpl(database.db);
   const pricingRepository = new DrizzlePricingRepository(database.db);
-  const discoveryRepository = new DrizzleDiscoveryRepository(database.db);
+  // Discovery is served from a market-data aggregator, not an indexed table, so
+  // the feed reflects the chain live without the product storing it.
+  const marketData = MarketDataAggregator.withDefaults();
+  const readCache = new RedisCache(createQueueConnection(env.REDIS_URL));
+  const discoveryRepository = new AggregatorDiscoveryRepository(marketData, readCache);
   const blockRepository = new DrizzleBlockRepositoryImpl(database.db);
   const authRepository = new DrizzleAuthRepository(database.db);
   const tokenRepository = new DrizzleTokenRepositoryImpl(database.db);
