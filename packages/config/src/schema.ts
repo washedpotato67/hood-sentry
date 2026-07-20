@@ -140,6 +140,12 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // How far behind the chain head the indexer may be before readiness reports a
+  // problem. There is a floor below this that no healthy indexer can beat: it
+  // deliberately stays 64 blocks back for finality, drains in 10-block windows,
+  // and polls once a second on a chain producing ten blocks a second. A
+  // threshold near that floor reports a fault the architecture guarantees.
+  API_MAX_BLOCK_LAG: z.coerce.number().int().positive().default(250),
   // Drain the indexer backlog with one eth_getLogs call per window rather than a
   // body and receipt fetch per block. Off by default because it indexes the event
   // log only: no transactions, no receipts, and so no contract-creation evidence

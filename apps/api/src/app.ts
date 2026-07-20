@@ -407,6 +407,7 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
         rpcProviderId: rpcProviders.primary.providerId,
         chainId: env.ROBINHOOD_CHAIN_ID,
         rpcTimeoutMs: env.RPC_TIMEOUT_MS,
+        maximumBlockLag: BigInt(env.API_MAX_BLOCK_LAG),
         blockscoutApiBaseUrl: env.BLOCKSCOUT_API_BASE,
         blockscoutApiKey: env.BLOCKSCOUT_API_KEY,
         oracleClient,

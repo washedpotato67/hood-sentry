@@ -88,6 +88,24 @@ describe('RPC health probe', () => {
     });
   });
 
+  it('treats an indexer sitting at its structural floor as healthy', async () => {
+    // A healthy live indexer cannot sit near the head: it holds 64 blocks back
+    // for finality, drains in 10-block windows, and polls once a second on a
+    // chain producing ten blocks a second. A threshold near that floor would
+    // report a fault the design guarantees, so readiness must allow for it.
+    const structuralFloor = 64n + 10n + 10n;
+    const probe = createRpcHealthProbe({
+      rpcUrl: 'https://rpc.example.test',
+      expectedChainId: 4663,
+      readIndexedHead: async () => 100n - structuralFloor,
+      timeoutMs: 100,
+      maximumBlockLag: 250n,
+      fetchRequest: rpcFetch({}),
+    });
+
+    await expect(probe()).resolves.toMatchObject({ status: 'ok' });
+  });
+
   it('reports missing indexer state separately from provider failure', async () => {
     const missing = createRpcHealthProbe({
       rpcUrl: 'https://rpc.example.test',
