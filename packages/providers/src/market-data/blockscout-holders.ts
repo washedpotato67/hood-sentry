@@ -82,6 +82,20 @@ export class BlockscoutHoldersClient {
     };
   }
 
+  /**
+   * Just the holder count, from the explorer's counters endpoint, so the feed
+   * can show it without pulling every token's full holder list. Null when the
+   * explorer does not answer, which the feed renders as unavailable for that row.
+   */
+  async holderCount(tokenAddress: `0x${string}`): Promise<bigint | null> {
+    if (this.baseUrl === null) return null;
+    const body = await this.getJson(
+      `${this.baseUrl}/api/v2/tokens/${tokenAddress.toLowerCase()}/counters`,
+    );
+    const count = integerString(asRecord(body)?.token_holders_count);
+    return count === null ? null : BigInt(count);
+  }
+
   private async getJson(url: string): Promise<unknown | null> {
     try {
       const response = await this.fetchRequest(url, { headers: { accept: 'application/json' } });

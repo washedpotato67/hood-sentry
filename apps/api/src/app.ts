@@ -83,7 +83,9 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   const marketData = MarketDataAggregator.withDefaults();
   const holdersClient = new BlockscoutHoldersClient(env.ROBINHOOD_CHAIN_ID);
   const readCache = new RedisCache(createQueueConnection(env.REDIS_URL));
-  const discoveryRepository = new AggregatorDiscoveryRepository(marketData, readCache);
+  const discoveryRepository = new AggregatorDiscoveryRepository(marketData, readCache, {
+    holders: holdersClient,
+  });
   const blockRepository = new DrizzleBlockRepositoryImpl(database.db);
   const authRepository = new DrizzleAuthRepository(database.db);
   const tokenRepository = new DrizzleTokenRepositoryImpl(database.db);

@@ -128,7 +128,11 @@ export class AggregatorDiscoveryRepository implements DiscoveryReadRepository {
   constructor(
     private readonly market: MarketDataSource,
     private readonly cache: RedisCache,
-    private readonly options: { ttlSeconds?: number; now?: () => string } = {},
+    private readonly options: {
+      ttlSeconds?: number;
+      now?: () => string;
+      holders?: { holderCount(address: `0x${string}`): Promise<bigint | null> };
+    } = {},
   ) {}
 
   async listCurrent(chainId: number): Promise<readonly DiscoveryItem[]> {
@@ -154,10 +158,47 @@ export class AggregatorDiscoveryRepository implements DiscoveryReadRepository {
       },
     );
 
+    const holderCounts = await this.holderCounts(chainId, tokens);
     const observedAt = now();
-    return tokens.map((token, index) =>
-      aggregatorTokenToDiscoveryItem(chainId, token, tokens.length - index, observedAt),
+    return tokens.map((token, index) => {
+      const item = aggregatorTokenToDiscoveryItem(
+        chainId,
+        token,
+        tokens.length - index,
+        observedAt,
+      );
+      const count = holderCounts.get(token.address.toLowerCase());
+      return count === undefined ? item : { ...item, holderCount: count };
+    });
+  }
+
+  /**
+   * Holder count per token from the explorer, each cached well beyond the feed's
+   * own TTL: counts change slowly, so caching per token keeps a feed refresh from
+   * asking the explorer about every token every minute. A token whose count
+   * cannot be read is simply left out and renders as unavailable.
+   */
+  private async holderCounts(
+    chainId: number,
+    tokens: readonly AggregatorToken[],
+  ): Promise<Map<string, bigint>> {
+    const counts = new Map<string, bigint>();
+    if (this.options.holders === undefined) return counts;
+    const holders = this.options.holders;
+    await Promise.all(
+      tokens.map(async (token) => {
+        const cached = await this.cache.getOrCompute<string | null>(
+          `holders:count:${chainId}:${token.address.toLowerCase()}`,
+          600,
+          async () => {
+            const count = await holders.holderCount(token.address);
+            return count === null ? null : count.toString();
+          },
+        );
+        if (cached !== null) counts.set(token.address.toLowerCase(), BigInt(cached));
+      }),
     );
+    return counts;
   }
 
   async listSponsoredPlacements(): Promise<[]> {
