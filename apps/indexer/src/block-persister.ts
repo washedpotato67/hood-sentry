@@ -33,7 +33,7 @@ export class BlockPersister {
     finalityState: FinalityState,
     canonical = true,
   ): Promise<void> {
-    const { block, transactions, receipts, logs } = blockData;
+    const { block, transactions, logs } = blockData;
 
     const blockNumber = block.number;
     const blockHash = block.hash;
@@ -57,45 +57,89 @@ export class BlockPersister {
     // inserts instead. Receipt fields are merged into the transaction row so the
     // per-transaction follow-up UPDATE disappears too. Rows are immutable for a
     // finalized block, so onConflictDoNothing is a safe replay guard.
-    const receiptByTxHash = new Map(receipts.map((receipt) => [receipt.transactionHash, receipt]));
-
     await this.drizzle.transaction(async (tx) => {
-      await this.persistBlock(tx, blockData, finalityState, canonical);
-
-      if (transactions.length > 0) {
-        const rows = transactions.map((transaction) =>
-          this.buildTransactionRow(
-            transaction,
-            receiptByTxHash.get(transaction.hash),
-            blockNumber,
-            blockHash,
-            canonical,
-          ),
-        );
-        await tx.insert(schema.transactions).values(rows).onConflictDoNothing();
-      }
-
-      if (receipts.length > 0) {
-        const rows = receipts.map((receipt) =>
-          this.buildReceiptRow(receipt, blockNumber, blockHash),
-        );
-        await tx.insert(schema.transactionReceipts).values(rows).onConflictDoNothing();
-      }
-
-      if (logs.length > 0) {
-        const rows = logs.map((log) => this.buildLogRow(log, blockNumber, blockHash, canonical));
-        // Chunked to stay well under Postgres' bind-parameter ceiling.
-        for (let i = 0; i < rows.length; i += LOG_INSERT_CHUNK_SIZE) {
-          const chunk = rows.slice(i, i + LOG_INSERT_CHUNK_SIZE);
-          await tx.insert(schema.logs).values(chunk).onConflictDoNothing();
-        }
-      }
+      await this.writeBlockData(tx, blockData, finalityState, canonical);
     });
 
     this.logger.info('Block data persisted', {
       blockNumber: blockNumber.toString(),
       blockHash,
     });
+  }
+
+  /**
+   * Persist a whole window of blocks inside one transaction.
+   *
+   * Each transaction costs a round trip to open and another to commit, and on a
+   * database tens of milliseconds away those dominate the cost of catching up.
+   * Writing a window as a unit also makes the window atomic: a failure part way
+   * through rolls back cleanly rather than leaving the checkpoint's blocks half
+   * written.
+   */
+  async persistBlockWindow(
+    blocks: readonly BlockData[],
+    finalityState: FinalityState,
+    canonical = true,
+  ): Promise<void> {
+    if (blocks.length === 0) return;
+
+    await this.drizzle.transaction(async (tx) => {
+      for (const blockData of blocks) {
+        await this.writeBlockData(tx, blockData, finalityState, canonical);
+      }
+    });
+
+    this.logger.info('Block window persisted', {
+      fromBlock: blocks[0]?.block.number?.toString(),
+      toBlock: blocks[blocks.length - 1]?.block.number?.toString(),
+      count: blocks.length,
+    });
+  }
+
+  private async writeBlockData(
+    tx: Parameters<Parameters<Database['db']['transaction']>[0]>[0],
+    blockData: BlockData,
+    finalityState: FinalityState,
+    canonical: boolean,
+  ): Promise<void> {
+    const { block, transactions, receipts, logs } = blockData;
+    const blockNumber = block.number;
+    const blockHash = block.hash;
+    if (blockNumber === null || blockHash === null) {
+      this.logger.warn('Skipping block with null number or hash');
+      return;
+    }
+
+    const receiptByTxHash = new Map(receipts.map((receipt) => [receipt.transactionHash, receipt]));
+
+    await this.persistBlock(tx, blockData, finalityState, canonical);
+
+    if (transactions.length > 0) {
+      const rows = transactions.map((transaction) =>
+        this.buildTransactionRow(
+          transaction,
+          receiptByTxHash.get(transaction.hash),
+          blockNumber,
+          blockHash,
+          canonical,
+        ),
+      );
+      await tx.insert(schema.transactions).values(rows).onConflictDoNothing();
+    }
+
+    if (receipts.length > 0) {
+      const rows = receipts.map((receipt) => this.buildReceiptRow(receipt, blockNumber, blockHash));
+      await tx.insert(schema.transactionReceipts).values(rows).onConflictDoNothing();
+    }
+
+    if (logs.length > 0) {
+      const rows = logs.map((log) => this.buildLogRow(log, blockNumber, blockHash, canonical));
+      // Chunked to stay well under Postgres' bind-parameter ceiling.
+      for (let i = 0; i < rows.length; i += LOG_INSERT_CHUNK_SIZE) {
+        const chunk = rows.slice(i, i + LOG_INSERT_CHUNK_SIZE);
+        await tx.insert(schema.logs).values(chunk).onConflictDoNothing();
+      }
+    }
   }
 
   private async persistBlock(
