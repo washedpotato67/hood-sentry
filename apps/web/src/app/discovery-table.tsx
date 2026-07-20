@@ -20,7 +20,7 @@ export type DiscoveryItem = {
   warnings?: readonly string[];
   // Attached by best-effort enrichment (finding-severity beads); absent when a
   // token has no scan yet or enrichment failed.
-  signals?: { high: number; medium: number; low: number };
+  signals?: { high: number; medium: number; low: number; unavailable: number };
   // Recent liquidity series (oldest→newest) for a sparkline; absent when the
   // token's pools have too few snapshots.
   spark?: number[];
@@ -30,6 +30,9 @@ export type DiscoveryItem = {
 // the latest point is at or above the first, amber when it's fallen.
 function Sparkline({ points }: { points?: number[] }) {
   if (!points || points.length < 2) return null;
+  // An all-zero series draws the same flat line as steady liquidity would, so it
+  // would read as a measurement rather than as the absence of one.
+  if (points.every((value) => value === 0)) return null;
   const width = 58;
   const height = 16;
   const pad = 2;
@@ -70,9 +73,22 @@ function Sparkline({ points }: { points?: number[] }) {
 
 // Compact severity beads: a colored dot at the worst level present, with counts.
 // "Clean" reads as an em-dash — no scan findings, not missing data.
+//
+// Rules the analyzer could not run are reported separately as "unchecked"
+// rather than folded into the low count. They are the absence of a verdict, and
+// showing them as low-severity risk makes an unscannable contract look risky
+// and a clean one look flawed.
 function Signals({ signals }: { signals?: DiscoveryItem['signals'] }) {
-  if (!signals || signals.high + signals.medium + signals.low === 0) {
-    return <span className="muted">—</span>;
+  if (!signals) return <span className="muted">—</span>;
+  const assessed = signals.high + signals.medium + signals.low;
+  if (assessed === 0) {
+    return signals.unavailable > 0 ? (
+      <span className="muted" title="Rules the analyzer could not run against this token">
+        {signals.unavailable} unchecked
+      </span>
+    ) : (
+      <span className="muted">—</span>
+    );
   }
   const parts: string[] = [];
   if (signals.high > 0) parts.push(`${signals.high} high`);
@@ -83,6 +99,12 @@ function Signals({ signals }: { signals?: DiscoveryItem['signals'] }) {
     <span className="sig">
       <span className={`bead ${worst}`} aria-hidden="true" />
       <span className="count">{parts.join(' · ')}</span>
+      {signals.unavailable > 0 ? (
+        <span className="muted" title="Rules the analyzer could not run against this token">
+          {' '}
+          · {signals.unavailable} unchecked
+        </span>
+      ) : null}
     </span>
   );
 }

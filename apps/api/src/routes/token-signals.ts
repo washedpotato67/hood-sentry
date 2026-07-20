@@ -23,7 +23,7 @@ const querySchema = z.object({
     ),
 });
 
-type Signals = { high: number; medium: number; low: number };
+type Signals = { high: number; medium: number; low: number; unavailable: number };
 type Enrichment = { signals?: Signals; spark?: number[] };
 
 /**
@@ -47,7 +47,12 @@ export async function tokenSignalRoutes(
     const map: Record<string, Enrichment> = {};
     for (const row of counts) {
       const entry = map[row.targetAddress] ?? {};
-      entry.signals = { high: row.high, medium: row.medium, low: row.low };
+      entry.signals = {
+        high: row.high,
+        medium: row.medium,
+        low: row.low,
+        unavailable: row.unavailable,
+      };
       map[row.targetAddress] = entry;
     }
     for (const row of series) {

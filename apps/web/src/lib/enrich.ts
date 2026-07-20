@@ -1,7 +1,7 @@
 import type { DiscoveryItem } from '../app/discovery-table';
 import { apiRequest } from './api';
 
-type Signals = { high: number; medium: number; low: number };
+type Signals = { high: number; medium: number; low: number; unavailable: number };
 type Enrichment = { signals?: Signals; spark?: number[] };
 type EnrichmentMap = Record<string, Enrichment>;
 

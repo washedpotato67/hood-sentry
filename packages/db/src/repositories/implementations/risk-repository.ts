@@ -237,6 +237,14 @@ export class DrizzleRiskRepository implements RiskRepository {
     // DISTINCT ON picks the latest canonical scan per token; the join to findings
     // drops tokens with none (they render as "clean"). Counts arrive as bigint
     // strings from COUNT(*).
+    //
+    // Only findings the analyzer actually reached a verdict on count as risk. A
+    // rule that could not run records a zero-confidence finding titled
+    // "... unavailable", and a rule that ran and found nothing records an `info`
+    // finding titled "... not found". Counting either as a low-severity risk
+    // reports a clean or unchecked contract as a risky one, which is the exact
+    // black-box behaviour this product exists to avoid. The count of rules that
+    // could not run is returned separately so it can be shown as what it is.
     const rows = (await this.executor(tx).execute(sql`
       WITH latest AS (
         SELECT DISTINCT ON (target_address) id, target_address
@@ -248,9 +256,19 @@ export class DrizzleRiskRepository implements RiskRepository {
         ORDER BY target_address, created_at DESC, id DESC
       )
       SELECT lower(latest.target_address) AS target_address,
-        COUNT(*) FILTER (WHERE risk_findings.severity IN ('critical', 'high')) AS high,
-        COUNT(*) FILTER (WHERE risk_findings.severity = 'medium') AS medium,
-        COUNT(*) FILTER (WHERE risk_findings.severity IN ('low', 'info')) AS low
+        COUNT(*) FILTER (
+          WHERE risk_findings.severity IN ('critical', 'high')
+            AND risk_findings.confidence > 0
+        ) AS high,
+        COUNT(*) FILTER (
+          WHERE risk_findings.severity = 'medium'
+            AND risk_findings.confidence > 0
+        ) AS medium,
+        COUNT(*) FILTER (
+          WHERE risk_findings.severity = 'low'
+            AND risk_findings.confidence > 0
+        ) AS low,
+        COUNT(*) FILTER (WHERE risk_findings.confidence = 0) AS unavailable
       FROM latest
       JOIN risk_findings
         ON risk_findings.scan_run_id = latest.id
@@ -261,6 +279,7 @@ export class DrizzleRiskRepository implements RiskRepository {
       high: string | number;
       medium: string | number;
       low: string | number;
+      unavailable: string | number;
     }>;
 
     return rows.map((row) => ({
@@ -268,6 +287,7 @@ export class DrizzleRiskRepository implements RiskRepository {
       high: Number(row.high),
       medium: Number(row.medium),
       low: Number(row.low),
+      unavailable: Number(row.unavailable),
     }));
   }
 

@@ -148,9 +148,16 @@ export interface RiskSuppressionRecord {
 export interface TokenSignalCounts {
   /** Lowercased token address, for case-insensitive matching against feed items. */
   targetAddress: string;
+  /** Findings the analyzer reached a verdict on, by severity. */
   high: number;
   medium: number;
   low: number;
+  /**
+   * Rules that could not run against this token, recorded with zero confidence.
+   * Not a risk: it is the absence of an answer, and reporting it as one would
+   * make an unscannable contract look like a risky one.
+   */
+  unavailable: number;
 }
 
 export interface RiskRepository {
