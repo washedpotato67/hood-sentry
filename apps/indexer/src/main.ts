@@ -20,6 +20,7 @@ import {
   QueueJobPublisher,
   createQueueConnection,
 } from '@hood-sentry/queue';
+import { DrizzleRetentionStore } from './drizzle-retention-store.js';
 import { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import {
   BlockFetcher,
@@ -31,6 +32,7 @@ import {
   ReorgDetector,
 } from './index.js';
 import { indexableTopics } from './indexable-topics.js';
+import { RetentionPruner } from './retention-pruner.js';
 import type { IndexerConfig, IndexerMode } from './types.js';
 
 interface IndexerArguments {
@@ -179,6 +181,22 @@ async function main() {
     });
 
     const db = createDatabase(env.DATABASE_URL);
+
+    // Reclaim space before anything writes. Startup itself persists protocol
+    // validations, so on a database at its size limit that write fails, the
+    // process exits, and it restarts into the same wall: the pruner that would
+    // have freed the space lives in the indexing loop it never reaches. Pruning
+    // first is what lets a full database recover without hand intervention.
+    if (env.RAW_DATA_RETENTION_BLOCKS > 0) {
+      await new RetentionPruner(
+        new DrizzleRetentionStore(db.db, BigInt(env.ROBINHOOD_CHAIN_ID)),
+        {
+          retentionBlocks: BigInt(env.RAW_DATA_RETENTION_BLOCKS),
+          deleteBatchSize: 5_000,
+        },
+        logger,
+      ).prune();
+    }
 
     const chain = getChainDefinition(env.ROBINHOOD_CHAIN_ID);
     // Each block costs two RPC calls (body plus receipts), and the provider's

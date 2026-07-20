@@ -392,12 +392,16 @@ export class BlockIndexer {
     // were never written.
     await this.blockPersister.persistBlockWindow(blocks, 'finalized', true);
 
+    // Collect the window's discovery jobs and enqueue them together: one round
+    // trip for the window rather than one per block.
+    const windowJobs: DerivedJob[] = [];
     for (const blockData of blocks) {
       this.metrics.blocksIndexed++;
       this.metrics.transactionsIndexed += blockData.transactions.length;
       this.metrics.logsIndexed += blockData.logs.length;
-      await this.publishDerivedJobs(blockData);
+      windowJobs.push(...(await this.collectDerivedJobs(blockData)));
     }
+    await this.publishJobs(windowJobs);
 
     // fetchBlockWindow returns a contiguous prefix starting at currentBlock, so
     // the count alone tells us how far we advanced.
@@ -653,10 +657,19 @@ export class BlockIndexer {
   }
 
   private async publishDerivedJobs(blockData: BlockData): Promise<void> {
+    await this.publishJobs(await this.collectDerivedJobs(blockData));
+  }
+
+  /**
+   * Route the block's logs to the protocol handlers and return the discovery
+   * jobs it produced, without enqueueing them. Callers that hold a whole window
+   * enqueue the lot in one round trip.
+   */
+  private async collectDerivedJobs(blockData: BlockData): Promise<readonly DerivedJob[]> {
     const block = blockData.block;
     if (block.number === null || block.hash === null) {
       this.logger.warn('Skipping derived jobs for block with missing number or hash');
-      return;
+      return [];
     }
 
     for (const log of blockData.logs) {
@@ -675,11 +688,9 @@ export class BlockIndexer {
       });
     }
 
-    // Use token discovery handler to detect contracts and tokens
-    const discoveryJobs = this.tokenDiscoveryHandler.detectNewContractsAndTokens(blockData);
-    await this.publishJobs(discoveryJobs);
-
     await this.chainlinkJobProducer?.publishJobsForBlock(block.number, block.hash);
+
+    return this.tokenDiscoveryHandler.detectNewContractsAndTokens(blockData);
   }
 
   private async publishJob(job: DerivedJob): Promise<void> {
