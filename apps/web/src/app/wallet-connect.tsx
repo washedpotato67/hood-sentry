@@ -61,6 +61,14 @@ function chainMetadata(chainId: number) {
       };
 }
 
+/** The block explorer's address page for a wallet, built from the same chain
+ * metadata used to add the network — so "View on explorer" points at whichever
+ * chain the session is on. */
+function explorerAddressUrl(chainId: number, address: string): string {
+  const base = chainMetadata(chainId).blockExplorerUrls[0] ?? '';
+  return `${base}/address/${address}`;
+}
+
 async function selectChain(provider: EthereumProvider, chainId: number): Promise<void> {
   const chainHex = `0x${chainId.toString(16)}`;
   try {
@@ -89,6 +97,8 @@ export function WalletConnect() {
   const [session, setSession] = useState<Session | null>(null);
   const [wallets, setWallets] = useState<readonly ProviderDetail[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const controlRef = useRef<HTMLDivElement>(null);
@@ -114,17 +124,19 @@ export function WalletConnect() {
     return () => window.removeEventListener('eip6963:announceProvider', onAnnounce);
   }, []);
 
-  // Close the picker on an outside click.
+  // Close whichever menu is open — the wallet picker or the account menu — on an
+  // outside click.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !accountOpen) return;
     const onDown = (event: MouseEvent) => {
       if (controlRef.current && !controlRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
+        setAccountOpen(false);
       }
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [menuOpen]);
+  }, [menuOpen, accountOpen]);
 
   const connect = useCallback(async (provider: EthereumProvider) => {
     setMenuOpen(false);
@@ -208,9 +220,65 @@ export function WalletConnect() {
   return (
     <div className="wallet-control" ref={controlRef}>
       {session?.authenticated && wallet !== undefined ? (
-        <button type="button" onClick={logout} disabled={busy} title="Sign out">
-          {compactAddress(wallet.address)}
-        </button>
+        <>
+          <button
+            type="button"
+            className="wallet-chip"
+            onClick={() => setAccountOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={accountOpen}
+            title={wallet.address}
+          >
+            <span className="conn-dot" aria-hidden="true" />
+            <span className="wallet-addr">{compactAddress(wallet.address)}</span>
+            <span className="wallet-caret" aria-hidden="true">
+              ▾
+            </span>
+          </button>
+          {accountOpen ? (
+            <div className="wallet-menu account-menu" role="menu">
+              <div className="wallet-menu-label">Signed in</div>
+              <button
+                type="button"
+                role="menuitem"
+                className="wallet-option"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(wallet.address);
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 1400);
+                  } catch {
+                    // Clipboard access can be blocked; the address is still shown on hover.
+                  }
+                }}
+              >
+                {copied ? 'Copied ✓' : 'Copy address'}
+              </button>
+              <a
+                role="menuitem"
+                className="wallet-option"
+                href={explorerAddressUrl(wallet.chainId, wallet.address)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setAccountOpen(false)}
+              >
+                View on explorer ↗
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                className="wallet-option danger"
+                onClick={() => {
+                  setAccountOpen(false);
+                  void logout();
+                }}
+                disabled={busy}
+              >
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </>
       ) : (
         <button
           type="button"

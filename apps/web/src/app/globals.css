@@ -495,20 +495,52 @@ textarea:focus-visible {
 
 /* Theme toggle — compact mono chip; inherits the base button styling. */
 .theme-toggle {
-  padding: 7px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--text-dim);
   white-space: nowrap;
+}
+.theme-toggle:hover:not(:disabled) {
+  color: var(--accent);
 }
 
 .wallet-control {
   position: relative;
   display: flex;
   align-items: center;
+}
+/* Connected account chip: a live status dot, the address in mono, and a caret
+   that signals the account menu — not a bare pill that logs you out on click. */
+.wallet-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--g-a);
+  box-shadow: 0 0 6px 0 var(--g-a);
+  flex-shrink: 0;
+}
+.wallet-caret {
+  margin-left: 1px;
+  font-size: 10px;
+  color: var(--text-mute);
+}
+.wallet-chip:hover:not(:disabled) .wallet-caret {
+  color: var(--accent);
 }
 .inline-error {
   position: absolute;
@@ -556,10 +588,18 @@ textarea:focus-visible {
   color: var(--text);
   font-weight: 600;
   text-align: left;
+  text-decoration: none;
 }
 .wallet-option:hover:not(:disabled) {
   background: var(--accent-soft);
   border-color: var(--accent-line);
+  color: var(--text);
+}
+/* Sign out reads as destructive on hover, so it doesn't look like the neutral
+   copy/explorer items above it. */
+.wallet-option.danger:hover:not(:disabled) {
+  background: var(--wash-f);
+  border-color: var(--g-f);
   color: var(--text);
 }
 .wallet-option img {
