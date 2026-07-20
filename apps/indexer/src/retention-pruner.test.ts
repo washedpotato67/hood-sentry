@@ -29,7 +29,7 @@ function pruner(options: {
       maxIndexedBlock: async () => options.headBlock,
       deleteOlderThan: async (table, beforeBlock) => {
         calls.push({ table, beforeBlock });
-        return queue.length > 0 ? (queue.shift() ?? 0) : 0;
+        return queue.shift() ?? 0;
       },
       vacuum: async (table) => {
         vacuumed.push(table);
@@ -44,6 +44,21 @@ function pruner(options: {
 }
 
 describe('RetentionPruner', () => {
+  it('keeps deleting until a window comes back empty', async () => {
+    // Windows are bounded by block range, not row count, so a short window does
+    // not mean the table is clear: only an empty one does.
+    const { instance, calls } = pruner({
+      retentionBlocks: 100n,
+      headBlock: 500_000n,
+      deleted: [5, 3, 0],
+    });
+
+    await instance.prune();
+
+    const receipts = calls.filter((call) => call.table === 'transaction_receipts');
+    expect(receipts.length).toBe(3);
+  });
+
   it('does nothing when retention is disabled', async () => {
     const { instance, calls } = pruner({ retentionBlocks: 0n, headBlock: 500_000n });
 
@@ -132,11 +147,11 @@ describe('RetentionPruner', () => {
   });
 
   it('reclaims space only for tables it actually deleted from', async () => {
-    // One table returns a deleted count, the rest return zero.
+    // The first window removes rows, the next reports the table clear.
     const { instance, vacuumed } = pruner({
       retentionBlocks: 100n,
       headBlock: 500_000n,
-      deleted: [5],
+      deleted: [5, 0],
     });
 
     await instance.prune();

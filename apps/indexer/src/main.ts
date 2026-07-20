@@ -193,7 +193,7 @@ async function main() {
     // first is what lets a full database recover without hand intervention.
     if (env.RAW_DATA_RETENTION_BLOCKS > 0) {
       await new RetentionPruner(
-        new DrizzleRetentionStore(db.db, BigInt(env.ROBINHOOD_CHAIN_ID)),
+        new DrizzleRetentionStore(db.db, env.ROBINHOOD_CHAIN_ID),
         {
           retentionBlocks: BigInt(env.RAW_DATA_RETENTION_BLOCKS),
           deleteBatchSize: 5_000,

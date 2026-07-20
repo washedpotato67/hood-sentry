@@ -34,7 +34,15 @@ export interface RetentionStore {
    * the analyzer once answered rather than evidence about the token now.
    */
   deleteSupersededFindings(batchSize: number): Promise<number>;
-  /** Deletes up to a bounded batch below `beforeBlock`; returns rows removed. */
+  /**
+   * Deletes a bounded window of blocks below `beforeBlock`, returning rows
+   * removed, and zero once nothing older remains.
+   *
+   * Bounded by block range rather than row count on purpose: limiting a delete
+   * by rows needs a physical row pointer, which is a PostgreSQL implementation
+   * detail other engines do not carry. Blocks are the natural ordering of this
+   * data and every prunable table records one.
+   */
   deleteOlderThan(table: string, beforeBlock: bigint, batchSize: number): Promise<number>;
   /** Returns freed pages to the free space map so later writes can reuse them. */
   vacuum(table: string): Promise<void>;
@@ -78,8 +86,10 @@ export class RetentionPruner {
     for (const table of PRUNABLE_TABLES) {
       let removed = 0;
       try {
-        // Bounded batches, repeated until a batch comes back short: a single
+        // Bounded windows, repeated until nothing older remains: a single
         // unbounded DELETE over months of rows would hold locks for minutes.
+        // Each window starts at the oldest row left, so an empty result means
+        // the table is clear rather than that this window happened to be sparse.
         while (true) {
           const batch = await this.store.deleteOlderThan(
             table,
@@ -87,7 +97,7 @@ export class RetentionPruner {
             this.options.deleteBatchSize,
           );
           removed += batch;
-          if (batch < this.options.deleteBatchSize) break;
+          if (batch === 0) break;
         }
       } catch (error) {
         this.logger.warn('Retention prune failed for table', {

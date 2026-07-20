@@ -106,7 +106,7 @@ export class BlockIndexer {
     this.retentionPruner =
       this.config.rawDataRetentionBlocks > 0n
         ? new RetentionPruner(
-            new DrizzleRetentionStore(this.drizzle, this.config.chainId),
+            new DrizzleRetentionStore(this.drizzle, Number(this.config.chainId)),
             {
               retentionBlocks: this.config.rawDataRetentionBlocks,
               deleteBatchSize: 5_000,
