@@ -12,6 +12,8 @@ function pruner(options: {
   retentionBlocks: bigint;
   headBlock: bigint | null;
   deleted?: number[];
+  zeroBalances?: number[];
+  supersededFindings?: number[];
 }): {
   instance: RetentionPruner;
   calls: Array<{ table: string; beforeBlock: bigint }>;
@@ -19,6 +21,8 @@ function pruner(options: {
 } {
   const calls: Array<{ table: string; beforeBlock: bigint }> = [];
   const vacuumed: string[] = [];
+  const zeroBalances = [...(options.zeroBalances ?? [])];
+  const supersededFindings = [...(options.supersededFindings ?? [])];
   const queue = [...(options.deleted ?? [])];
   const instance = new RetentionPruner(
     {
@@ -30,6 +34,8 @@ function pruner(options: {
       vacuum: async (table) => {
         vacuumed.push(table);
       },
+      deleteZeroBalances: async () => zeroBalances.shift() ?? 0,
+      deleteSupersededFindings: async () => supersededFindings.shift() ?? 0,
     },
     { retentionBlocks: options.retentionBlocks, deleteBatchSize: 1_000 },
     logger,
@@ -90,6 +96,39 @@ describe('RetentionPruner', () => {
     await instance.prune();
 
     expect(calls).toEqual([]);
+  });
+
+  it('removes zero balances, which record an absence rather than a holding', async () => {
+    const { instance, vacuumed } = pruner({
+      retentionBlocks: 100n,
+      headBlock: 500_000n,
+      zeroBalances: [400],
+    });
+
+    await instance.prune();
+
+    expect(vacuumed).toContain('token_balances');
+  });
+
+  it('removes findings from scans a later scan replaced', async () => {
+    const { instance, vacuumed } = pruner({
+      retentionBlocks: 100n,
+      headBlock: 500_000n,
+      supersededFindings: [120],
+    });
+
+    await instance.prune();
+
+    expect(vacuumed).toContain('risk_findings');
+  });
+
+  it('leaves the tables alone when there is nothing meaningless to remove', async () => {
+    const { instance, vacuumed } = pruner({ retentionBlocks: 100n, headBlock: 500_000n });
+
+    await instance.prune();
+
+    expect(vacuumed).not.toContain('token_balances');
+    expect(vacuumed).not.toContain('risk_findings');
   });
 
   it('reclaims space only for tables it actually deleted from', async () => {

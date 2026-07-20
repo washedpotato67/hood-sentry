@@ -15,12 +15,25 @@ const PRUNABLE_TABLES = [
   'transactions',
   'logs',
   'token_transfers',
+  'discovery_snapshots',
   'blocks',
 ] as const;
 
 export interface RetentionStore {
   /** Highest block number present in the indexed data, or null if there is none. */
   maxIndexedBlock(): Promise<bigint | null>;
+  /**
+   * Removes balances of zero. A wallet that sold everything holds nothing, so
+   * the row records an absence; they are a fifth of the table and appear in no
+   * holder list.
+   */
+  deleteZeroBalances(batchSize: number): Promise<number>;
+  /**
+   * Removes findings belonging to scans a later scan has replaced. Only the
+   * latest canonical scan per token is ever read, so the rest are history of how
+   * the analyzer once answered rather than evidence about the token now.
+   */
+  deleteSupersededFindings(batchSize: number): Promise<number>;
   /** Deletes up to a bounded batch below `beforeBlock`; returns rows removed. */
   deleteOlderThan(table: string, beforeBlock: bigint, batchSize: number): Promise<number>;
   /** Returns freed pages to the free space map so later writes can reuse them. */
@@ -103,5 +116,53 @@ export class RetentionPruner {
         });
       }
     }
+
+    await this.pruneRowsWithoutMeaning();
+  }
+
+  /**
+   * Rows that carry no information regardless of age, so they are removed on the
+   * same pass rather than kept until they fall out of the retention window.
+   */
+  private async pruneRowsWithoutMeaning(): Promise<void> {
+    const cleanups = [
+      { table: 'token_balances', run: () => this.store.deleteZeroBalances(this.batchSize) },
+      { table: 'risk_findings', run: () => this.store.deleteSupersededFindings(this.batchSize) },
+    ];
+
+    for (const cleanup of cleanups) {
+      let removed = 0;
+      try {
+        while (true) {
+          const batch = await cleanup.run();
+          removed += batch;
+          if (batch < this.batchSize) break;
+        }
+      } catch (error) {
+        this.logger.warn('Cleanup failed', {
+          table: cleanup.table,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        continue;
+      }
+
+      if (removed === 0) continue;
+      this.logger.info('Removed rows carrying no information', {
+        table: cleanup.table,
+        removed,
+      });
+      try {
+        await this.store.vacuum(cleanup.table);
+      } catch (error) {
+        this.logger.warn('Vacuum after cleanup failed', {
+          table: cleanup.table,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  private get batchSize(): number {
+    return this.options.deleteBatchSize;
   }
 }

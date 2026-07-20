@@ -25,7 +25,44 @@ export class DrizzleRetentionStore implements RetentionStore {
    * `blocks` itself calls that column `number`.
    */
   private blockColumn(table: string): string {
-    return table === 'blocks' ? 'number' : 'block_number';
+    if (table === 'blocks') return 'number';
+    if (table === 'discovery_snapshots') return 'source_block_number';
+    return 'block_number';
+  }
+
+  async deleteZeroBalances(batchSize: number): Promise<number> {
+    const rows = await this.db.execute<{ ctid: string }>(
+      sql`delete from token_balances
+          where ctid in (
+            select ctid from token_balances
+            where chain_id = ${this.chainId} and balance_raw = 0
+            limit ${batchSize}
+          )
+          returning ctid`,
+    );
+    return rows.length;
+  }
+
+  async deleteSupersededFindings(batchSize: number): Promise<number> {
+    // Only the latest canonical scan per token is ever read back, so findings
+    // attached to earlier runs describe how the analyzer once answered rather
+    // than anything about the token now.
+    const rows = await this.db.execute<{ ctid: string }>(
+      sql`with latest as (
+            select distinct on (target_address) id
+            from risk_scan_runs
+            where chain_id = ${this.chainId} and canonical = true
+            order by target_address, created_at desc, id desc
+          )
+          delete from risk_findings
+          where ctid in (
+            select risk_findings.ctid from risk_findings
+            where risk_findings.scan_run_id not in (select id from latest)
+            limit ${batchSize}
+          )
+          returning ctid`,
+    );
+    return rows.length;
   }
 
   async deleteOlderThan(table: string, beforeBlock: bigint, batchSize: number): Promise<number> {
