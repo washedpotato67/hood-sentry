@@ -1,6 +1,11 @@
 import { type Database, schema } from '@hood-sentry/db';
 import type { Logger } from '@hood-sentry/observability';
-import { type DerivedJobPublisher, derivedJobIdempotencyKey } from '@hood-sentry/queue';
+import {
+  type DerivedJobPublisher,
+  derivedJobIdempotencyKey,
+  isTokenScopedJobType,
+  tokenScopedIdempotencyKey,
+} from '@hood-sentry/queue';
 import { eq } from 'drizzle-orm';
 import type { Hash } from 'viem';
 import type { BlockFetcher } from './block-fetcher.js';
@@ -725,6 +730,18 @@ export class BlockIndexer {
   }
 
   private idempotencyKeyFor(job: DerivedJob): string {
+    // A token-scoped job keyed by block would be re-queued for every block the
+    // token appears in, to learn facts that do not change. Keying by the token
+    // collapses those into one pending job.
+    const tokenAddress = typeof job.data.tokenAddress === 'string' ? job.data.tokenAddress : null;
+    if (tokenAddress !== null && isTokenScopedJobType(job.type)) {
+      return tokenScopedIdempotencyKey({
+        type: job.type,
+        chainId: job.chainId,
+        tokenAddress,
+      });
+    }
+
     const transactionHash =
       typeof job.data.transactionHash === 'string' ? job.data.transactionHash : undefined;
     const logIndex = typeof job.data.logIndex === 'number' ? job.data.logIndex : undefined;

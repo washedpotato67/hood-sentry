@@ -50,6 +50,31 @@ export interface DeadLetteredJob {
  * Identical chain positions collapse to the same key so a replayed block never
  * enqueues a duplicate.
  */
+/**
+ * Job types whose work is about a token rather than about a block. A token's
+ * name, symbol and decimals never change, and its ranking is recomputed from
+ * whatever evidence has landed, so one pending job per token is enough no matter
+ * how many blocks it appears in.
+ */
+const TOKEN_SCOPED_JOB_TYPES = new Set(['token-metadata', 'discovery-refresh']);
+
+export function isTokenScopedJobType(type: string): boolean {
+  return TOKEN_SCOPED_JOB_TYPES.has(type);
+}
+
+/**
+ * Key a token-scoped job by the token alone. Including the block would make
+ * every sighting a distinct job, so a token active in a thousand blocks would
+ * queue a thousand jobs to learn the same unchanging facts.
+ */
+export function tokenScopedIdempotencyKey(job: {
+  type: string;
+  chainId: bigint | number;
+  tokenAddress: string;
+}): string {
+  return `${job.chainId.toString()}:${job.type}:${job.tokenAddress.toLowerCase()}`;
+}
+
 export function derivedJobIdempotencyKey(
   job: Pick<DerivedJobInput, 'type' | 'chainId' | 'blockHash'> & {
     transactionHash?: string;

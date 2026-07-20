@@ -140,6 +140,13 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // Keep the raw event log after deriving from it. The product serves derived
+  // facts, and each carries its own provenance: a transaction hash, a block
+  // number, a log index. Storing the raw rows as well keeps a second copy of the
+  // chain to produce a small amount of output, and it is what exhausted the
+  // database. Off means process in flight and store only what is served.
+  // Contract-replay mode reads these rows and needs it on.
+  PERSIST_RAW_LOGS: booleanStringSchema.default(true),
   // How far behind the chain head the indexer may be before readiness reports a
   // problem. There is a floor below this that no healthy indexer can beat: it
   // deliberately stays 64 blocks back for finality, drains in 10-block windows,

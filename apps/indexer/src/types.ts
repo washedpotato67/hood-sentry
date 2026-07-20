@@ -37,6 +37,12 @@ export interface IndexerConfig {
    * Zero keeps everything.
    */
   rawDataRetentionBlocks: bigint;
+  /**
+   * Keep the raw event log after deriving from it. Derived records carry their
+   * own provenance, so the raw rows are a second copy of the chain that the
+   * product never reads. Contract-replay mode is the exception and needs them.
+   */
+  persistRawLogs: boolean;
   retentionPruneIntervalMs: number;
   pollIntervalMs: number;
   leaseDurationMs: number;

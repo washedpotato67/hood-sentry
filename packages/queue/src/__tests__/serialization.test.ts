@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { jobIdFromKey } from '../job-id.js';
 import { serializeBigints, toPayload } from '../serialization.js';
-import { derivedJobIdempotencyKey } from '../types.js';
+import {
+  derivedJobIdempotencyKey,
+  isTokenScopedJobType,
+  tokenScopedIdempotencyKey,
+} from '../types.js';
 
 describe('jobIdFromKey', () => {
   it('produces a deterministic, colon-free BullMQ job id from a colon-delimited key', () => {
@@ -42,6 +46,38 @@ describe('toPayload', () => {
       blockHash: '0xabc',
       data: { transactionHash: '0xtx', amountRaw: '1000' },
     });
+  });
+});
+
+describe('tokenScopedIdempotencyKey', () => {
+  it('is the same key wherever the token is seen, so one job covers every sighting', () => {
+    const inBlockOne = tokenScopedIdempotencyKey({
+      type: 'token-metadata',
+      chainId: 4663n,
+      tokenAddress: '0xAbC0000000000000000000000000000000000001',
+    });
+    const inBlockTwoThousand = tokenScopedIdempotencyKey({
+      type: 'token-metadata',
+      chainId: 4663n,
+      tokenAddress: '0xabc0000000000000000000000000000000000001',
+    });
+
+    expect(inBlockOne).toBe(inBlockTwoThousand);
+    expect(inBlockOne).toBe('4663:token-metadata:0xabc0000000000000000000000000000000000001');
+  });
+
+  it('keeps different job types for the same token apart', () => {
+    const token = { chainId: 4663n, tokenAddress: '0xabc0000000000000000000000000000000000001' };
+
+    expect(tokenScopedIdempotencyKey({ ...token, type: 'token-metadata' })).not.toBe(
+      tokenScopedIdempotencyKey({ ...token, type: 'discovery-refresh' }),
+    );
+  });
+
+  it('scopes only the job types whose work is about a token, not a block', () => {
+    expect(isTokenScopedJobType('token-metadata')).toBe(true);
+    expect(isTokenScopedJobType('discovery-refresh')).toBe(true);
+    expect(isTokenScopedJobType('token-transfer')).toBe(false);
   });
 });
 

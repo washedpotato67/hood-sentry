@@ -128,8 +128,10 @@ export class BlockPersister {
       for (const receipt of blockData.receipts) {
         receiptRows.push(this.buildReceiptRow(receipt, blockNumber, blockHash));
       }
-      for (const log of blockData.logs) {
-        logRows.push(this.buildLogRow(log, blockNumber, blockHash, canonical));
+      if (this.config.persistRawLogs) {
+        for (const log of blockData.logs) {
+          logRows.push(this.buildLogRow(log, blockNumber, blockHash, canonical));
+        }
       }
     }
 
@@ -192,7 +194,7 @@ export class BlockPersister {
       await tx.insert(schema.transactionReceipts).values(rows).onConflictDoNothing();
     }
 
-    if (logs.length > 0) {
+    if (logs.length > 0 && this.config.persistRawLogs) {
       const rows = logs.map((log) => this.buildLogRow(log, blockNumber, blockHash, canonical));
       // Chunked to stay well under Postgres' bind-parameter ceiling.
       for (let i = 0; i < rows.length; i += LOG_INSERT_CHUNK_SIZE) {

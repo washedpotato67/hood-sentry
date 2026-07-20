@@ -42,6 +42,7 @@ export function testConfig(overrides: Partial<IndexerConfig> = {}): IndexerConfi
     maxConcurrency: 3,
     logWindowEnabled: false,
     rawDataRetentionBlocks: 0n,
+    persistRawLogs: true,
     retentionPruneIntervalMs: 300_000,
     pollIntervalMs: 5,
     leaseDurationMs: 60_000,

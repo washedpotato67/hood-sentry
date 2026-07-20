@@ -301,6 +301,7 @@ async function main() {
       safeConfirmations: 32,
       indexableTopics: indexableTopics(protocolEvents.adapters),
       rawDataRetentionBlocks: BigInt(env.RAW_DATA_RETENTION_BLOCKS),
+      persistRawLogs: env.PERSIST_RAW_LOGS,
       retentionPruneIntervalMs: env.RETENTION_PRUNE_INTERVAL_MS,
     };
 
