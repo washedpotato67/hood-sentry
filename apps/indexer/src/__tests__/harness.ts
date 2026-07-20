@@ -41,6 +41,8 @@ export function testConfig(overrides: Partial<IndexerConfig> = {}): IndexerConfi
     batchSize: 10,
     maxConcurrency: 3,
     logWindowEnabled: false,
+    rawDataRetentionBlocks: 0n,
+    retentionPruneIntervalMs: 300_000,
     pollIntervalMs: 5,
     leaseDurationMs: 60_000,
     leaseRenewalMs: 30_000,

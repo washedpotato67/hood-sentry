@@ -30,6 +30,7 @@ import {
   GapScanner,
   ReorgDetector,
 } from './index.js';
+import { indexableTopics } from './indexable-topics.js';
 import type { IndexerConfig, IndexerMode } from './types.js';
 
 interface IndexerArguments {
@@ -75,7 +76,11 @@ async function initializeProtocolEvents(request: {
   repository: ProtocolRepository;
   publisher: DerivedJobPublisher;
   logger: Logger;
-}): Promise<{ handler: ProtocolEventsHandler; validation: ProtocolValidationService }> {
+}): Promise<{
+  handler: ProtocolEventsHandler;
+  validation: ProtocolValidationService;
+  adapters: readonly { getEventDefinitions(): readonly { topic0: string }[] }[];
+}> {
   const chainRegistry = {
     ...protocolRegistry,
     protocols: protocolRegistry.protocols.filter(
@@ -131,7 +136,7 @@ async function initializeProtocolEvents(request: {
     request.publisher,
     request.logger,
   );
-  return { handler, validation };
+  return { handler, validation, adapters: runtime.manager.getActiveAdapters() };
 }
 
 async function main() {
@@ -248,6 +253,18 @@ async function main() {
       batchSize,
     });
 
+    const protocolRepository = new DrizzleProtocolRepositoryImpl(db.db);
+    const pricingRepository = new DrizzlePricingRepository(db.db);
+    const protocolEvents = await initializeProtocolEvents({
+      rpcClient,
+      chainId: env.ROBINHOOD_CHAIN_ID,
+      tradingEnabled: env.TRADING_ENABLED,
+      mainnetWritesEnabled: env.MAINNET_WRITES_ENABLED,
+      repository: protocolRepository,
+      publisher: jobPublisher,
+      logger,
+    });
+
     const config: IndexerConfig = {
       chainId: BigInt(env.ROBINHOOD_CHAIN_ID),
       workerId: `indexer-${process.pid}-${Date.now()}`,
@@ -264,19 +281,10 @@ async function main() {
       endBlock: endBlock ? BigInt(endBlock) : undefined,
       finalityConfirmations: Number(finalityConfirmations),
       safeConfirmations: 32,
+      indexableTopics: indexableTopics(protocolEvents.adapters),
+      rawDataRetentionBlocks: BigInt(env.RAW_DATA_RETENTION_BLOCKS),
+      retentionPruneIntervalMs: env.RETENTION_PRUNE_INTERVAL_MS,
     };
-
-    const protocolRepository = new DrizzleProtocolRepositoryImpl(db.db);
-    const pricingRepository = new DrizzlePricingRepository(db.db);
-    const protocolEvents = await initializeProtocolEvents({
-      rpcClient,
-      chainId: env.ROBINHOOD_CHAIN_ID,
-      tradingEnabled: env.TRADING_ENABLED,
-      mainnetWritesEnabled: env.MAINNET_WRITES_ENABLED,
-      repository: protocolRepository,
-      publisher: jobPublisher,
-      logger,
-    });
 
     const checkpointManager = new CheckpointManager(db, config);
     const blockFetcher = new BlockFetcher(rpcClient, config, logger);

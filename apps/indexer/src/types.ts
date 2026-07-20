@@ -27,6 +27,17 @@ export interface IndexerConfig {
    * rate-limited provider, at the cost of indexing no transactions or receipts.
    */
   logWindowEnabled: boolean;
+  /**
+   * Event topics worth storing, derived from the active protocol adapters plus
+   * the ERC-20 events discovery is built on. Empty or absent stores every log.
+   */
+  indexableTopics?: readonly string[];
+  /**
+   * Blocks of raw logs, transactions and receipts kept behind the indexed head.
+   * Zero keeps everything.
+   */
+  rawDataRetentionBlocks: bigint;
+  retentionPruneIntervalMs: number;
   pollIntervalMs: number;
   leaseDurationMs: number;
   leaseRenewalMs: number;

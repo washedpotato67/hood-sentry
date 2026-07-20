@@ -1,6 +1,7 @@
 import type { RPCClient } from '@hood-sentry/chain';
 import type { Logger } from '@hood-sentry/observability';
 import type { Block, Hash, Log, Transaction, TransactionReceipt } from 'viem';
+import { isIndexableLog } from './indexable-topics.js';
 import type { BlockData, IndexerConfig } from './types.js';
 
 export class BlockFetcher {
@@ -73,7 +74,7 @@ export class BlockFetcher {
       try {
         const receipts = await this.rpcClient.getBlockReceipts({ blockHash: block.hash });
         if (receipts.length === transactions.length) {
-          const logs = receipts.flatMap((receipt) => receipt.logs);
+          const logs = this.retainIndexable(receipts.flatMap((receipt) => receipt.logs));
           return { transactions, receipts, logs };
         }
         this.logger.warn('Block receipts count mismatch, falling back to per-transaction fetch', {
@@ -126,7 +127,17 @@ export class BlockFetcher {
       }
     }
 
-    return { transactions, receipts, logs };
+    return { transactions, receipts, logs: this.retainIndexable(logs) };
+  }
+
+  /**
+   * Drop logs whose event nothing in this system decodes. They are the bulk of
+   * what a chain emits and storing them is what exhausted the database.
+   */
+  private retainIndexable(logs: Log[]): Log[] {
+    const topics = this.config.indexableTopics;
+    if (topics === undefined || topics.length === 0) return logs;
+    return logs.filter((entry) => isIndexableLog({ topics: entry.topics }, topics));
   }
 
   async fetchBlockByHash(blockHash: Hash): Promise<BlockData | null> {
@@ -242,8 +253,14 @@ export class BlockFetcher {
       numbers.push(n);
     }
 
+    // Filtering at the provider rather than after the fact keeps logs no
+    // consumer decodes out of the response entirely, which is most of them.
+    const topics = this.config.indexableTopics;
+    const topicFilter =
+      topics === undefined || topics.length === 0 ? {} : { topics: [topics as `0x${string}`[]] };
+
     const [logs, headers] = await Promise.all([
-      this.rpcClient.getLogs({ fromBlock, toBlock }),
+      this.rpcClient.getLogs({ fromBlock, toBlock, ...topicFilter }),
       Promise.all(
         numbers.map((blockNumber) =>
           this.rpcClient.getBlock({ blockNumber, includeTransactions: false }),

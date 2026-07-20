@@ -145,6 +145,14 @@ const chainSchema = z.object({
   // log only: no transactions, no receipts, and so no contract-creation evidence
   // from receipts. Turn it on where keeping pace with the chain matters more.
   INDEXER_LOG_WINDOW_ENABLED: booleanStringSchema.default(false),
+  // How many blocks of raw logs, transactions and receipts to keep behind the
+  // indexed head. These are intermediates: the worker derives token transfers,
+  // discovery rankings and risk findings from them, and those derived tables are
+  // what the product serves. Zero keeps everything forever, which is the default
+  // because how much history to retain is an operator's decision.
+  RAW_DATA_RETENTION_BLOCKS: z.coerce.number().int().min(0).default(0),
+  // How often the indexer checks for raw facts that have aged out.
+  RETENTION_PRUNE_INTERVAL_MS: z.coerce.number().int().positive().default(300_000),
   // Concurrent RPC calls coalesced into a single JSON-RPC batch request. The
   // free provider tier meters HTTP requests per second rather than calls, so
   // batching raises block throughput without raising the call count. Set to 1 to

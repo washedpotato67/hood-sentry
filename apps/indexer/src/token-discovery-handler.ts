@@ -3,8 +3,10 @@ import { getAddress } from 'viem';
 import type { Address, Hash, Hex } from 'viem';
 import type { DerivedJob, IndexerConfig } from './types.js';
 
-const ERC20_TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
-const ERC20_APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f70ef71315f9003819d0370313b11d1b585155b528b34';
+export const ERC20_TRANSFER_TOPIC =
+  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+export const ERC20_APPROVAL_TOPIC =
+  '0x8c5be1e5ebec7d5bd14f70ef71315f9003819d0370313b11d1b585155b528b34';
 const WORD_HEX_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
 interface DiscoveryTransaction {

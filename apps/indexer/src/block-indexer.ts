@@ -7,9 +7,11 @@ import type { BlockFetcher } from './block-fetcher.js';
 import type { BlockPersister } from './block-persister.js';
 import type { ChainlinkJobProducer } from './chainlink-job-producer.js';
 import type { CheckpointManager } from './checkpoint-manager.js';
+import { DrizzleRetentionStore } from './drizzle-retention-store.js';
 import type { GapScanner } from './gap-scanner.js';
 import type { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import type { ReorgDetector } from './reorg-detector.js';
+import { RetentionPruner } from './retention-pruner.js';
 import { TokenDiscoveryHandler } from './token-discovery-handler.js';
 import type {
   BlockData,
@@ -46,6 +48,8 @@ function describeCause(error: unknown): string | undefined {
 export class BlockIndexer {
   private readonly drizzle: DrizzleDB;
   private readonly tokenDiscoveryHandler: TokenDiscoveryHandler;
+  private readonly retentionPruner: RetentionPruner | null;
+  private lastPruneAt = 0;
   private running = false;
   private paused = false;
   private metrics: IndexerMetrics = {
@@ -81,6 +85,30 @@ export class BlockIndexer {
   ) {
     this.drizzle = database.db;
     this.tokenDiscoveryHandler = new TokenDiscoveryHandler(this.config, this.logger);
+    this.retentionPruner =
+      this.config.rawDataRetentionBlocks > 0n
+        ? new RetentionPruner(
+            new DrizzleRetentionStore(this.drizzle, this.config.chainId),
+            {
+              retentionBlocks: this.config.rawDataRetentionBlocks,
+              deleteBatchSize: 5_000,
+            },
+            this.logger,
+          )
+        : null;
+  }
+
+  /**
+   * Drop raw facts past the retention window, on an interval rather than every
+   * cycle. Like {@link recordChainHead} this is housekeeping: the pruner logs
+   * its own failures and never interrupts indexing.
+   */
+  private async pruneExpiredRawFacts(): Promise<void> {
+    if (this.retentionPruner === null) return;
+    const now = Date.now();
+    if (now - this.lastPruneAt < this.config.retentionPruneIntervalMs) return;
+    this.lastPruneAt = now;
+    await this.retentionPruner.prune();
   }
 
   /**
@@ -221,6 +249,7 @@ export class BlockIndexer {
         const latestBlock = await this.blockFetcher.getLatestBlockNumber();
         this.metrics.lag = Number(latestBlock - currentBlock);
         await this.recordChainHead(latestBlock);
+        await this.pruneExpiredRawFacts();
 
         if (currentBlock > latestBlock) {
           await this.sleep(this.config.pollIntervalMs);
