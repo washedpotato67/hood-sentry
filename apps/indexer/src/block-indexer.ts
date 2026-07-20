@@ -108,7 +108,16 @@ export class BlockIndexer {
     const now = Date.now();
     if (now - this.lastPruneAt < this.config.retentionPruneIntervalMs) return;
     this.lastPruneAt = now;
-    await this.retentionPruner.prune();
+    try {
+      await this.retentionPruner.prune();
+    } catch (error) {
+      // Housekeeping must never take the indexer down with it, and the read that
+      // decides the prune boundary can itself fail on an exhausted database.
+      this.logger.warn('Retention prune failed', {
+        error: error instanceof Error ? error.message : String(error),
+        cause: describeCause(error),
+      });
+    }
   }
 
   /**
