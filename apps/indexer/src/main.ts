@@ -309,8 +309,9 @@ async function main() {
           .catch((error: unknown) => {
             // Backfill is recovery work, not the live path: it must never keep
             // the indexer from starting.
-            logger.warn('Pool backfill did not finish', {
+            logger.error('Pool backfill did not finish', {
               error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : undefined,
             });
           });
       }

@@ -26,7 +26,7 @@ function emptyBlockData(): DiscoveryBlockData {
 
 describe('TokenDiscoveryHandler', () => {
   it('uses the successful receipt address for contract creation at block zero', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const blockData: DiscoveryBlockData = {
       ...emptyBlockData(),
@@ -64,7 +64,7 @@ describe('TokenDiscoveryHandler', () => {
   });
 
   it('decodes ERC-20 transfers and approvals with decimal-safe values', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const blockData: DiscoveryBlockData = {
       ...emptyBlockData(),
@@ -180,7 +180,7 @@ describe('TokenDiscoveryHandler', () => {
   });
 
   it('emits token metadata once per distinct token so repeat transfers stay cheap', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const transfer = (logIndex: number): DiscoveryBlockData['logs'][number] => ({
       transactionHash: TRANSACTION_HASH,
@@ -203,7 +203,7 @@ describe('TokenDiscoveryHandler', () => {
   });
 
   it('emits one discovery refresh per token per block, not per transfer', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const otherToken = getAddress('0x7777777777777777777777777777777777777777');
     const transfer = (
@@ -235,7 +235,7 @@ describe('TokenDiscoveryHandler', () => {
   });
 
   it('does not emit a discovery refresh for approval-only activity', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const blockData: DiscoveryBlockData = {
       ...emptyBlockData(),
@@ -259,7 +259,7 @@ describe('TokenDiscoveryHandler', () => {
   });
 
   it('skips malformed ERC-20 events without throwing', () => {
-    const logger = { warn: vi.fn() };
+    const logger = { warn: vi.fn(), debug: vi.fn() };
     const handler = new TokenDiscoveryHandler({ chainId: 4663n }, logger);
     const blockData: DiscoveryBlockData = {
       ...emptyBlockData(),
@@ -275,14 +275,19 @@ describe('TokenDiscoveryHandler', () => {
     };
 
     expect(handler.detectNewContractsAndTokens(blockData)).toEqual([]);
-    expect(logger.warn).toHaveBeenCalledWith(
+    // Debug, not warning: these are ordinary on a public chain and at warning
+    // level they buried every other message in the retained log window.
+    expect(logger.debug).toHaveBeenCalledWith(
       'Skipping malformed ERC-20 event',
       expect.objectContaining({ reason: 'invalid ERC-20 event shape' }),
     );
   });
 
   it('does not report failed contract deployments', () => {
-    const handler = new TokenDiscoveryHandler({ chainId: 4663n }, { warn: vi.fn() });
+    const handler = new TokenDiscoveryHandler(
+      { chainId: 4663n },
+      { warn: vi.fn(), debug: vi.fn() },
+    );
     const blockData: DiscoveryBlockData = {
       ...emptyBlockData(),
       transactions: [

@@ -40,7 +40,7 @@ export interface DiscoveryBlockData {
   logs: readonly DiscoveryLog[];
 }
 
-type DiscoveryLogger = Pick<Logger, 'warn'>;
+type DiscoveryLogger = Pick<Logger, 'warn' | 'debug'>;
 
 export class TokenDiscoveryHandler {
   constructor(
@@ -249,8 +249,14 @@ export class TokenDiscoveryHandler {
     return getAddress(`0x${topic.slice(-40)}`);
   }
 
+  /**
+   * Logged at debug, not warning. Non-standard Transfer-shaped events are
+   * ordinary on a public chain and there are several per block, so at warning
+   * level they filled the entire retained log window and buried every other
+   * message, including the failures worth reading.
+   */
   private warnMalformedEvent(log: DiscoveryLog, reason: string): void {
-    this.logger.warn('Skipping malformed ERC-20 event', {
+    this.logger.debug('Skipping malformed ERC-20 event', {
       reason,
       transactionHash: log.transactionHash,
       logIndex: log.logIndex,
