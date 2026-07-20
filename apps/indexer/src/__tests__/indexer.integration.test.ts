@@ -240,6 +240,35 @@ describe('indexer lease contention', () => {
     expect(holderError).toBeUndefined();
   });
 
+  it('stops when its lease is revoked instead of retrying in place forever', async () => {
+    if (!available) return;
+
+    const chain = new SyntheticChain(4, 'a');
+    const holder = buildIndexer(database, chain, { workerId: 'worker-a' });
+    let runError: unknown;
+    const run = holder.indexer.start().catch((error: unknown) => {
+      runError = error;
+    });
+
+    try {
+      await waitFor(async () => (await canonicalNumbers()).length > 0, 10_000, 'holder indexing');
+
+      // Revoking the lease is how a checkpoint is moved by hand. The loop must
+      // surface that rather than swallow it: retrying in place never re-reads
+      // the checkpoint, so the indexer would spin on the old position forever.
+      await database.client`
+        DELETE FROM indexer_leases
+        WHERE chain_id = ${CHAIN_ID_SQL} AND stream = 'live-4663'
+      `;
+
+      await waitFor(() => runError !== undefined, 10_000, 'lease loss to surface');
+      expect(String(runError)).toMatch(/lease/i);
+    } finally {
+      await holder.indexer.stop();
+      await run;
+    }
+  });
+
   it('takes over a lease that has expired', async () => {
     if (!available) return;
 

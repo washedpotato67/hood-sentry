@@ -30,6 +30,19 @@ import type {
 type DrizzleDB = Database['db'];
 
 /**
+ * Losing the lease means another indexer owns this stream, so continuing to poll
+ * is pointless. It is distinguished from ordinary indexing errors because those
+ * are retried in the loop, and retrying this one spins forever without ever
+ * re-reading the checkpoint.
+ */
+export class IndexerLeaseLostError extends Error {
+  constructor() {
+    super('Failed to renew indexer lease');
+    this.name = 'IndexerLeaseLostError';
+  }
+}
+
+/**
  * Walk the `cause` chain and join what each level says. Database drivers report
  * the constraint or type violation only on a nested cause, so the top-level
  * message alone is not enough to tell why a write failed.
@@ -257,7 +270,7 @@ export class BlockIndexer {
           // process exits 0, and an ON_FAILURE restart policy reads that as success
           // and never restarts — so a single lost lease stops indexing forever.
           // Failing loudly lets the supervisor restart us to re-acquire the lease.
-          throw new Error('Failed to renew indexer lease');
+          throw new IndexerLeaseLostError();
         }
 
         const latestBlock = await this.blockFetcher.getLatestBlockNumber();
@@ -339,6 +352,10 @@ export class BlockIndexer {
         currentBlock++;
         lastBlockHash = blockData.block.hash;
       } catch (error) {
+        // A lost lease is not retryable in place: another indexer owns the
+        // stream, and looping here spins forever without re-reading the
+        // checkpoint. Let it out so the process exits and is restarted.
+        if (error instanceof IndexerLeaseLostError) throw error;
         this.handleError(error, currentBlock);
         await this.sleep(this.config.retryDelayMs);
       }
