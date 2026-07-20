@@ -28,6 +28,12 @@ export type DerivedJobHandler = (payload: DerivedJobPayload) => Promise<void>;
 /** Publishes a derived job idempotently. Structurally matches the indexer's publisher seam. */
 export interface DerivedJobPublisher {
   publish(job: DerivedJobInput, idempotencyKey: string): Promise<void>;
+  /**
+   * Publish a group in one round trip. Each job costs a round trip to enqueue,
+   * and a block's worth of them is a meaningful share of the time to index it.
+   * Optional so existing publishers stay valid; callers fall back to `publish`.
+   */
+  publishMany?(entries: readonly { job: DerivedJobInput; idempotencyKey: string }[]): Promise<void>;
 }
 
 /** A derived job that exhausted its retries, as stored in the dead-letter queue. */

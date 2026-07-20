@@ -677,9 +677,7 @@ export class BlockIndexer {
 
     // Use token discovery handler to detect contracts and tokens
     const discoveryJobs = this.tokenDiscoveryHandler.detectNewContractsAndTokens(blockData);
-    for (const job of discoveryJobs) {
-      await this.publishJob(job);
-    }
+    await this.publishJobs(discoveryJobs);
 
     await this.chainlinkJobProducer?.publishJobsForBlock(block.number, block.hash);
   }
@@ -690,17 +688,42 @@ export class BlockIndexer {
       blockNumber: job.blockNumber.toString(),
     });
     if (this.jobPublisher === undefined) return;
+    await this.jobPublisher.publish(job, this.idempotencyKeyFor(job));
+  }
+
+  /**
+   * Enqueue a block's jobs in one round trip where the publisher supports it.
+   * Each job otherwise costs its own round trip to the queue, and a block's
+   * worth of them is a meaningful share of the time to index that block.
+   */
+  private async publishJobs(jobs: readonly DerivedJob[]): Promise<void> {
+    if (this.jobPublisher === undefined || jobs.length === 0) return;
+
+    const publishMany = this.jobPublisher.publishMany;
+    if (publishMany === undefined) {
+      for (const job of jobs) {
+        await this.publishJob(job);
+      }
+      return;
+    }
+
+    await publishMany.call(
+      this.jobPublisher,
+      jobs.map((job) => ({ job, idempotencyKey: this.idempotencyKeyFor(job) })),
+    );
+  }
+
+  private idempotencyKeyFor(job: DerivedJob): string {
     const transactionHash =
       typeof job.data.transactionHash === 'string' ? job.data.transactionHash : undefined;
     const logIndex = typeof job.data.logIndex === 'number' ? job.data.logIndex : undefined;
-    const idempotencyKey = derivedJobIdempotencyKey({
+    return derivedJobIdempotencyKey({
       type: job.type,
       chainId: job.chainId,
       blockHash: job.blockHash,
       transactionHash,
       logIndex,
     });
-    await this.jobPublisher.publish(job, idempotencyKey);
   }
 
   private handleError(error: unknown, blockNumber: bigint | null): void {

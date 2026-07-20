@@ -33,7 +33,24 @@ export class QueueJobPublisher implements DerivedJobPublisher {
   }
 
   async publish(job: DerivedJobInput, idempotencyKey: string): Promise<void> {
-    const jobOptions: JobsOptions = {
+    await this.queue.add(job.type, toPayload(job), this.jobOptions(idempotencyKey));
+  }
+
+  async publishMany(
+    entries: readonly { job: DerivedJobInput; idempotencyKey: string }[],
+  ): Promise<void> {
+    if (entries.length === 0) return;
+    await this.queue.addBulk(
+      entries.map(({ job, idempotencyKey }) => ({
+        name: job.type,
+        data: toPayload(job),
+        opts: this.jobOptions(idempotencyKey),
+      })),
+    );
+  }
+
+  private jobOptions(idempotencyKey: string): JobsOptions {
+    return {
       jobId: jobIdFromKey(idempotencyKey),
       attempts: this.attempts,
       backoff: { type: 'exponential', delay: this.backoffMs },
@@ -41,7 +58,6 @@ export class QueueJobPublisher implements DerivedJobPublisher {
       // Keep failed jobs so exhausted retries can be inspected before dead-lettering.
       removeOnFail: false,
     };
-    await this.queue.add(job.type, toPayload(job), jobOptions);
   }
 
   async close(): Promise<void> {
