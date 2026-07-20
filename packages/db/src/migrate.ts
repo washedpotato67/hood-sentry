@@ -13,7 +13,9 @@ async function runMigrations() {
     process.exit(1);
   }
 
-  const sql = postgres(databaseUrl);
+  // Migrations run one statement at a time against a pooled endpoint that
+  // cannot keep prepared statements between them, so ask for none.
+  const sql = postgres(databaseUrl, { prepare: false, max: 1 });
 
   try {
     // Create migrations table if it doesn't exist
