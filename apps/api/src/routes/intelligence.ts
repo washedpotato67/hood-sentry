@@ -14,7 +14,12 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 const chainIdSchema = z.union([z.literal(4663), z.literal(46630)]);
-const addressParamsSchema = z.object({ address: z.string() });
+// Validate the shape here rather than letting the checksum helper throw: an
+// address that is not an address is the caller's mistake, and an unrecognised
+// throw surfaces as a 500, which blames the server and buries real faults.
+const addressParamsSchema = z.object({
+  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'expected a 20-byte hex address'),
+});
 const readQuerySchema = z.object({
   chainId: z.coerce.number().pipe(chainIdSchema).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
