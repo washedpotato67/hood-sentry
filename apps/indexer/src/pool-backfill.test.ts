@@ -37,6 +37,21 @@ function buildBackfill(options: {
     },
     { batchSize: options.batchSize ?? 5 },
     logger,
+    {
+      lookup: async (addresses) =>
+        new Map(
+          addresses.map((address) => [
+            address.toLowerCase(),
+            {
+              createdBlock: 9486n,
+              createdTxHash: `0xtx${address.slice(2, 10)}`,
+              createdBlockHash: `0xbh${address.slice(2, 10)}`,
+              creationLogIndex: 0,
+              factoryAddress: '0xfactory',
+            },
+          ]),
+        ),
+    },
   );
   return { backfill, written, cursor: () => savedCursor };
 }
@@ -108,6 +123,21 @@ describe('PoolBackfill', () => {
       },
       { batchSize: 5 },
       logger,
+      {
+        lookup: async (addresses) =>
+          new Map(
+            addresses.map((address) => [
+              address.toLowerCase(),
+              {
+                createdBlock: 1n,
+                createdTxHash: '0xtx',
+                createdBlockHash: '0xbh',
+                creationLogIndex: 0,
+                factoryAddress: '0xfactory',
+              },
+            ]),
+          ),
+      },
     );
 
     await backfill.run();

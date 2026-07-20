@@ -20,6 +20,7 @@ import {
   QueueJobPublisher,
   createQueueConnection,
 } from '@hood-sentry/queue';
+import { DrizzlePoolBackfillStore } from './drizzle-pool-backfill-store.js';
 import { DrizzleRetentionStore } from './drizzle-retention-store.js';
 import { ProtocolEventsHandler } from './handlers/protocol-events.js';
 import {
@@ -32,7 +33,10 @@ import {
   ReorgDetector,
 } from './index.js';
 import { indexableTopics } from './indexable-topics.js';
+import { BlockscoutPairProvenance } from './pair-provenance.js';
+import { PoolBackfill } from './pool-backfill.js';
 import { RetentionPruner } from './retention-pruner.js';
+import { RpcFactoryPairReader } from './rpc-factory-pair-reader.js';
 import type { IndexerConfig, IndexerMode } from './types.js';
 
 interface IndexerArguments {
@@ -270,6 +274,47 @@ async function main() {
       endBlock,
       batchSize,
     });
+
+    // Recover pools created before this indexer ever ran. The factory knows every
+    // pair it made; the explorer and the chain supply where each came from.
+    if (env.POOL_BACKFILL_ENABLED) {
+      const factoryAddress = protocolRegistry.protocols
+        .find(
+          (definition) =>
+            definition.chainId === env.ROBINHOOD_CHAIN_ID && definition.protocolKey === 'uniswap',
+        )
+        ?.contracts.find((contract) => contract.contractRole === 'factory')?.address;
+      if (factoryAddress === undefined) {
+        logger.warn('Pool backfill enabled but no factory is registered for this chain');
+      } else {
+        void new PoolBackfill(
+          new RpcFactoryPairReader(rpcClient, factoryAddress as `0x${string}`),
+          new DrizzlePoolBackfillStore(
+            db.db,
+            env.ROBINHOOD_CHAIN_ID,
+            `pool-backfill-${env.ROBINHOOD_CHAIN_ID}`,
+          ),
+          { batchSize: env.POOL_BACKFILL_BATCH_SIZE },
+          logger,
+          new BlockscoutPairProvenance(
+            { apiBaseUrl: env.BLOCKSCOUT_API_BASE, apiKey: env.BLOCKSCOUT_API_KEY },
+            {
+              getTransactionReceipt: (hash) =>
+                rpcClient.getTransactionReceipt(hash as `0x${string}`),
+            },
+            logger,
+          ),
+        )
+          .run()
+          .catch((error: unknown) => {
+            // Backfill is recovery work, not the live path: it must never keep
+            // the indexer from starting.
+            logger.warn('Pool backfill did not finish', {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+      }
+    }
 
     const protocolRepository = new DrizzleProtocolRepositoryImpl(db.db);
     const pricingRepository = new DrizzlePricingRepository(db.db);

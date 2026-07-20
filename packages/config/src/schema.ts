@@ -145,6 +145,14 @@ const chainSchema = z.object({
   // work is almost entirely waiting on the database and the RPC provider rather
   // than on this process.
   WORKER_CONCURRENCY: z.coerce.number().int().positive().max(200).default(4),
+  // Walk the DEX factory's pair registry once to recover pools created before
+  // the indexer's checkpoint. Pools are otherwise learned only from creation
+  // events, so on a chain whose factory holds tens of thousands of pairs the
+  // index sees only the handful created since it started watching. Off by
+  // default: it is a long one-off walk against the provider and the explorer.
+  POOL_BACKFILL_ENABLED: booleanStringSchema.default(false),
+  // Pairs read per pass before progress is recorded.
+  POOL_BACKFILL_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(25),
   // Keep the raw event log after deriving from it. The product serves derived
   // facts, and each carries its own provenance: a transaction hash, a block
   // number, a log index. Storing the raw rows as well keeps a second copy of the

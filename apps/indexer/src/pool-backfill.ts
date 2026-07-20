@@ -16,14 +16,39 @@ export interface FactoryPairReader {
   }>;
 }
 
+export interface BackfilledPool {
+  address: `0x${string}`;
+  token0: string;
+  token1: string;
+  createdBlock: bigint;
+  createdTxHash: string;
+  createdBlockHash: string;
+  creationLogIndex: number;
+  factoryAddress: string;
+}
+
 export interface PoolBackfillStore {
   /** Lowercased addresses already indexed, so a rerun re-reads nothing. */
   knownPoolAddresses(): Promise<ReadonlySet<string>>;
-  insertPools(
-    rows: readonly { address: `0x${string}`; token0: string; token1: string }[],
-  ): Promise<number>;
+  insertPools(rows: readonly BackfilledPool[]): Promise<number>;
   readCursor(): Promise<number>;
   writeCursor(next: number): Promise<void>;
+}
+
+/** Supplies the creating block, transaction and log index for a set of pairs. */
+export interface PairProvenanceReader {
+  lookup(addresses: readonly `0x${string}`[]): Promise<
+    ReadonlyMap<
+      string,
+      {
+        createdBlock: bigint;
+        createdTxHash: string;
+        createdBlockHash: string;
+        creationLogIndex: number;
+        factoryAddress: string;
+      }
+    >
+  >;
 }
 
 export interface PoolBackfillOptions {
@@ -44,6 +69,7 @@ export class PoolBackfill {
     private readonly store: PoolBackfillStore,
     private readonly options: PoolBackfillOptions,
     private readonly logger: Pick<Logger, 'info' | 'warn'>,
+    private readonly provenance: PairProvenanceReader,
   ) {}
 
   async run(): Promise<{ scanned: number; inserted: number }> {
@@ -60,14 +86,14 @@ export class PoolBackfill {
       const indexes: number[] = [];
       for (let index = cursor; index < end; index++) indexes.push(index);
 
-      const rows: { address: `0x${string}`; token0: string; token1: string }[] = [];
+      const candidates: { address: `0x${string}`; token0: string; token1: string }[] = [];
       for (const index of indexes) {
         scanned += 1;
         try {
           const address = await this.reader.pairAtIndex(BigInt(index));
           if (known.has(address.toLowerCase())) continue;
           const tokens = await this.reader.pairTokens(address);
-          rows.push({ address, token0: tokens.token0, token1: tokens.token1 });
+          candidates.push({ address, token0: tokens.token0, token1: tokens.token1 });
         } catch (error) {
           // One unreadable pair must not end the walk: the rest of the registry
           // is still worth recovering, and the gap is visible in the logs.
@@ -75,6 +101,19 @@ export class PoolBackfill {
             index,
             error: error instanceof Error ? error.message : String(error),
           });
+        }
+      }
+
+      // A pool cannot be recorded without the block that created it, so pairs
+      // whose provenance cannot be established are left for a later pass rather
+      // than stored with placeholder origins.
+      const rows: BackfilledPool[] = [];
+      if (candidates.length > 0) {
+        const origins = await this.provenance.lookup(candidates.map((row) => row.address));
+        for (const candidate of candidates) {
+          const origin = origins.get(candidate.address.toLowerCase());
+          if (origin === undefined) continue;
+          rows.push({ ...candidate, ...origin });
         }
       }
 
