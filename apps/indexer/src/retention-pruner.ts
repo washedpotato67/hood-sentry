@@ -1,15 +1,22 @@
 import type { Logger } from '@hood-sentry/observability';
 
 /**
- * Raw chain facts, in the order they must be deleted: a receipt references its
- * transaction, so it goes first. Logs no longer reference transactions and are
- * independent. Blocks go last, after everything that describes them.
+ * Everything keyed to a block height that grows without bound, in the order it
+ * must be deleted: a receipt references its transaction, so it goes first, and
+ * blocks go last, after everything that describes them.
  *
- * Blocks are small per row but arrive ten a second, which is a few hundred
- * megabytes a day: bounded retention is what keeps the total flat rather than
- * merely slower-growing.
+ * `token_transfers` is derived rather than raw, but it is by far the largest
+ * table and grows with chain activity, so it needs the same bound. The feeds
+ * read only recent activity, and a transfer's provenance lives on the row
+ * itself, so trimming old ones costs nothing the product serves.
  */
-const PRUNABLE_TABLES = ['transaction_receipts', 'transactions', 'logs', 'blocks'] as const;
+const PRUNABLE_TABLES = [
+  'transaction_receipts',
+  'transactions',
+  'logs',
+  'token_transfers',
+  'blocks',
+] as const;
 
 export interface RetentionStore {
   /** Highest block number present in the indexed data, or null if there is none. */
