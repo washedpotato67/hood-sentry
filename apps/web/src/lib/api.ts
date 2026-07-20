@@ -85,6 +85,11 @@ export function formatRaw(value: string | null | undefined, decimals: number | n
   const digits = negative ? value.slice(1) : value;
   const padded = digits.padStart(decimals + 1, '0');
   const whole = decimals === 0 ? padded : padded.slice(0, -decimals);
-  const fraction = decimals === 0 ? '' : padded.slice(-decimals).replace(/0+$/, '').slice(0, 6);
+  const rawFraction = decimals === 0 ? '' : padded.slice(-decimals).replace(/0+$/, '');
+  // Six significant digits, not the first six characters. A price below 0.000001
+  // is all leading zeros there, so truncating by position rendered a real price
+  // as "0.000000" and made a priced token look worthless.
+  const leadingZeros = BigInt(whole) === 0n ? (/^0*/.exec(rawFraction)?.[0].length ?? 0) : 0;
+  const fraction = rawFraction.slice(0, leadingZeros + 6);
   return `${negative ? '-' : ''}${BigInt(whole).toLocaleString()}${fraction ? `.${fraction}` : ''}`;
 }
