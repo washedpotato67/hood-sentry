@@ -20,6 +20,14 @@ export class DrizzleRetentionStore implements RetentionStore {
     return value === null ? null : BigInt(value);
   }
 
+  /**
+   * The fact tables record which block a row belongs to in `block_number`;
+   * `blocks` itself calls that column `number`.
+   */
+  private blockColumn(table: string): string {
+    return table === 'blocks' ? 'number' : 'block_number';
+  }
+
   async deleteOlderThan(table: string, beforeBlock: bigint, batchSize: number): Promise<number> {
     // ctid keeps the bounded delete cheap: the subquery picks a page-ordered
     // batch without needing to sort the whole matching set.
@@ -27,7 +35,8 @@ export class DrizzleRetentionStore implements RetentionStore {
       sql`delete from ${sql.raw(`"${table}"`)}
           where ctid in (
             select ctid from ${sql.raw(`"${table}"`)}
-            where chain_id = ${this.chainId} and block_number < ${beforeBlock}
+            where chain_id = ${this.chainId}
+              and ${sql.raw(`"${this.blockColumn(table)}"`)} < ${beforeBlock}
             limit ${batchSize}
           )
           returning ctid`,

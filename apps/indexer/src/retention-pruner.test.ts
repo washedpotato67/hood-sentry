@@ -74,6 +74,16 @@ describe('RetentionPruner', () => {
     expect(order.indexOf('transaction_receipts')).toBeLessThan(order.indexOf('transactions'));
   });
 
+  it('prunes blocks last, after everything that describes them', async () => {
+    const { instance, calls } = pruner({ retentionBlocks: 100n, headBlock: 500_000n });
+
+    await instance.prune();
+
+    const order = calls.map((call) => call.table);
+    expect(order).toContain('blocks');
+    expect(order.indexOf('blocks')).toBe(order.length - 1);
+  });
+
   it('prunes nothing when the chain is younger than the retention window', async () => {
     const { instance, calls } = pruner({ retentionBlocks: 1_000n, headBlock: 500n });
 

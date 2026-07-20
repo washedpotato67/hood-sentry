@@ -3,9 +3,13 @@ import type { Logger } from '@hood-sentry/observability';
 /**
  * Raw chain facts, in the order they must be deleted: a receipt references its
  * transaction, so it goes first. Logs no longer reference transactions and are
- * independent.
+ * independent. Blocks go last, after everything that describes them.
+ *
+ * Blocks are small per row but arrive ten a second, which is a few hundred
+ * megabytes a day: bounded retention is what keeps the total flat rather than
+ * merely slower-growing.
  */
-const PRUNABLE_TABLES = ['transaction_receipts', 'transactions', 'logs'] as const;
+const PRUNABLE_TABLES = ['transaction_receipts', 'transactions', 'logs', 'blocks'] as const;
 
 export interface RetentionStore {
   /** Highest block number present in the indexed data, or null if there is none. */
