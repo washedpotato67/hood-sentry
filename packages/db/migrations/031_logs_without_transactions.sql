@@ -1,0 +1,18 @@
+-- Let logs be indexed without their transaction rows.
+--
+-- Reading a block body and its receipts costs two RPC calls per block, which on
+-- a rate-limited provider pins indexing near one block per second against a ten
+-- block per second chain. Reading a window as a single eth_getLogs call is fast
+-- enough to keep pace, but it yields no transactions, and a transaction row
+-- cannot be written honestly without a receipt: status, gas_used and
+-- effective_gas_price all come from one.
+--
+-- A log stands on its own evidence. It carries its own primary key, its own
+-- block hash and number, and the emitting address, so nothing about it depends
+-- on the transaction row existing. No query in the codebase joins logs to
+-- transactions. Receipts keep their foreign key: a receipt genuinely is a
+-- property of a transaction and is never written without one.
+--
+-- This is effectively one-way. Once logs exist whose transactions were never
+-- indexed, the constraint cannot be restored without deleting them.
+ALTER TABLE logs DROP CONSTRAINT IF EXISTS logs_chain_id_transaction_hash_fkey;
