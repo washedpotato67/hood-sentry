@@ -385,8 +385,14 @@ export class BlockIndexer {
       return { status: 'retry' };
     }
 
+    // One transaction for the window rather than one per block: opening and
+    // committing each cost a round trip, and they dominate catch-up on a
+    // database tens of milliseconds away. Jobs are published only once the
+    // window is durable, so a rollback cannot leave work queued for blocks that
+    // were never written.
+    await this.blockPersister.persistBlockWindow(blocks, 'finalized', true);
+
     for (const blockData of blocks) {
-      await this.blockPersister.persistBlockData(blockData, 'finalized', true);
       this.metrics.blocksIndexed++;
       this.metrics.transactionsIndexed += blockData.transactions.length;
       this.metrics.logsIndexed += blockData.logs.length;
