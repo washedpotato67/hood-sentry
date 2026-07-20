@@ -14,8 +14,16 @@ async function runMigrations() {
   }
 
   // Migrations run one statement at a time against a pooled endpoint that
-  // cannot keep prepared statements between them, so ask for none.
-  const sql = postgres(databaseUrl, { prepare: false, max: 1 });
+  // cannot keep prepared statements between them, so ask for none. A generous
+  // connect timeout covers a serverless cluster resuming from cold, and no idle
+  // timeout keeps the single connection alive across a schema change that the
+  // engine may run as a background job.
+  const sql = postgres(databaseUrl, {
+    prepare: false,
+    max: 1,
+    connect_timeout: 60,
+    idle_timeout: 0,
+  });
 
   try {
     // Create migrations table if it doesn't exist
