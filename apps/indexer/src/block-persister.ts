@@ -17,6 +17,17 @@ import type {
 // below Postgres' 65535-parameter limit while still collapsing the round-trips.
 const LOG_INSERT_CHUNK_SIZE = 1000;
 
+// Transaction rows are the widest, at ~17 bound parameters each.
+const ROW_INSERT_CHUNK_SIZE = 1000;
+
+function chunked<T>(rows: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) {
+    chunks.push(rows.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export class BlockPersister {
   private readonly drizzle: Database['db'];
 
@@ -68,13 +79,15 @@ export class BlockPersister {
   }
 
   /**
-   * Persist a whole window of blocks inside one transaction.
+   * Persist a whole window of blocks as one transaction and one insert per
+   * table.
    *
-   * Each transaction costs a round trip to open and another to commit, and on a
-   * database tens of milliseconds away those dominate the cost of catching up.
-   * Writing a window as a unit also makes the window atomic: a failure part way
-   * through rolls back cleanly rather than leaving the checkpoint's blocks half
-   * written.
+   * Every statement costs a round trip, so writing block by block spent roughly
+   * two dozen of them per window; on a database tens of milliseconds away that
+   * was the dominant cost of catching up. Collecting the window's rows first
+   * turns it into a handful. Writing the window as a unit also makes it atomic:
+   * a failure part way through rolls back rather than leaving the checkpoint's
+   * blocks half written.
    */
   async persistBlockWindow(
     blocks: readonly BlockData[],
@@ -83,9 +96,56 @@ export class BlockPersister {
   ): Promise<void> {
     if (blocks.length === 0) return;
 
+    const blockRows: ReturnType<BlockPersister['buildBlockRow']>[] = [];
+    const transactionRows: ReturnType<BlockPersister['buildTransactionRow']>[] = [];
+    const receiptRows: ReturnType<BlockPersister['buildReceiptRow']>[] = [];
+    const logRows: ReturnType<BlockPersister['buildLogRow']>[] = [];
+
+    for (const blockData of blocks) {
+      const blockNumber = blockData.block.number;
+      const blockHash = blockData.block.hash;
+      if (blockNumber === null || blockHash === null) {
+        this.logger.warn('Skipping block with null number or hash');
+        continue;
+      }
+
+      blockRows.push(this.buildBlockRow(blockData, finalityState, canonical));
+
+      const receiptByTxHash = new Map(
+        blockData.receipts.map((receipt) => [receipt.transactionHash, receipt]),
+      );
+      for (const transaction of blockData.transactions) {
+        transactionRows.push(
+          this.buildTransactionRow(
+            transaction,
+            receiptByTxHash.get(transaction.hash),
+            blockNumber,
+            blockHash,
+            canonical,
+          ),
+        );
+      }
+      for (const receipt of blockData.receipts) {
+        receiptRows.push(this.buildReceiptRow(receipt, blockNumber, blockHash));
+      }
+      for (const log of blockData.logs) {
+        logRows.push(this.buildLogRow(log, blockNumber, blockHash, canonical));
+      }
+    }
+
     await this.drizzle.transaction(async (tx) => {
-      for (const blockData of blocks) {
-        await this.writeBlockData(tx, blockData, finalityState, canonical);
+      // Blocks first: the fact tables reference them.
+      for (const chunk of chunked(blockRows, ROW_INSERT_CHUNK_SIZE)) {
+        await tx.insert(schema.blocks).values(chunk).onConflictDoNothing();
+      }
+      for (const chunk of chunked(transactionRows, ROW_INSERT_CHUNK_SIZE)) {
+        await tx.insert(schema.transactions).values(chunk).onConflictDoNothing();
+      }
+      for (const chunk of chunked(receiptRows, ROW_INSERT_CHUNK_SIZE)) {
+        await tx.insert(schema.transactionReceipts).values(chunk).onConflictDoNothing();
+      }
+      for (const chunk of chunked(logRows, LOG_INSERT_CHUNK_SIZE)) {
+        await tx.insert(schema.logs).values(chunk).onConflictDoNothing();
       }
     });
 
@@ -148,35 +208,49 @@ export class BlockPersister {
     finalityState: FinalityState,
     canonical: boolean,
   ): Promise<void> {
+    await tx
+      .insert(schema.blocks)
+      .values(this.buildBlockRow(blockData, finalityState, canonical))
+      .onConflictDoNothing();
+  }
+
+  private buildBlockRow(
+    blockData: BlockData,
+    finalityState: FinalityState,
+    canonical: boolean,
+  ): {
+    chainId: bigint;
+    number: bigint;
+    hash: `0x${string}`;
+    parentHash: `0x${string}`;
+    timestamp: Date;
+    finalityState: FinalityState;
+    canonical: boolean;
+  } {
     const block = blockData.block;
     if (block.number === null || block.hash === null) {
       throw new Error('Block is missing required fields: number or hash');
     }
-    const blockNumber = block.number;
-    const blockHash = block.hash;
 
     const data: PersistedBlock = {
       chainId: this.config.chainId,
-      number: blockNumber,
-      hash: blockHash,
+      number: block.number,
+      hash: block.hash,
       parentHash: block.parentHash,
       timestamp: new Date(Number(block.timestamp) * 1000),
       finalityState,
       canonical,
     };
 
-    await tx
-      .insert(schema.blocks)
-      .values({
-        chainId: data.chainId,
-        number: data.number,
-        hash: data.hash,
-        parentHash: data.parentHash,
-        timestamp: data.timestamp,
-        finalityState: data.finalityState,
-        canonical: data.canonical,
-      })
-      .onConflictDoNothing();
+    return {
+      chainId: data.chainId,
+      number: data.number,
+      hash: data.hash,
+      parentHash: data.parentHash,
+      timestamp: data.timestamp,
+      finalityState: data.finalityState,
+      canonical: data.canonical,
+    };
   }
 
   private buildTransactionRow(
