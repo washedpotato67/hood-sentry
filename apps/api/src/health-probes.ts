@@ -360,14 +360,28 @@ export function createHealthProbes(input: {
     probe?: DependencyProbe;
   }[];
   maximumBlockLag?: bigint;
+  /**
+   * Whether readiness depends on an indexer keeping pace with the chain. Under
+   * serve-don't-store there is no indexer, so readiness checks only that the RPC
+   * provider is reachable; the indexer-lag gate would otherwise report a fault
+   * for a component that no longer exists.
+   */
+  requireIndexer?: boolean;
 }): HealthProbes {
-  const rpc = createRpcHealthProbe({
-    rpcUrl: input.rpcUrl,
-    expectedChainId: input.chainId,
-    readIndexedHead: () => readIndexedHead(input.database, input.chainId),
-    timeoutMs: input.rpcTimeoutMs,
-    maximumBlockLag: input.maximumBlockLag ?? 100n,
-  });
+  const rpc =
+    input.requireIndexer === true
+      ? createRpcHealthProbe({
+          rpcUrl: input.rpcUrl,
+          expectedChainId: input.chainId,
+          readIndexedHead: () => readIndexedHead(input.database, input.chainId),
+          timeoutMs: input.rpcTimeoutMs,
+          maximumBlockLag: input.maximumBlockLag ?? 100n,
+        })
+      : createRpcProviderProbe({
+          rpcUrl: input.rpcUrl,
+          expectedChainId: input.chainId,
+          timeoutMs: input.rpcTimeoutMs,
+        });
   const providers: ProviderProbeDefinition[] = [
     {
       providerId: input.rpcProviderId ?? 'primary-rpc',
