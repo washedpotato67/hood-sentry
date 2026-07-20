@@ -64,10 +64,14 @@ async function runMigrations() {
       const filePath = path.join(migrationsDir, file);
       const sqlContent = fs.readFileSync(filePath, 'utf-8');
 
-      await sql.begin(async (tx) => {
-        await tx.unsafe(sqlContent);
-        await tx`INSERT INTO migrations (name) VALUES (${file})`;
-      });
+      // Apply the migration, then record it, without wrapping the two in one
+      // transaction. A distributed engine commits each schema change as its own
+      // job and cannot roll a group of them back together, so the wrapper does
+      // not give atomicity there and silently drops the tracking insert. Applied
+      // then recorded is correct against a clean database and behaves the same
+      // on a single-node engine.
+      await sql.unsafe(sqlContent);
+      await sql`INSERT INTO migrations (name) VALUES (${file})`;
 
       // biome-ignore lint/suspicious/noConsole: CLI script
       console.log(`✓ Applied ${file}`);
