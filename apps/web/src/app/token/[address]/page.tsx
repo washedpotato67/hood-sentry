@@ -55,6 +55,22 @@ type PriceData = {
 
 const USDG = '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168';
 
+/**
+ * Machine reasons are for logs and clients, not for readers. Rendering the raw
+ * code told visitors "NO_COMPLETED_SCAN: unavailable", which states a fact about
+ * our pipeline rather than about the token they asked about.
+ */
+function describeRiskUnavailable(reason: string | null | undefined): string {
+  switch (reason) {
+    case 'NO_COMPLETED_SCAN':
+      return 'No scan has completed for this token yet, so there are no findings to show. Scans run as a token’s on-chain evidence is indexed.';
+    case 'WITHHELD_PENDING_RULE_COVERAGE':
+      return 'The report is withheld until rule coverage is complete, so it cannot imply checks that did not run.';
+    default:
+      return 'The risk report is unavailable for this token.';
+  }
+}
+
 export default async function Token({ params }: { params: Promise<{ address: string }> }) {
   const { address } = await params;
   const chain = chainId();
@@ -122,7 +138,7 @@ export default async function Token({ params }: { params: Promise<{ address: str
           </p>
         ) : null}
         {risk.status === 'unavailable' ? (
-          <Unavailable label={risk.reason ?? 'Completed scan'} />
+          <p className="muted">{describeRiskUnavailable(risk.reason)}</p>
         ) : (
           <ul className="risk-list">
             {(risk.findings ?? []).map((finding) => (
