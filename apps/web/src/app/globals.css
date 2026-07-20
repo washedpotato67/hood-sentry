@@ -321,9 +321,6 @@ textarea:focus-visible {
   display: none;
 }
 
-.search-form {
-  margin-left: auto;
-}
 .search {
   width: 230px;
   max-width: 100%;
@@ -351,6 +348,10 @@ textarea:focus-visible {
   cursor: pointer;
   text-align: left;
   font: inherit;
+  /* First of the right-hand cluster (search, wallet, theme): the auto margin
+     opens the gap that separates it from the nav links and pins the cluster to
+     the right edge. The nav's own gap spaces the three items from each other. */
+  margin-left: auto;
 }
 .search-trigger:hover {
   border-color: var(--accent-line);
@@ -1713,8 +1714,49 @@ code {
 
 /* ─── Responsive ──────────────────────────────────────────────────────── */
 
+/* Mobile token cards — the ≤720px stand-in for the discovery table. Hidden on
+   desktop; the media block below flips them to a grid. The item styles live
+   outside the query since they only ever render when the grid is shown. */
 .cards {
   display: none;
+}
+.tcard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: var(--radius);
+}
+.tcard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+}
+.tcard-head strong {
+  font-size: 15px;
+}
+.tcard-head code {
+  font-size: 12px;
+}
+.tcard-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+}
+.tcard-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tcard-metrics .muted {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 @media (max-width: 720px) {
   .nav {
@@ -1725,7 +1767,7 @@ code {
   .search {
     width: 100%;
   }
-  .search-form {
+  .search-trigger {
     order: 3;
     width: 100%;
     margin: 0;

@@ -122,55 +122,94 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
       </EmptyState>
     );
   return (
-    <div className="table-wrap">
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Token</th>
-            <th>Price</th>
-            <th>Liquidity</th>
-            <th>Volume</th>
-            <th>Holders</th>
-            <th>Risk</th>
-            <th>Signals</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.address} className="table-row-link">
-              <td>
-                <Link href={`/token/${item.address}`}>
-                  <strong>{item.symbol ?? item.name ?? 'Unknown token'}</strong>
-                  <br />
-                  <code className="muted">{compactAddress(item.address)}</code>
-                </Link>
-              </td>
-              <td>{formatRaw(item.priceRaw, item.priceDecimals)}</td>
-              <td className="liq-cell">
-                <Sparkline points={item.spark} />
-                {formatRaw(item.liquidityRaw)}
-              </td>
-              <td>{formatRaw(item.volumeRaw)}</td>
-              <td>{item.holderCount ?? 'Unavailable'}</td>
-              <td>
-                <span
-                  className={riskGradeClass(item.riskGrade)}
-                  title={
-                    item.riskGrade
-                      ? undefined
-                      : 'Aggregate grade withheld until rule coverage is complete'
-                  }
-                >
-                  {item.riskGrade ?? '—'}
-                </span>
-              </td>
-              <td>
-                <Signals signals={item.signals} />
-              </td>
+    <>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Token</th>
+              <th>Price</th>
+              <th>Liquidity</th>
+              <th>Volume</th>
+              <th>Holders</th>
+              <th>Risk</th>
+              <th>Signals</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr key={item.address} className="table-row-link">
+                <td>
+                  <Link href={`/token/${item.address}`}>
+                    <strong>{item.symbol ?? item.name ?? 'Unknown token'}</strong>
+                    <br />
+                    <code className="muted">{compactAddress(item.address)}</code>
+                  </Link>
+                </td>
+                <td>{formatRaw(item.priceRaw, item.priceDecimals)}</td>
+                <td className="liq-cell">
+                  <Sparkline points={item.spark} />
+                  {formatRaw(item.liquidityRaw)}
+                </td>
+                <td>{formatRaw(item.volumeRaw)}</td>
+                <td>{item.holderCount ?? 'Unavailable'}</td>
+                <td>
+                  <span
+                    className={riskGradeClass(item.riskGrade)}
+                    title={
+                      item.riskGrade
+                        ? undefined
+                        : 'Aggregate grade withheld until rule coverage is complete'
+                    }
+                  >
+                    {item.riskGrade ?? '—'}
+                  </span>
+                </td>
+                <td>
+                  <Signals signals={item.signals} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Below the table breakpoint the same rows render as cards: a table this
+          wide cannot show seven columns on a phone without either clipping or a
+          sideways scroll no one finds. */}
+      <div className="cards">
+        {items.map((item) => (
+          <article className="tcard" key={item.address}>
+            <Link className="tcard-head" href={`/token/${item.address}`}>
+              <strong>{item.symbol ?? item.name ?? 'Unknown token'}</strong>
+              <code className="muted">{compactAddress(item.address)}</code>
+            </Link>
+            <div className="tcard-metrics">
+              <div>
+                <span className="muted">Price</span>
+                <span>{formatRaw(item.priceRaw, item.priceDecimals)}</span>
+              </div>
+              <div>
+                <span className="muted">Liquidity</span>
+                <span>{formatRaw(item.liquidityRaw)}</span>
+              </div>
+              <div>
+                <span className="muted">Volume</span>
+                <span>{formatRaw(item.volumeRaw)}</span>
+              </div>
+              <div>
+                <span className="muted">Holders</span>
+                <span>{item.holderCount ?? 'Unavailable'}</span>
+              </div>
+              <div>
+                <span className="muted">Risk</span>
+                <span className={riskGradeClass(item.riskGrade)}>{item.riskGrade ?? '—'}</span>
+              </div>
+            </div>
+            <Signals signals={item.signals} />
+          </article>
+        ))}
+      </div>
+    </>
   );
 }
