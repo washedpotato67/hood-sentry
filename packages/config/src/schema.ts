@@ -219,6 +219,10 @@ const providersSchema = z.object({
   AI_PROVIDER_API_KEY: optionalNonemptyStringSchema,
   AI_COMMENTARY_MODEL: z.string().trim().min(1).default('gpt-5.4-mini-2026-03-17'),
   AI_COMMENTARY_CACHE_SECONDS: z.coerce.number().int().positive().default(3_600),
+  // The AI token report runs against any OpenAI-compatible Chat Completions
+  // endpoint; OpenRouter by default, so the model is an OpenRouter slug.
+  AI_PROVIDER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  AI_REPORT_MODEL: z.string().trim().min(1).default('openai/gpt-4o-mini'),
 });
 
 const authSchema = z.object({

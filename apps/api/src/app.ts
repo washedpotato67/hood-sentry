@@ -33,6 +33,7 @@ import {
 } from '@hood-sentry/db';
 import { createLogger } from '@hood-sentry/observability';
 import {
+  AiTokenReportProvider,
   BlockscoutHoldersClient,
   MarketDataAggregator,
   OpenAiRiskCommentaryProvider,
@@ -53,6 +54,7 @@ import { type HealthProbes, createHealthProbes } from './health-probes.js';
 import { errorHandler } from './plugins/error-handler.js';
 import { RiskCommentaryService } from './risk-commentary-service.js';
 import { adminRoutes } from './routes/admin.js';
+import { aiReportRoutes } from './routes/ai-report.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 import { authRoutes } from './routes/auth.js';
 import { chainStatusRoutes } from './routes/chain-status.js';
@@ -158,6 +160,17 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     env.AI_PROVIDER_API_KEY === undefined
       ? null
       : new OpenAiRiskCommentaryProvider(env.AI_PROVIDER_API_KEY, env.AI_COMMENTARY_MODEL);
+  // The AI token report narrates live facts through an OpenAI-compatible Chat
+  // Completions endpoint (OpenRouter). It is only wired when a key is present
+  // and AI explanations are enabled, so it stays dark on the default deploy.
+  const aiReportProvider =
+    env.AI_PROVIDER_API_KEY === undefined || !env.AI_EXPLANATIONS_ENABLED
+      ? null
+      : new AiTokenReportProvider(
+          env.AI_PROVIDER_API_KEY,
+          env.AI_REPORT_MODEL,
+          env.AI_PROVIDER_BASE_URL,
+        );
 
   const app = Fastify({
     logger: false,
@@ -617,6 +630,14 @@ export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
     prefix: '/v1',
     market: marketData,
     cache: readCache,
+  });
+  await app.register(aiReportRoutes, {
+    prefix: '/v1',
+    provider: aiReportProvider,
+    market: marketData,
+    holders: holdersClient,
+    cache: readCache,
+    cacheSeconds: env.AI_COMMENTARY_CACHE_SECONDS,
   });
   await app.register(chainStatusRoutes, {
     prefix: '/v1',

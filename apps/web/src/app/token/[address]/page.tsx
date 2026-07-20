@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { apiRequest, chainId, compactAddress, formatRaw } from '../../../lib/api';
 import { ErrorPanel, Page, Stat, Unavailable } from '../../components';
-import { CommentaryPanel } from './commentary-panel';
+import { AiReportPanel } from './ai-report-panel';
 import { ReportForm } from './report-form';
 
 type Finding = {
@@ -157,7 +157,7 @@ export default async function Token({ params }: { params: Promise<{ address: str
           </ul>
         )}
       </section>
-      <CommentaryPanel address={data.address} />
+      <AiReportPanel address={data.address} />
       <section className="panel">
         <h2>Top indexed holders</h2>
         {holders.ok ? (

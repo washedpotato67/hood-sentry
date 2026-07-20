@@ -8,6 +8,7 @@ export * from './market-data/blockscout-holders.js';
 export * from './http-client.js';
 export * from './notification-providers.js';
 export * from './openai-commentary.js';
+export * from './ai-report.js';
 export * from './pinned-https.js';
 export * from './registry.js';
 export * from './rpc-resolution.js';
