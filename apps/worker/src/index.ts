@@ -42,7 +42,7 @@ async function main() {
 
   let isShuttingDown = false;
 
-  const database = createDatabase(env.DATABASE_URL);
+  const database = createDatabase(env.DATABASE_URL, { maxConnections: env.DATABASE_POOL_MAX });
   const workerConnection = createQueueConnection(env.REDIS_URL);
   const deadLetterConnection = createQueueConnection(env.REDIS_URL);
   const chain = getChainDefinition(env.ROBINHOOD_CHAIN_ID);

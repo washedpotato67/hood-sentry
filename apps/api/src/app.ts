@@ -72,7 +72,7 @@ import { type TradingRuntime, TradingService } from './trading-service.js';
 export async function buildApp(options: { healthProbes?: HealthProbes } = {}) {
   const env = getEnv();
   const logger = createLogger({ level: env.LOG_LEVEL as 'info', service: 'api' });
-  const database = createDatabase(env.DATABASE_URL);
+  const database = createDatabase(env.DATABASE_URL, { maxConnections: env.DATABASE_POOL_MAX });
   const protocolRepository = new DrizzleProtocolRepositoryImpl(database.db);
   const pricingRepository = new DrizzlePricingRepository(database.db);
   const discoveryRepository = new DrizzleDiscoveryRepository(database.db);

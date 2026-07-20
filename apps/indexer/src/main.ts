@@ -180,7 +180,7 @@ async function main() {
       secondaryWebsocketUrl: env.ROBINHOOD_WS_SECONDARY,
     });
 
-    const db = createDatabase(env.DATABASE_URL);
+    const db = createDatabase(env.DATABASE_URL, { maxConnections: env.DATABASE_POOL_MAX });
 
     // Reclaim space before anything writes. Startup itself persists protocol
     // validations, so on a database at its size limit that write fails, the
