@@ -140,6 +140,11 @@ const chainSchema = z.object({
   // a rate-limited RPC provider is not flooded into HTTP 429s; raise it once the
   // provider has the compute-unit budget for more parallelism.
   INDEXER_MAX_CONCURRENCY: z.coerce.number().int().positive().max(100).default(3),
+  // Derived jobs processed at once. Each transfer fans out into several jobs, so
+  // the queue arrives much faster than a handful of workers can drain it, and the
+  // work is almost entirely waiting on the database and the RPC provider rather
+  // than on this process.
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().max(200).default(4),
   // Keep the raw event log after deriving from it. The product serves derived
   // facts, and each carries its own provenance: a transaction hash, a block
   // number, a log index. Storing the raw rows as well keeps a second copy of the

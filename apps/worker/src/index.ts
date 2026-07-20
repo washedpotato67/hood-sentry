@@ -218,6 +218,11 @@ async function main() {
   const runner = createDerivedJobWorker({
     connection: workerConnection,
     deadLetterConnection,
+    // Every transfer fans out into several jobs, so the queue arrives far faster
+    // than a handful of workers can drain it. The work is almost entirely
+    // waiting on the database and the RPC provider rather than on this process,
+    // so concurrency buys throughput cheaply.
+    concurrency: env.WORKER_CONCURRENCY,
     handler: createDerivedJobRouter(logger, database, {
       poolRefresh,
       discoveryRefresh,
