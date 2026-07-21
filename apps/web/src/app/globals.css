@@ -9,21 +9,23 @@
   color-scheme: dark;
 
   /* ── Instrument surfaces (dark, the default) ──────────────────────────── */
-  --bg: #100d0a;
-  --bg-elev: #16120d;
-  --panel: #191410;
-  --hair: #2a2219;
-  --hair-2: #3a3024;
+  --bg: #0b0b0c;
+  --bg-elev: #141416;
+  --panel: #161618;
+  --hair: #262628;
+  --hair-2: #36363b;
 
-  --text: #f3ede2;
-  --text-dim: #ab9f8c;
-  --text-mute: #746a5b;
+  --text: #f4f3f1;
+  --text-dim: #a8a7a4;
+  --text-mute: #6e6d6b;
 
-  /* The one accent — warm amber, live / interactive only, never risk. */
-  --accent: #e0a56a;
-  --accent-ink: #1c1206;
-  --accent-soft: rgba(224, 165, 106, 0.14);
-  --accent-line: rgba(224, 165, 106, 0.5);
+  /* The one accent — a muted terracotta used sparingly (eyebrows, button, links),
+     never on the big headline. Neutral charcoal surfaces let it read as warmth
+     rather than a brown wash. */
+  --accent: #d68a55;
+  --accent-ink: #17110a;
+  --accent-soft: rgba(214, 138, 85, 0.14);
+  --accent-line: rgba(214, 138, 85, 0.55);
 
   /* Risk ramp — semantic, A→F, kept off the teal accent. */
   --g-a: #3fb950;
@@ -31,7 +33,7 @@
   --g-c: #e3b341;
   --g-d: #f0883e;
   --g-f: #f85149;
-  --grade-ink: #100d0a;
+  --grade-ink: #0b0b0c;
 
   /* Low-alpha washes for badges / status. */
   --wash-a: rgba(63, 185, 80, 0.16);
@@ -804,11 +806,13 @@ p {
 }
 
 /* Key-phrase highlight in a headline — accent text with a thin underline. */
+/* The headline stays white (Slip-style restraint); the accent is only a thin
+   underline on the emphasized phrase, not a full-color wash. */
 mark {
   background: transparent;
-  color: var(--accent);
+  color: inherit;
   padding: 0;
-  box-shadow: inset 0 -2px var(--accent-line);
+  box-shadow: inset 0 -3px var(--accent-line);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
