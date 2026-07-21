@@ -96,6 +96,31 @@ export class BlockscoutHoldersClient {
     return count === null ? null : BigInt(count);
   }
 
+  /**
+   * Whether the token's contract is source-verified and whether it is a proxy,
+   * from the explorer's address endpoint (which answers for unverified contracts
+   * too, unlike /smart-contracts). Null when the explorer does not answer, which
+   * the caller treats as "unknown" rather than a risk signal either way.
+   */
+  async contractInfo(
+    tokenAddress: `0x${string}`,
+  ): Promise<{ verified: boolean; isProxy: boolean } | null> {
+    if (this.baseUrl === null) return null;
+    const body = await this.getJson(
+      `${this.baseUrl}/api/v2/addresses/${tokenAddress.toLowerCase()}`,
+    );
+    const record = asRecord(body);
+    if (record === null) return null;
+    const proxyType = str(record.proxy_type);
+    const implementations = Array.isArray(record.implementations)
+      ? record.implementations.length > 0
+      : false;
+    return {
+      verified: record.is_verified === true,
+      isProxy: (proxyType !== null && proxyType !== 'unknown') || implementations,
+    };
+  }
+
   private async getJson(url: string): Promise<unknown | null> {
     try {
       const response = await this.fetchRequest(url, { headers: { accept: 'application/json' } });

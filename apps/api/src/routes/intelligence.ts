@@ -14,6 +14,7 @@ import type { RedisCache } from '@hood-sentry/queue';
 import { NotFoundError, toChecksumAddress } from '@hood-sentry/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { computeLiveRiskFindings, serializeLiveRisk } from '../live-risk.js';
 import { aggregatorToken } from '../token-page.js';
 
 const chainIdSchema = z.union([z.literal(4663), z.literal(46630)]);
@@ -224,6 +225,49 @@ async function resolvePoolCount(
   return (await options.market.pools(chainId, checksum)).length;
 }
 
+type LiveRiskResult = {
+  risk: Record<string, unknown>;
+  contract: { verified: boolean; isProxy: boolean } | null;
+};
+
+/**
+ * The lean risk report from live facts, used when no indexed scan exists (the
+ * normal path under serve-don't-store). Gathers liquidity/volume from the
+ * aggregator, holders and supply from the explorer, and contract verification,
+ * then computes deterministic findings. Cached briefly so a page's reads and
+ * repeat views make one set of upstream calls. Null when live sources are absent.
+ */
+async function liveRiskFor(
+  options: IntelligenceRouteOptions,
+  chainId: number,
+  checksum: `0x${string}`,
+  poolCount: number,
+): Promise<LiveRiskResult | null> {
+  const { market, holders, readCache } = options;
+  if (market === undefined || holders === undefined || readCache === undefined) return null;
+  const lower = checksum.toLowerCase() as `0x${string}`;
+  return readCache.getOrCompute<LiveRiskResult>(
+    `live-risk:v1:${chainId}:${lower}`,
+    120,
+    async () => {
+      const [marketData, holderData, contract] = await Promise.all([
+        market.tokenMarket(chainId, lower),
+        holders.tokenHolders(lower),
+        holders.contractInfo(lower),
+      ]);
+      const findings = computeLiveRiskFindings({
+        liquidityUsd: marketData?.liquidityUsd ?? null,
+        volume24hUsd: marketData?.volume24hUsd ?? null,
+        poolCount,
+        totalSupplyRaw: holderData.totalSupplyRaw,
+        topHolders: holderData.holders,
+        contract,
+      });
+      return { risk: serializeLiveRisk(findings), contract };
+    },
+  );
+}
+
 export async function intelligenceRoutes(app: FastifyInstance, options: IntelligenceRouteOptions) {
   app.get('/tokens/:address', async (request) => {
     const input = target(request, options.defaultChainId);
@@ -234,13 +278,24 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
       resolvePoolCount(options, input.chainId, input.checksum),
       riskReport(options.risk, input.chainId, input.identity),
     ]);
+    let contractOut =
+      contract === null ? null : { verified: contract.verified, isProxy: contract.isProxy };
+    let risk = serializeRisk(report, options.riskScoresEnabled);
+    // No indexed scan (the serve-don't-store default): compute a live risk report
+    // from current facts, and fill contract verification from the same lookup.
+    if (report.status === 'unavailable') {
+      const live = await liveRiskFor(options, input.chainId, input.checksum, poolCount);
+      if (live !== null) {
+        risk = live.risk;
+        if (contractOut === null && live.contract !== null) contractOut = live.contract;
+      }
+    }
     return {
       data: {
         ...tokenData(token),
-        contract:
-          contract === null ? null : { verified: contract.verified, isProxy: contract.isProxy },
+        contract: contractOut,
         poolCount,
-        risk: serializeRisk(report, options.riskScoresEnabled),
+        risk,
       },
     };
   });
