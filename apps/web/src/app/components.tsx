@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { ChainStatusBar } from './chain-status-bar';
 import { SiteNav } from './site-nav';
-import { StatusDot } from './status-dot';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
@@ -54,7 +53,6 @@ function SiteFooter() {
       </div>
       <div className="footer-bottom">
         <span className="muted">© {new Date().getFullYear()} Hood Sentry</span>
-        <StatusDot />
         <span className="muted">Evidence, not guarantees. Not financial advice.</span>
       </div>
     </footer>

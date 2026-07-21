@@ -501,29 +501,6 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
-/* Footer operational status — a quiet dot, not a hero stat. */
-.status-dot {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-mute);
-  font-size: 13px;
-}
-.status-dot-mark {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-mute);
-}
-.status-ok .status-dot-mark {
-  background: var(--g-a);
-  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.16);
-}
-.status-degraded .status-dot-mark {
-  background: #d29922;
-  box-shadow: 0 0 0 3px rgba(210, 153, 34, 0.16);
-}
-
 /* Theme toggle — compact mono chip; inherits the base button styling. */
 .theme-toggle {
   display: inline-flex;
