@@ -24,7 +24,6 @@ export function AiReportPanel({ address }: { address: string }) {
   const [result, setResult] = useState<AiReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [disabled, setDisabled] = useState(false);
 
   async function generate() {
     setBusy(true);
@@ -37,14 +36,14 @@ export function AiReportPanel({ address }: { address: string }) {
       setResult(response.data);
       return;
     }
-    if (response.code === 'AI_REPORT_DISABLED') {
-      setDisabled(true);
-      return;
-    }
-    setError(response.message);
+    // Always surface a reason rather than failing silently — a disabled
+    // deployment, a not-found token, or a provider error all get a message.
+    setError(
+      response.code === 'AI_REPORT_DISABLED'
+        ? 'AI reports aren’t enabled on this deployment yet.'
+        : response.message,
+    );
   }
-
-  if (disabled) return null;
 
   return (
     <section className="panel">
