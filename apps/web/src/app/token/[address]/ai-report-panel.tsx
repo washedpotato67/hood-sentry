@@ -82,9 +82,6 @@ export function AiReportPanel({ address }: { address: string }) {
             </>
           )}
           <p className="muted">{result.report.disclaimer}</p>
-          <p className="muted">
-            Model {result.model} · generated {new Date(result.generatedAt).toLocaleString()}
-          </p>
         </div>
       )}
     </section>

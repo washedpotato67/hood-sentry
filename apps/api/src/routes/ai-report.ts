@@ -59,7 +59,9 @@ export async function aiReportRoutes(app: FastifyInstance, options: AiReportRout
 
     try {
       const report = await options.cache.getOrCompute(
-        `ai:report:${chainId}:${lower}`,
+        // Version suffix (v2): bump to invalidate reports cached under an older
+        // prompt — e.g. ones that mislabelled the chain.
+        `ai:report:v2:${chainId}:${lower}`,
         options.cacheSeconds,
         async () => {
           const [market, pools, holderCount] = await Promise.all([
@@ -73,6 +75,9 @@ export async function aiReportRoutes(app: FastifyInstance, options: AiReportRout
           }
           const facts: TokenReportFacts = {
             chainId,
+            // Tokens on this product are always on Robinhood Chain; give the
+            // model the name so it never infers a network from the numeric id.
+            chain: chainId === 46630 ? 'Robinhood Chain Testnet' : 'Robinhood Chain',
             address: checksummed,
             name: market?.name ?? null,
             symbol: market?.symbol ?? null,

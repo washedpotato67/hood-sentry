@@ -7,6 +7,7 @@ import {
 
 const facts: TokenReportFacts = {
   chainId: 4663,
+  chain: 'Robinhood Chain',
   address: '0x0000000000000000000000000000000000000001',
   name: 'Example',
   symbol: 'EX',
