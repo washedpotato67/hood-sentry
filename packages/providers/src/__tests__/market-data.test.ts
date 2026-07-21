@@ -86,7 +86,8 @@ describe('GeckoTerminalMarketClient', () => {
 
   it('returns an empty feed rather than throwing when the source errors', async () => {
     const failing = (async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
-    const client = new GeckoTerminalMarketClient({ fetchRequest: failing });
+    // One attempt keeps the test from waiting through retry backoff.
+    const client = new GeckoTerminalMarketClient({ fetchRequest: failing, maximumAttempts: 1 });
     expect(await client.trending(4663)).toEqual([]);
   });
 });

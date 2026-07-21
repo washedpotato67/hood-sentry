@@ -1,4 +1,10 @@
+import { z } from 'zod';
+import { ProviderHttpClient } from '../http-client.js';
 import type { AggregatorPool, AggregatorToken, MarketDataSource } from './types.js';
+
+// The body is parsed loosely by the methods below, so the transport only needs
+// to hand back whatever JSON arrived.
+const passthroughSchema = z.unknown();
 
 /**
  * GeckoTerminal names networks rather than numbering them and covers only the
@@ -36,6 +42,11 @@ function numberString(value: unknown): string | null {
 export interface GeckoTerminalMarketOptions {
   fetchRequest?: typeof fetch;
   baseUrl?: string;
+  /** Spacing between requests. GeckoTerminal's free tier is ~30/min, so a low
+   *  rate keeps bursts under the limit. */
+  requestsPerSecond?: number;
+  /** Attempts per request. A 429 is retried with backoff, honoring Retry-After. */
+  maximumAttempts?: number;
 }
 
 /**
@@ -45,12 +56,23 @@ export interface GeckoTerminalMarketOptions {
  * base token, keeping the deepest pool, so the discovery feed is token-level.
  */
 export class GeckoTerminalMarketClient implements MarketDataSource {
-  private readonly fetchRequest: typeof fetch;
   private readonly baseUrl: string;
+  private readonly http: ProviderHttpClient;
 
   constructor(options: GeckoTerminalMarketOptions = {}) {
-    this.fetchRequest = options.fetchRequest ?? fetch;
     this.baseUrl = options.baseUrl ?? 'https://api.geckoterminal.com/api/v2';
+    // Throttle to stay under the free-tier limit, and retry a 429 with backoff
+    // instead of surfacing it as an empty feed. A sustained throttle trips the
+    // client's circuit breaker, which fast-fails to the DexScreener fallback.
+    this.http = new ProviderHttpClient({
+      providerId: 'geckoterminal',
+      fetchRequest: options.fetchRequest ?? fetch,
+      requestsPerSecond: options.requestsPerSecond ?? 2,
+      maximumAttempts: options.maximumAttempts ?? 3,
+      retryBaseDelayMs: 1_000,
+      timeoutMs: 12_000,
+      maximumResponseBytes: 4_000_000,
+    });
   }
 
   async trending(chainId: number): Promise<AggregatorToken[]> {
@@ -183,10 +205,15 @@ export class GeckoTerminalMarketClient implements MarketDataSource {
 
   private async getJson(url: string): Promise<unknown | null> {
     try {
-      const response = await this.fetchRequest(url, { headers: { accept: 'application/json' } });
-      if (!response.ok) return null;
-      return await response.json();
+      const response = await this.http.request({
+        url,
+        schema: passthroughSchema,
+        headers: { accept: 'application/json' },
+      });
+      return response.data;
     } catch {
+      // Any failure (throttle exhausted, circuit open, timeout) degrades to null
+      // so the caller falls back to another source rather than throwing.
       return null;
     }
   }
