@@ -95,7 +95,6 @@ export default async function Home() {
       <section>
         <div className="section-head">
           <h2>What every scan examines</h2>
-          <span className="eyebrow">6 of 12 evidence domains</span>
         </div>
         <div className="pillars">
           {DOMAINS.map((d) => (
