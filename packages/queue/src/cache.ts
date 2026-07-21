@@ -48,7 +48,12 @@ export class RedisCache {
     this.lockTtlSeconds = options.lockTtlSeconds ?? 30;
   }
 
-  async getOrCompute<T>(key: string, ttlSeconds: number, compute: () => Promise<T>): Promise<T> {
+  async getOrCompute<T>(
+    key: string,
+    ttlSeconds: number,
+    compute: () => Promise<T>,
+    options: { cacheIf?: (value: T) => boolean } = {},
+  ): Promise<T> {
     const cached = await this.read<T>(key);
     if (cached !== undefined) return cached;
 
@@ -63,7 +68,12 @@ export class RedisCache {
 
     try {
       const value = await compute();
-      await this.write(key, value, ttlSeconds);
+      // A caller can decline to cache a value (e.g. an empty feed from a
+      // throttled upstream), so a transient failure self-heals on the next
+      // request instead of sticking for the whole TTL.
+      if (options.cacheIf === undefined || options.cacheIf(value)) {
+        await this.write(key, value, ttlSeconds);
+      }
       return value;
     } finally {
       if (locked) await this.safe(() => this.redis.del(lockKey));

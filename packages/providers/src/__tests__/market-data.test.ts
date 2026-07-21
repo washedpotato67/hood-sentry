@@ -127,6 +127,29 @@ describe('DexScreenerMarketClient', () => {
     const client = new DexScreenerMarketClient({ fetchRequest: gtStub(onlyOtherChain) });
     expect(await client.tokenMarket(4663, TOKEN)).toBeNull();
   });
+
+  it('builds a trending feed from the chain boosts + a batch token lookup', async () => {
+    // First call: boosts list; second: batch token market data.
+    const responses = [
+      [
+        { chainId: 'robinhood', tokenAddress: TOKEN },
+        { chainId: 'ethereum', tokenAddress: '0xdead' },
+      ],
+      DS_BODY,
+    ];
+    let call = 0;
+    const fetchRequest = (async () =>
+      new Response(JSON.stringify(responses[call++]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })) as unknown as typeof fetch;
+    const client = new DexScreenerMarketClient({ fetchRequest });
+
+    const tokens = await client.trending(4663);
+
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0]).toMatchObject({ address: TOKEN, symbol: 'CASHCAT' });
+  });
 });
 
 describe('MarketDataAggregator', () => {
@@ -185,5 +208,40 @@ describe('MarketDataAggregator', () => {
     const aggregator = new MarketDataAggregator(primary, fallback);
 
     expect((await aggregator.tokenMarket(4663, TOKEN))?.symbol).toBe('P');
+  });
+
+  const oneToken = (symbol: string) => ({
+    address: TOKEN,
+    name: null,
+    symbol,
+    decimals: null,
+    priceUsd: '1',
+    liquidityUsd: null,
+    volume24hUsd: null,
+    primaryPoolAddress: null,
+    poolCreatedAt: null,
+  });
+
+  it('falls back to the secondary trending feed when the primary is empty', async () => {
+    const primary: MarketDataSource = { ...emptySource, trending: async () => [] };
+    const fallback: MarketDataSource = { ...emptySource, trending: async () => [oneToken('F')] };
+    const aggregator = new MarketDataAggregator(primary, fallback);
+
+    const tokens = await aggregator.trending(4663);
+
+    expect(tokens.map((t) => t.symbol)).toEqual(['F']);
+  });
+
+  it('keeps the primary trending feed when it has results', async () => {
+    const primary: MarketDataSource = { ...emptySource, trending: async () => [oneToken('P')] };
+    const fallback: MarketDataSource = {
+      ...emptySource,
+      trending: async () => {
+        throw new Error('fallback should not be consulted');
+      },
+    };
+    const aggregator = new MarketDataAggregator(primary, fallback);
+
+    expect((await aggregator.trending(4663)).map((t) => t.symbol)).toEqual(['P']);
   });
 });

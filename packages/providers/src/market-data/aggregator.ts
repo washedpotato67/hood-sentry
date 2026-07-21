@@ -24,12 +24,19 @@ export class MarketDataAggregator implements MarketDataSource {
     );
   }
 
-  trending(chainId: number): Promise<AggregatorToken[]> {
-    return this.primary.trending(chainId);
+  // The primary (GeckoTerminal, free tier) rate-limits hard, and when it 429s a
+  // feed call returns empty. Falling back to the secondary keeps discovery
+  // populated instead of blanking the moment the primary is throttled.
+  async trending(chainId: number): Promise<AggregatorToken[]> {
+    const primary = await this.primary.trending(chainId);
+    if (primary.length > 0) return primary;
+    return this.fallback.trending(chainId);
   }
 
-  newPools(chainId: number): Promise<AggregatorToken[]> {
-    return this.primary.newPools(chainId);
+  async newPools(chainId: number): Promise<AggregatorToken[]> {
+    const primary = await this.primary.newPools(chainId);
+    if (primary.length > 0) return primary;
+    return this.fallback.newPools(chainId);
   }
 
   async tokenMarket(chainId: number, address: `0x${string}`): Promise<AggregatorToken | null> {

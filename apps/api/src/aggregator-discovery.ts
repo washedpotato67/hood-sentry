@@ -156,6 +156,9 @@ export class AggregatorDiscoveryRepository implements DiscoveryReadRepository {
         }
         return [...byAddress.values()];
       },
+      // Don't cache an empty feed: if both sources were momentarily throttled,
+      // the next request retries instead of serving blank for the whole TTL.
+      { cacheIf: (result) => result.length > 0 },
     );
 
     const holderCounts = await this.holderCounts(chainId, tokens);

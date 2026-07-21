@@ -31,27 +31,96 @@ export interface DexScreenerMarketOptions {
   baseUrl?: string;
 }
 
+/** Collapse a DexScreener `pairs` array to one AggregatorToken per base token,
+ *  keeping the deepest pool. Shared by search and the boosted-token feeds. */
+function pairsToTokens(pairs: readonly unknown[], slug: string): AggregatorToken[] {
+  const byToken = new Map<string, AggregatorToken>();
+  for (const entry of pairs) {
+    const pair = asRecord(entry);
+    if (pair === null || str(pair.chainId) !== slug) continue;
+    const base = asRecord(pair.baseToken);
+    const tokenAddress = address(base?.address);
+    if (tokenAddress === null) continue;
+    const liquidityUsd = numberString(asRecord(pair.liquidity)?.usd);
+    const candidate: AggregatorToken = {
+      address: tokenAddress,
+      name: str(base?.name),
+      symbol: str(base?.symbol),
+      decimals: null,
+      priceUsd: numberString(pair.priceUsd),
+      liquidityUsd,
+      volume24hUsd: numberString(asRecord(pair.volume)?.h24),
+      primaryPoolAddress: address(pair.pairAddress),
+      poolCreatedAt:
+        typeof pair.pairCreatedAt === 'number' ? new Date(pair.pairCreatedAt).toISOString() : null,
+    };
+    const existing = byToken.get(tokenAddress);
+    if (existing === undefined || Number(liquidityUsd ?? 0) > Number(existing.liquidityUsd ?? 0)) {
+      byToken.set(tokenAddress, candidate);
+    }
+  }
+  return [...byToken.values()];
+}
+
 /**
- * A fallback market-data source. DexScreener has no per-chain trending feed, so
- * it only answers token-level queries; its value is covering a token when
- * GeckoTerminal has a gap. Trending and new-pool feeds return empty here so the
- * aggregator keeps whatever the primary produced.
+ * A fallback market-data source. DexScreener has no true per-chain trending or
+ * new-pool feed, but it does expose the chain's boosted (actively promoted)
+ * tokens, which stand in for those feeds when GeckoTerminal is rate-limited —
+ * without a fallback the discovery page goes blank the moment the primary is
+ * throttled. Per-token queries cover any token GeckoTerminal has a gap on.
  */
 export class DexScreenerMarketClient implements MarketDataSource {
   private readonly fetchRequest: typeof fetch;
   private readonly baseUrl: string;
+  private readonly apiRoot: string;
 
   constructor(options: DexScreenerMarketOptions = {}) {
     this.fetchRequest = options.fetchRequest ?? fetch;
     this.baseUrl = options.baseUrl ?? 'https://api.dexscreener.com/latest/dex';
+    // The boosts endpoint lives at the API root, not under /latest/dex.
+    this.apiRoot = new URL(this.baseUrl).origin;
   }
 
-  async trending(): Promise<AggregatorToken[]> {
-    return [];
+  async trending(chainId: number): Promise<AggregatorToken[]> {
+    return this.boostedTokens(chainId);
   }
 
-  async newPools(): Promise<AggregatorToken[]> {
-    return [];
+  async newPools(chainId: number): Promise<AggregatorToken[]> {
+    // No dedicated new-pool feed; approximate "new" by newest pool creation among
+    // the chain's active tokens, so the feed is populated rather than blank.
+    const tokens = await this.boostedTokens(chainId);
+    return [...tokens].sort(
+      (a, b) => Date.parse(b.poolCreatedAt ?? '') - Date.parse(a.poolCreatedAt ?? '') || 0,
+    );
+  }
+
+  /** The chain's boosted tokens, enriched with market data via a batch lookup. */
+  private async boostedTokens(chainId: number): Promise<AggregatorToken[]> {
+    const slug = CHAIN_SLUG_BY_ID[chainId];
+    if (slug === undefined) return [];
+    try {
+      const boosts = await this.fetchRequest(`${this.apiRoot}/token-boosts/top/v1`, {
+        headers: { accept: 'application/json' },
+      });
+      if (!boosts.ok) return [];
+      const list = (await boosts.json()) as unknown;
+      const addrs = (Array.isArray(list) ? list : [])
+        .map(asRecord)
+        .filter((b) => str(b?.chainId) === slug)
+        .map((b) => address(b?.tokenAddress))
+        .filter((a): a is `0x${string}` => a !== null)
+        .slice(0, 30);
+      if (addrs.length === 0) return [];
+      const response = await this.fetchRequest(`${this.baseUrl}/tokens/${addrs.join(',')}`, {
+        headers: { accept: 'application/json' },
+      });
+      if (!response.ok) return [];
+      const body = asRecord(await response.json());
+      const pairs = Array.isArray(body?.pairs) ? (body?.pairs as unknown[]) : [];
+      return pairsToTokens(pairs, slug);
+    } catch {
+      return [];
+    }
   }
 
   async search(chainId: number, query: string): Promise<AggregatorToken[]> {
@@ -66,37 +135,7 @@ export class DexScreenerMarketClient implements MarketDataSource {
       if (!response.ok) return [];
       const body = asRecord(await response.json());
       const pairs = Array.isArray(body?.pairs) ? (body?.pairs as unknown[]) : [];
-      const byToken = new Map<string, AggregatorToken>();
-      for (const entry of pairs) {
-        const pair = asRecord(entry);
-        if (pair === null || str(pair.chainId) !== slug) continue;
-        const base = asRecord(pair.baseToken);
-        const tokenAddress = address(base?.address);
-        if (tokenAddress === null) continue;
-        const liquidityUsd = numberString(asRecord(pair.liquidity)?.usd);
-        const candidate: AggregatorToken = {
-          address: tokenAddress,
-          name: str(base?.name),
-          symbol: str(base?.symbol),
-          decimals: null,
-          priceUsd: numberString(pair.priceUsd),
-          liquidityUsd,
-          volume24hUsd: numberString(asRecord(pair.volume)?.h24),
-          primaryPoolAddress: address(pair.pairAddress),
-          poolCreatedAt:
-            typeof pair.pairCreatedAt === 'number'
-              ? new Date(pair.pairCreatedAt).toISOString()
-              : null,
-        };
-        const existing = byToken.get(tokenAddress);
-        if (
-          existing === undefined ||
-          Number(liquidityUsd ?? 0) > Number(existing.liquidityUsd ?? 0)
-        ) {
-          byToken.set(tokenAddress, candidate);
-        }
-      }
-      return [...byToken.values()];
+      return pairsToTokens(pairs, slug);
     } catch {
       return [];
     }
