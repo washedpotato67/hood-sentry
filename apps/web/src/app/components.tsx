@@ -1,22 +1,11 @@
 import Link from 'next/link';
 import { ChainStatusBar } from './chain-status-bar';
-import { NavLinks } from './nav-links';
-import { SearchBox } from './search-box';
+import { SiteNav } from './site-nav';
 import { StatusDot } from './status-dot';
-import { ThemeToggle } from './theme-toggle';
-import { WalletConnect } from './wallet-connect';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
-      <nav className="nav" aria-label="Primary">
-        <Link className="brand" href="/">
-          SENTRY
-        </Link>
-        <NavLinks />
-        <SearchBox />
-        <WalletConnect />
-        <ThemeToggle />
-      </nav>
+      <SiteNav />
       <ChainStatusBar />
       <main className="main">{children}</main>
       <SiteFooter />
