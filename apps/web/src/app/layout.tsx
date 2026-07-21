@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Bebas_Neue, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
 import { Shell } from './components';
 
 // Body / normal text — warm, refined humanist sans, kept for data legibility.
@@ -8,6 +8,13 @@ const sans = Hanken_Grotesk({
   subsets: ['latin'],
   variable: '--font-sans',
   weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+// Display / headlines — a tall condensed all-caps grotesque for editorial impact.
+const display = Bebas_Neue({
+  subsets: ['latin'],
+  variable: '--font-bebas',
+  weight: '400',
   display: 'swap',
 });
 // Display / headlines use a condensed system stack (defined in globals.css),
@@ -27,7 +34,11 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${sans.variable} ${mono.variable} ${display.variable}`}
+      suppressHydrationWarning
+    >
       <body>
         {/* Re-apply a pinned theme before paint so there's no flash. Dark is the
             default when nothing is stored (CSS handles OS light preference). */}

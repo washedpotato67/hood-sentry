@@ -4,6 +4,17 @@ import { SiteNav } from './site-nav';
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
+      <div className="ticker" role="presentation">
+        <span>Contract control</span>
+        <i>·</i>
+        <span>Liquidity</span>
+        <i>·</i>
+        <span>Holder distribution</span>
+        <i>·</i>
+        <span>Oracle behavior</span>
+        <i>·</i>
+        <span className="ticker-hot">Market integrity</span>
+      </div>
       <SiteNav />
       <ChainStatusBar />
       <main className="main">{children}</main>

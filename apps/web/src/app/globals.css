@@ -9,21 +9,21 @@
   color-scheme: dark;
 
   /* ── Instrument surfaces (dark, the default) ──────────────────────────── */
-  --bg: #0b0d11;
-  --bg-elev: #0f1218;
-  --panel: #12161e;
-  --hair: #1e232d;
-  --hair-2: #2a313c;
+  --bg: #100d0a;
+  --bg-elev: #16120d;
+  --panel: #191410;
+  --hair: #2a2219;
+  --hair-2: #3a3024;
 
-  --text: #e7ebf2;
-  --text-dim: #98a1b1;
-  --text-mute: #616b7c;
+  --text: #f3ede2;
+  --text-dim: #ab9f8c;
+  --text-mute: #746a5b;
 
-  /* The one accent — live / interactive only, never risk. */
-  --accent: #2fd4c6;
-  --accent-ink: #04211f;
-  --accent-soft: rgba(47, 212, 198, 0.13);
-  --accent-line: rgba(47, 212, 198, 0.5);
+  /* The one accent — warm amber, live / interactive only, never risk. */
+  --accent: #e0a56a;
+  --accent-ink: #1c1206;
+  --accent-soft: rgba(224, 165, 106, 0.14);
+  --accent-line: rgba(224, 165, 106, 0.5);
 
   /* Risk ramp — semantic, A→F, kept off the teal accent. */
   --g-a: #3fb950;
@@ -31,7 +31,7 @@
   --g-c: #e3b341;
   --g-d: #f0883e;
   --g-f: #f85149;
-  --grade-ink: #0b0d11;
+  --grade-ink: #100d0a;
 
   /* Low-alpha washes for badges / status. */
   --wash-a: rgba(63, 185, 80, 0.16);
@@ -41,8 +41,8 @@
   /* Flat by design — the instrument has edges, not atmosphere. */
   --shadow: none;
   --shadow-sm: none;
-  --radius: 3px;
-  --radius-lg: 4px;
+  --radius: 6px;
+  --radius-lg: 12px;
 
   --z-sticky: 100;
   --z-modal: 300;
@@ -52,7 +52,7 @@
 
   /* Monospace is the identity: JetBrains Mono (loaded in layout) for every
      readout, label, figure, and heading. Prose rides the humanist sans. */
-  --font-display: var(--font-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: var(--font-bebas), "Arial Narrow", "Oswald", sans-serif;
 
   /* ── Legacy aliases — the wider app reads these names; remapping them here
      re-skins every untouched rule to the instrument palette. --ink resolves to
@@ -96,18 +96,18 @@
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
-    --bg: #eef1f5;
-    --bg-elev: #ffffff;
-    --panel: #ffffff;
-    --hair: #e1e6ec;
-    --hair-2: #ccd3dd;
-    --text: #10141b;
-    --text-dim: #4a5462;
-    --text-mute: #7a8490;
-    --accent: #0c9c8f;
+    --bg: #f4efe6;
+    --bg-elev: #fffdf8;
+    --panel: #fffdf8;
+    --hair: #e7ded0;
+    --hair-2: #d4c8b5;
+    --text: #1c1610;
+    --text-dim: #6b6152;
+    --text-mute: #948a78;
+    --accent: #b56f28;
     --accent-ink: #ffffff;
-    --accent-soft: rgba(12, 156, 143, 0.11);
-    --accent-line: rgba(12, 156, 143, 0.5);
+    --accent-soft: rgba(181, 111, 40, 0.12);
+    --accent-line: rgba(181, 111, 40, 0.5);
     --g-a: #1f9d4d;
     --g-b: #5f9c26;
     --g-c: #c78a11;
@@ -121,18 +121,18 @@
 }
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #eef1f5;
-  --bg-elev: #ffffff;
-  --panel: #ffffff;
-  --hair: #e1e6ec;
-  --hair-2: #ccd3dd;
-  --text: #10141b;
-  --text-dim: #4a5462;
-  --text-mute: #7a8490;
-  --accent: #0c9c8f;
+  --bg: #f4efe6;
+  --bg-elev: #fffdf8;
+  --panel: #fffdf8;
+  --hair: #e7ded0;
+  --hair-2: #d4c8b5;
+  --text: #1c1610;
+  --text-dim: #6b6152;
+  --text-mute: #948a78;
+  --accent: #b56f28;
   --accent-ink: #ffffff;
-  --accent-soft: rgba(12, 156, 143, 0.11);
-  --accent-line: rgba(12, 156, 143, 0.5);
+  --accent-soft: rgba(181, 111, 40, 0.12);
+  --accent-line: rgba(181, 111, 40, 0.5);
   --g-a: #1f9d4d;
   --g-b: #5f9c26;
   --g-c: #c78a11;
@@ -244,6 +244,36 @@ textarea:focus-visible {
   min-height: 100vh;
 }
 
+/* Top ticker — a thin editorial strip above the nav. Scrolls away as the nav
+   sticks to the top. Decorative, so it steps aside on phones. */
+.ticker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  padding: 7px 16px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--bg);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+.ticker i {
+  font-style: normal;
+  color: var(--hair-2);
+}
+.ticker-hot {
+  color: var(--accent);
+}
+@media (max-width: 720px) {
+  .ticker {
+    display: none;
+  }
+}
+
 .nav {
   display: flex;
   gap: 20px;
@@ -288,10 +318,10 @@ textarea:focus-visible {
 }
 
 .brand {
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.18em;
+  font-family: var(--font-display), sans-serif;
+  font-weight: 400;
+  font-size: 23px;
+  letter-spacing: 0.05em;
   color: var(--text);
   text-decoration: none;
   display: inline-flex;
@@ -705,22 +735,27 @@ h3,
 
 h1 {
   margin: 0 0 12px;
-  font-size: 32px;
-  font-weight: 600;
-  line-height: 1.06;
-  letter-spacing: -0.01em;
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   text-wrap: balance;
 }
 h2 {
-  margin: 0 0 4px;
-  font-size: 21px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
 }
 h3 {
   margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 p {
   text-wrap: pretty;
@@ -803,12 +838,12 @@ mark {
   }
 }
 .hero h1 {
-  max-width: 16ch;
+  max-width: 15ch;
   margin: 20px 0 0;
-  font-size: clamp(38px, 6.5vw, 72px);
-  font-weight: 600;
-  line-height: 0.98;
-  letter-spacing: -0.02em;
+  font-size: clamp(52px, 9vw, 104px);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0.005em;
 }
 .hero .lede {
   font-size: clamp(16px, 2vw, 18px);
@@ -1102,10 +1137,13 @@ a.primary,
   color: var(--accent-ink);
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  padding: 11px 18px;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
