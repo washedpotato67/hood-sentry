@@ -9,6 +9,9 @@ const METHODOLOGY = 'aggregator-v1';
 // USD amounts are carried in the raw-integer model at 18 decimals so the existing
 // formatters render them unchanged.
 const USD_DECIMALS = 18;
+// The last-known-good feed snapshot lives 6 hours — long enough to ride out a
+// sustained upstream rate-limit or outage without the page ever going blank.
+const LAST_GOOD_TTL_SECONDS = 6 * 60 * 60;
 
 function usdToRaw(value: string | null): bigint | null {
   if (value === null) return null;
@@ -139,6 +142,12 @@ export class AggregatorDiscoveryRepository implements DiscoveryReadRepository {
     const ttl = this.options.ttlSeconds ?? 60;
     const now = this.options.now ?? (() => new Date().toISOString());
 
+    // A long-lived snapshot of the last feed that actually had tokens. It is the
+    // final safety net: if every upstream is momentarily throttled and returns
+    // nothing, the page shows the last good feed rather than going blank. It far
+    // outlives the working cache, so it survives an extended upstream outage.
+    const lastGoodKey = `discovery:tokens:last:${chainId}`;
+
     // The cache holds the aggregator's plain tokens; the bigint-carrying
     // discovery items are built fresh on each read. Keeping bigints out of the
     // cache avoids encoding them into JSON and decoding them back.
@@ -154,10 +163,18 @@ export class AggregatorDiscoveryRepository implements DiscoveryReadRepository {
         for (const token of [...trending, ...newPools]) {
           if (!byAddress.has(token.address)) byAddress.set(token.address, token);
         }
-        return [...byAddress.values()];
+        const fresh = [...byAddress.values()];
+        if (fresh.length > 0) {
+          // Refresh the last-known-good snapshot on every successful fetch.
+          await this.cache.set(lastGoodKey, LAST_GOOD_TTL_SECONDS, fresh);
+          return fresh;
+        }
+        // Every upstream came back empty (all throttled): serve the last good
+        // feed if we have one, so the page never blanks out.
+        return (await this.cache.get<AggregatorToken[]>(lastGoodKey)) ?? [];
       },
-      // Don't cache an empty feed: if both sources were momentarily throttled,
-      // the next request retries instead of serving blank for the whole TTL.
+      // Don't cache a still-empty result: if there is no snapshot yet either, the
+      // next request retries instead of serving blank for the whole TTL.
       { cacheIf: (result) => result.length > 0 },
     );
 

@@ -94,4 +94,28 @@ describe('AggregatorDiscoveryRepository', () => {
     const repo = new AggregatorDiscoveryRepository(market, fakeCache());
     expect(await repo.listSponsoredPlacements()).toEqual([]);
   });
+
+  it('serves the last good feed when every upstream returns empty', async () => {
+    const cache = fakeCache();
+    // A source that returns data once, then goes empty (all upstreams throttled).
+    let live = true;
+    const flaky: MarketDataSource = {
+      ...market,
+      trending: async () => (live ? [token()] : []),
+      newPools: async () => [],
+    };
+    const repo = new AggregatorDiscoveryRepository(flaky, cache, {
+      ttlSeconds: 0,
+      now: () => '2026-07-20T00:00:00Z',
+    });
+
+    // First read populates the last-known-good snapshot.
+    expect(await repo.listCurrent(4663)).toHaveLength(1);
+
+    // Now every upstream is empty; the feed must still serve the snapshot.
+    live = false;
+    const items = await repo.listCurrent(4663);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.symbol).toBe('CASHCAT');
+  });
 });
