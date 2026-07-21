@@ -110,7 +110,10 @@ export async function aiReportRoutes(app: FastifyInstance, options: AiReportRout
         request.log.warn({ code: error.code }, 'ai report generation failed');
         reply.code(503);
         return {
-          error: { code: 'AI_REPORT_UNAVAILABLE', message: 'The AI report could not be generated.' },
+          error: {
+            code: 'AI_REPORT_UNAVAILABLE',
+            message: 'The AI report could not be generated.',
+          },
         };
       }
       throw error;
