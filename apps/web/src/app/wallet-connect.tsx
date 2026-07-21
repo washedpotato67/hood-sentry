@@ -138,6 +138,14 @@ export function WalletConnect() {
     return () => document.removeEventListener('mousedown', onDown);
   }, [menuOpen, accountOpen]);
 
+  // The inline error must never linger — on mobile it overlays content — so it
+  // clears itself after a few seconds and can also be tapped away.
+  useEffect(() => {
+    if (error === null) return;
+    const id = window.setTimeout(() => setError(null), 6000);
+    return () => window.clearTimeout(id);
+  }, [error]);
+
   const connect = useCallback(async (provider: EthereumProvider) => {
     setMenuOpen(false);
     setBusy(true);
@@ -309,7 +317,19 @@ export function WalletConnect() {
           ))}
         </div>
       ) : null}
-      {error === null ? null : <span className="inline-error">{error}</span>}
+      {error === null ? null : (
+        <button
+          type="button"
+          className="inline-error"
+          onClick={() => setError(null)}
+          aria-label="Dismiss"
+        >
+          {error}
+          <span className="inline-error-x" aria-hidden="true">
+            ✕
+          </span>
+        </button>
+      )}
     </div>
   );
 }

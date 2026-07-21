@@ -387,6 +387,21 @@ textarea:focus-visible {
 .search-trigger:hover {
   border-color: var(--accent-line);
 }
+.search-trigger-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.search-trigger-label .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.search-ico {
+  flex-shrink: 0;
+  color: var(--text-mute);
+}
 .kbd {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 11px;
@@ -555,12 +570,29 @@ textarea:focus-visible {
   top: calc(100% + 10px);
   right: 0;
   width: 280px;
+  max-width: calc(100vw - 32px);
   padding: 11px 13px;
   border: 1px solid var(--g-f);
   border-radius: var(--radius);
   color: var(--text);
   background: var(--wash-f);
   z-index: var(--z-tooltip);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.inline-error:hover {
+  border-color: var(--g-f);
+  color: var(--text);
+}
+.inline-error-x {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-mute);
 }
 
 .wallet-menu {
@@ -1824,6 +1856,21 @@ code {
     order: 3;
     display: inline-flex;
     flex-shrink: 0;
+  }
+  /* No keyboard on a phone — the shortcut hint just crowds the field. */
+  .search-trigger .kbd {
+    display: none;
+  }
+  /* The wallet error becomes a dismissible bottom toast so it never overlays the
+     nav or runs off-screen. */
+  .inline-error {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: auto;
+    bottom: 16px;
+    width: auto;
+    max-width: none;
   }
   /* Dropdown panel: links stack, then the wallet/theme controls below a rule. */
   .nav-collapse {

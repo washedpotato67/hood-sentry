@@ -164,13 +164,27 @@ export function SearchBox() {
         onClick={() => setOpen(true)}
         aria-label="Search tokens"
       >
-        <span className="muted">Search tokens…</span>
+        <span className="search-trigger-label">
+          <svg
+            className="search-ico"
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+            <path d="M20 20l-3.6-3.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <span className="muted">Search tokens…</span>
+        </span>
         <kbd className="kbd">⌘K</kbd>
       </button>
 
       {open ? (
         // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop is a dismissal affordance, keyboard handled by Escape inside.
         <div className="cmd-backdrop" onClick={close}>
+          {/* biome-ignore lint/a11y/useSemanticElements: an anchored command-palette overlay, not a native <dialog> modal flow. */}
           <div
             className="cmd-panel"
             role="dialog"
