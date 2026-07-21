@@ -3,7 +3,6 @@ import { apiRequest, chainId, formatCompactUsd } from '../lib/api';
 import { enrichWithSignals } from '../lib/enrich';
 import { ErrorPanel, Stat } from './components';
 import { type DiscoveryItem, DiscoveryTable } from './discovery-table';
-import { HeroScan } from './hero-scan';
 
 type Feed = { organic: { data: readonly DiscoveryItem[] } };
 
@@ -81,7 +80,6 @@ export default async function Home() {
               <Link href="/methodology">How it works</Link>
             </div>
           </div>
-          <HeroScan />
         </div>
       </header>
 
