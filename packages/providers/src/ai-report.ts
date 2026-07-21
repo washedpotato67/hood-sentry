@@ -123,9 +123,23 @@ const SYSTEM_PROMPT = [
  * route degrades into an "unavailable" panel — it never sources or scores data
  * itself.
  */
+/**
+ * Free OpenRouter models rate-limit (429) in short bursts, but they sit on
+ * different upstream providers, so they rarely saturate at the same instant.
+ * OpenRouter's `models` array retries the next entry when one errors, so we list
+ * clean-JSON, instruction-tuned free models across providers (OpenAI + Google)
+ * behind the configured primary. Reasoning/"thinking" models are excluded — they
+ * narrate instead of returning JSON.
+ */
+const FREE_FALLBACK_MODELS = [
+  'google/gemma-4-31b-it:free',
+  'google/gemma-4-26b-a4b-it:free',
+] as const;
+
 export class AiTokenReportProvider {
   private readonly client: ProviderHttpClient;
   private readonly endpoint: string;
+  private readonly models: string[];
 
   constructor(
     private readonly apiKey: string,
@@ -146,6 +160,8 @@ export class AiTokenReportProvider {
     });
     // Tolerate a base URL supplied with or without a trailing slash.
     this.endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+    // Configured primary first, then the cross-provider free fallbacks.
+    this.models = [model, ...FREE_FALLBACK_MODELS.filter((m) => m !== model)];
   }
 
   async generate(facts: TokenReportFacts): Promise<TokenReportResult> {
@@ -160,7 +176,9 @@ export class AiTokenReportProvider {
           'x-title': 'Hood Sentry',
         },
         body: JSON.stringify({
-          model: this.model,
+          // OpenRouter routes to the first available model in this list, so a
+          // 429 on the primary transparently falls through to a fallback.
+          models: this.models,
           max_tokens: 700,
           temperature: 0.2,
           response_format: { type: 'json_object' },
