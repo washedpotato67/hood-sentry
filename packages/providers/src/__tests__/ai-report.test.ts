@@ -58,6 +58,25 @@ describe('AI token report provider', () => {
     expect(String(url)).toBe('https://openrouter.ai/api/v1/chat/completions');
   });
 
+  it('tolerates a report wrapped in a ```json code fence', async () => {
+    const fenced = `\`\`\`json\n${JSON.stringify({
+      summary: 'Fenced but valid.',
+      highlights: [],
+      watchouts: [],
+      disclaimer: 'Not financial advice.',
+    })}\n\`\`\``;
+    const fetchRequest = vi.fn<typeof fetch>().mockResolvedValue(chatResponse(fenced));
+    const provider = new AiTokenReportProvider(
+      'sk-or-test',
+      'openai/gpt-oss-20b:free',
+      'https://openrouter.ai/api/v1',
+      fetchRequest,
+    );
+
+    const result = await provider.generate(facts);
+    expect(result.report.summary).toBe('Fenced but valid.');
+  });
+
   it('rejects a refusal with a typed error', async () => {
     const fetchRequest = vi
       .fn<typeof fetch>()

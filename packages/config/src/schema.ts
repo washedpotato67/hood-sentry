@@ -222,7 +222,9 @@ const providersSchema = z.object({
   // The AI token report runs against any OpenAI-compatible Chat Completions
   // endpoint; OpenRouter by default, so the model is an OpenRouter slug.
   AI_PROVIDER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
-  AI_REPORT_MODEL: z.string().trim().min(1).default('openai/gpt-4o-mini'),
+  // A free OpenRouter model by default: the account has no credits, so a paid
+  // model (e.g. openai/gpt-4o-mini) returns 402. Override with any slug.
+  AI_REPORT_MODEL: z.string().trim().min(1).default('openai/gpt-oss-20b:free'),
 });
 
 const authSchema = z.object({
