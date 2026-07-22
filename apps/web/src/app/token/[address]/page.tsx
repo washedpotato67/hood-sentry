@@ -132,9 +132,9 @@ export default async function Token({ params }: { params: Promise<{ address: str
         <h2>Evidence-backed risk report</h2>
         {risk.scoreStatus === 'WITHHELD_PENDING_RULE_COVERAGE' ? (
           <p className="muted">
-            No overall grade is published yet. Rule coverage is still incomplete, so an aggregate
-            score would imply checks this scan did not perform. The signals below each report a rule
-            that did run, with its evidence.
+            No single score — a number hides which check actually failed. Each signal below is a
+            concrete, evidence-backed fact from live on-chain data, so you can see exactly what’s
+            flagged and decide for yourself.
           </p>
         ) : null}
         {risk.status === 'unavailable' ? (
