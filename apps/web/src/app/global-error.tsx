@@ -45,7 +45,7 @@ export default function GlobalError({ reset }: { reset: () => void }) {
             Something broke on our side.
           </h1>
           <p style={{ fontSize: 16, lineHeight: 1.5, color: '#3a3931' }}>
-            An unexpected error interrupted the request. Try again — if it keeps happening, the
+            An unexpected error interrupted the request. Try again. If it keeps happening, the
             fault is ours, not yours.
           </p>
           <button

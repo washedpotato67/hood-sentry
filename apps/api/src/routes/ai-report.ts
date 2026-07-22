@@ -59,9 +59,9 @@ export async function aiReportRoutes(app: FastifyInstance, options: AiReportRout
 
     try {
       const report = await options.cache.getOrCompute(
-        // Version suffix (v2): bump to invalidate reports cached under an older
-        // prompt — e.g. ones that mislabelled the chain.
-        `ai:report:v2:${chainId}:${lower}`,
+        // Version suffix (v3): bump to invalidate reports cached under an older
+        // prompt, e.g. ones that mislabelled the chain or used em dashes.
+        `ai:report:v3:${chainId}:${lower}`,
         options.cacheSeconds,
         async () => {
           const [market, pools, holderCount] = await Promise.all([

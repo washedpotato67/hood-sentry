@@ -117,7 +117,7 @@ export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
         action={<Link href="/methodology">How ranking works →</Link>}
       >
         Tokens surface here as their on-chain evidence lands. Indexing currently trails the chain
-        head — the block Sentry has reached, and how far behind that is, are shown in the status bar
+        head. The block Sentry has reached, and how far behind that is, are shown in the status bar
         above. Nothing is ranked until its evidence is indexed.
       </EmptyState>
     );

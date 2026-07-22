@@ -132,7 +132,7 @@ export default async function Token({ params }: { params: Promise<{ address: str
         <h2>Evidence-backed risk report</h2>
         {risk.scoreStatus === 'WITHHELD_PENDING_RULE_COVERAGE' ? (
           <p className="muted">
-            No single score — a number hides which check actually failed. Each signal below is a
+            No single score. A number hides which check actually failed. Each signal below is a
             concrete, evidence-backed fact from live on-chain data, so you can see exactly what’s
             flagged and decide for yourself.
           </p>

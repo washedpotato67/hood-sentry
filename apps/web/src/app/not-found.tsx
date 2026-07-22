@@ -9,7 +9,7 @@ export default function NotFound() {
       <p className="notice-code">Error 404</p>
       <h1>This page left no evidence.</h1>
       <p className="lede">
-        The address you followed isn't indexed here — it may have moved, or never existed. Head back
+        The address you followed isn't indexed here. It may have moved, or never existed. Head back
         and start from discovery.
       </p>
       <div className="actions">

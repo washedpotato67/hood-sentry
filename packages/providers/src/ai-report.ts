@@ -118,6 +118,7 @@ const SYSTEM_PROMPT = [
   'Respond with a single JSON object and nothing else, matching exactly:',
   '{"summary": string, "highlights": string[] (<=5), "watchouts": string[] (<=5), "disclaimer": string}',
   'Keep summary under 900 characters. Each highlight/watchout under 200 characters. The disclaimer must note this is not financial advice.',
+  'Write with plain punctuation only. Never use em dashes (—); use periods, commas, or colons instead.',
 ].join(' ');
 
 /**
