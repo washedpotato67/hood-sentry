@@ -18,7 +18,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "viem": "^2.22.8",
+    "viem": "^2.55.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {
