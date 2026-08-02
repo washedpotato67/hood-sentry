@@ -67,13 +67,14 @@ async function insertFinding(opts: {
   scanRunId: string;
   severity: string;
   suppressed?: boolean;
+  confidence?: number;
 }): Promise<void> {
   await database.client`
     INSERT INTO risk_findings
       (scan_run_id, rule_id, rule_version, category, severity, confidence,
        title, explanation, evidence, source_provenance, fingerprint, suppressed)
     VALUES
-      (${opts.scanRunId}, 'rule-1', 'v1', 'liquidity', ${opts.severity}, 0.9,
+      (${opts.scanRunId}, 'rule-1', 'v1', 'liquidity', ${opts.severity}, ${opts.confidence ?? 0.9},
        'Finding', 'Because evidence', '{}'::jsonb, '{}'::jsonb,
        ${`fp-${opts.severity}-${Math.random()}`}, ${opts.suppressed ?? false})
   `;
@@ -106,7 +107,12 @@ describe('RiskRepository.getFindingSeverityCounts', () => {
     await insertFinding({ scanRunId: newScan, severity: 'high' }); // high bucket
     await insertFinding({ scanRunId: newScan, severity: 'medium' }); // medium bucket
     await insertFinding({ scanRunId: newScan, severity: 'low' }); // low bucket
-    await insertFinding({ scanRunId: newScan, severity: 'info' }); // low bucket
+    // A rule that ran and found nothing records an `info` verdict. That is the
+    // absence of a finding, not a risk, so it counts in no bucket.
+    await insertFinding({ scanRunId: newScan, severity: 'info' }); // not a risk
+    // A rule that could not run records zero confidence; it is reported as
+    // unchecked, not as a low risk.
+    await insertFinding({ scanRunId: newScan, severity: 'low', confidence: 0 }); // unchecked
     await insertFinding({ scanRunId: newScan, severity: 'high', suppressed: true }); // ignored
 
     // A newer NON-canonical scan whose findings must never be counted.
@@ -125,7 +131,8 @@ describe('RiskRepository.getFindingSeverityCounts', () => {
       targetAddress: tokenAddressLower,
       high: 2,
       medium: 1,
-      low: 2,
+      low: 1,
+      unavailable: 1,
     });
   });
 
