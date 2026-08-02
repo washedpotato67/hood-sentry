@@ -1,22 +1,15 @@
 import Link from 'next/link';
-import { ChainStatusBar } from './chain-status-bar';
 import { SiteNav } from './site-nav';
+
+// The logo tile used by the header brand and the footer.
+export function BrandMark() {
+  return <img className="brand-mark" src="/sentry-logo-v3.png" alt="" aria-hidden="true" />;
+}
+
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
-      <div className="ticker" role="presentation">
-        <span>Contract control</span>
-        <i>·</i>
-        <span>Liquidity</span>
-        <i>·</i>
-        <span>Holder distribution</span>
-        <i>·</i>
-        <span>Oracle behavior</span>
-        <i>·</i>
-        <span className="ticker-hot">Market integrity</span>
-      </div>
       <SiteNav />
-      <ChainStatusBar />
       <main className="main">{children}</main>
       <SiteFooter />
     </div>
@@ -29,13 +22,14 @@ function SiteFooter() {
       <div className="footer-inner">
         <div className="footer-brand">
           <Link className="brand" href="/">
+            <BrandMark />
             SENTRY
           </Link>
           <p className="muted">Evidence-based token intelligence for Robinhood Chain.</p>
         </div>
         <nav className="footer-cols" aria-label="Footer">
           <div className="footer-col">
-            <h4>Research</h4>
+            <h2>Research</h2>
             <Link href="/discover">Discover</Link>
             <Link href="/trade">Trade</Link>
             <Link href="/portfolio">Portfolio</Link>
@@ -43,18 +37,18 @@ function SiteFooter() {
             <Link href="/alerts">Alerts</Link>
           </div>
           <div className="footer-col">
-            <h4>Intelligence</h4>
+            <h2>Intelligence</h2>
             <Link href="/projects">Projects</Link>
             <Link href="/reports">Reports</Link>
             <Link href="/methodology">Methodology</Link>
           </div>
           <div className="footer-col">
-            <h4>Developers</h4>
+            <h2>Developers</h2>
             <Link href="/api">API</Link>
             <Link href="/api-terms">API terms</Link>
           </div>
           <div className="footer-col">
-            <h4>Legal</h4>
+            <h2>Legal</h2>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/risk-disclosure">Risk disclosure</Link>

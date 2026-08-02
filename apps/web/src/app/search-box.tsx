@@ -39,9 +39,9 @@ function pushHistory(entry: SearchResult): void {
 
 /** A compact USD figure: $1.2M, $12.3K, $0.0000312. */
 function usd(value: string | null): string {
-  if (value === null) return '—';
+  if (value === null) return '·';
   const n = Number(value);
-  if (!Number.isFinite(n)) return '—';
+  if (!Number.isFinite(n)) return '·';
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
   if (n >= 1) return `$${n.toFixed(2)}`;
@@ -85,6 +85,7 @@ export function SearchBox() {
 
   // Global shortcuts: cmd/ctrl-K and "/" open the palette; the "/" is ignored
   // while typing in another field so it does not hijack ordinary input.
+  // Escape closes from anywhere — even when focus is not inside the panel.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
@@ -94,11 +95,13 @@ export function SearchBox() {
       if ((key === 'k' && (event.metaKey || event.ctrlKey)) || (key === '/' && !typing)) {
         event.preventDefault();
         setOpen(true);
+      } else if (key === 'escape') {
+        close();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [close]);
 
   useEffect(() => {
     if (!open) return;
@@ -184,9 +187,9 @@ export function SearchBox() {
       {open ? (
         // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop is a dismissal affordance, keyboard handled by Escape inside.
         <div className="cmd-backdrop" onClick={close}>
-          {/* biome-ignore lint/a11y/useSemanticElements: an anchored command-palette overlay, not a native <dialog> modal flow. */}
           <div
             className="cmd-panel"
+            /* biome-ignore lint/a11y/useSemanticElements: an anchored command-palette overlay, not a native <dialog> modal flow. */
             role="dialog"
             aria-modal="true"
             aria-label="Token search"
@@ -197,7 +200,7 @@ export function SearchBox() {
               <input
                 ref={inputRef}
                 className="cmd-input"
-                placeholder="Search by name, symbol, or address…"
+                placeholder="Where to? Name, symbol, or address…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -213,7 +216,7 @@ export function SearchBox() {
                 <div className="cmd-empty">No tokens found.</div>
               ) : null}
               {query.trim().length === 0 && history.length === 0 ? (
-                <div className="cmd-empty">Search any token on the chain.</div>
+                <div className="cmd-empty">Where to? Type a token name, symbol, or address.</div>
               ) : null}
 
               {shown.map((entry, index) => (

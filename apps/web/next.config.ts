@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@hood-sentry/shared'],
   output: 'standalone',
+  async redirects() {
+    return [
+      {
+        // The product IS the board: the site root lands straight on discovery.
+        source: '/',
+        destination: '/discover',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

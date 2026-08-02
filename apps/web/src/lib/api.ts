@@ -79,7 +79,7 @@ export function compactAddress(address: string): string {
 
 /** A short USD figure for headline stats: $1.2M, $12.3K, $0.0000312, or — for none. */
 export function formatCompactUsd(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return '—';
+  if (value === null || !Number.isFinite(value)) return '·';
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
   if (value >= 1) return `$${value.toFixed(2)}`;

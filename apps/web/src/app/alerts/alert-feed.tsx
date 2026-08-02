@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
 import { apiRequest, compactAddress } from '../../lib/api';
+import { useLivePoll } from '../../lib/use-live';
 import { useSession } from '../use-session';
 
 type AlertEvent = {
@@ -16,26 +16,21 @@ type AlertEvent = {
 
 export function AlertFeed() {
   const { session } = useSession();
-  const [events, setEvents] = useState<readonly AlertEvent[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  const load = useCallback(async () => {
-    const result = await apiRequest<readonly AlertEvent[]>('/v1/alert-events?limit=50');
-    if (result.ok) setEvents(result.data);
-    else setError(result.message);
-    setLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (session?.authenticated) void load();
-  }, [session, load]);
+  const {
+    data: events,
+    error,
+    updatedAt,
+  } = useLivePoll({
+    fetch: () => apiRequest<readonly AlertEvent[]>('/v1/alert-events?limit=50'),
+    initial: [] as readonly AlertEvent[],
+    enabled: session?.authenticated === true,
+  });
 
   if (session === null) return <p className="muted">Loading session…</p>;
   if (!session.authenticated)
     return <p className="unavailable">Connect your wallet to see your alerts.</p>;
-  if (error !== null) return <p className="danger">{error}</p>;
-  if (!loaded) return <p className="muted">Loading evidence alerts…</p>;
+  if (error !== null && events.length === 0) return <p className="danger">{error}</p>;
+  if (updatedAt === null) return <p className="muted">Loading evidence alerts…</p>;
 
   if (events.length === 0) {
     return (

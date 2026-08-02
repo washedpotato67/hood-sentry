@@ -4,16 +4,27 @@ test('public research pages render through the production Next.js routes', async
   // Scope link lookups to the primary header nav; the footer is a second
   // navigation landmark that also links to Discover/Trade.
   const primaryNav = page.getByRole('navigation', { name: 'Primary' });
+  // The board must stream without a refresh: the client polls the feed and the
+  // signal enrichment every ~15s, so a second poll round must show up on its own.
+  const feedPolls: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/sentry/v1/discovery/newTokens')) {
+      feedPolls.push(request.url());
+    }
+  });
+  // The site root has no landing page: it redirects straight to the board.
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Know the risk before you sign' })).toBeVisible();
-  await expect(primaryNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
-  await expect(page.getByText('Chain ID').first()).toBeVisible();
-
-  await primaryNav.getByRole('link', { name: 'Discover', exact: true }).click();
+  await expect(page).toHaveURL(/\/discover$/);
   await expect(page.getByRole('heading', { name: 'Discover' })).toBeVisible();
-  await expect(page.getByText('Organic rankings keep score components')).toBeVisible();
+  await expect(primaryNav.getByRole('link', { name: 'Discover', exact: true })).toBeVisible();
+  await primaryNav.getByRole('link', { name: 'Discover', exact: true }).click();
+  await expect(page).toHaveURL(/\/discover$/);
+  await expect(page.getByRole('heading', { name: 'Discover' })).toBeVisible();
+  await expect(page.getByText(/ranked by evidence/)).toBeVisible();
+  await expect.poll(() => feedPolls.length, { timeout: 25_000 }).toBeGreaterThanOrEqual(2);
 
-  await primaryNav.getByRole('link', { name: 'Trade', exact: true }).click();
+  // The Trade surface is a standalone page, reachable from every token row.
+  await page.goto('/trade');
   await expect(page.getByRole('heading', { name: 'Trade' })).toBeVisible();
   await expect(page.getByText('Your wallet signs and broadcasts.')).toBeVisible();
 });
@@ -105,7 +116,7 @@ test('authenticated alert controls submit a deterministic multi-channel rule', a
 
   await expect.poll(() => submittedRule).not.toBeNull();
   expect(submittedRule).toMatchObject({
-    chainId: 46630,
+    chainId: 4663,
     targetAddress: '0x2222222222222222222222222222222222222222',
     ruleType: 'large_transfer',
     condition: {

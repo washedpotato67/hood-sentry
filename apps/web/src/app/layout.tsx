@@ -1,24 +1,17 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Bebas_Neue, Hanken_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import { Shell } from './components';
 
-// Body / normal text — warm, refined humanist sans, kept for data legibility.
-const sans = Hanken_Grotesk({
+// Body / normal text — Inter, the terminal-register workhorse, kept for data
+// legibility. Headlines share it at heavier weights and tighter tracking.
+const sans = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
 });
-// Display / headlines — a tall condensed all-caps grotesque for editorial impact.
-const display = Bebas_Neue({
-  subsets: ['latin'],
-  variable: '--font-bebas',
-  weight: '400',
-  display: 'swap',
-});
-// Display / headlines use a condensed system stack (defined in globals.css),
-// so no web font loads for the big brutalist type — it matches on every OS.
+// Mono — addresses, labels, and readouts. The instrument's secondary voice.
 const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
@@ -34,14 +27,13 @@ export const metadata: Metadata = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${sans.variable} ${mono.variable} ${display.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${sans.variable} ${mono.variable}`} suppressHydrationWarning>
       <body>
         {/* Re-apply a pinned theme before paint so there's no flash. Dark is the
-            default when nothing is stored (CSS handles OS light preference). */}
+            default when nothing is stored (CSS handles OS light preference).
+            Authorized by its SHA-256 hash in the CSP (middleware.ts) rather than
+            a per-request nonce, which would differ between the HTML document and
+            its dev-mode RSC payload. */}
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: tiny inline no-flash theme script
           dangerouslySetInnerHTML={{

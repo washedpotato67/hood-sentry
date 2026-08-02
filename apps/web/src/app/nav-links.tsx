@@ -9,7 +9,6 @@ const LINKS = [
   { href: '/watchlists', label: 'Watchlists' },
   { href: '/alerts', label: 'Alerts' },
   { href: '/reports', label: 'Reports' },
-  { href: '/trade', label: 'Trade' },
 ] as const;
 
 export function NavLinks() {

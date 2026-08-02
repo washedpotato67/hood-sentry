@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { BrandMark } from './components';
 import { NavLinks } from './nav-links';
 import { SearchBox } from './search-box';
 import { ThemeToggle } from './theme-toggle';
@@ -43,6 +44,7 @@ export function SiteNav() {
   return (
     <nav className={`nav ${open ? 'is-open' : ''}`} aria-label="Primary">
       <Link className="brand" href="/">
+        <BrandMark />
         SENTRY
       </Link>
       <SearchBox />

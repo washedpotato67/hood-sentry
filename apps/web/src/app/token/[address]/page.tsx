@@ -1,8 +1,7 @@
-import Link from 'next/link';
-import { apiRequest, chainId, compactAddress, formatRaw } from '../../../lib/api';
-import { ErrorPanel, Page, Stat, Unavailable } from '../../components';
-import { AiReportPanel } from './ai-report-panel';
-import { ReportForm } from './report-form';
+import type { Metadata } from 'next';
+import { type ApiResult, apiRequest, chainId } from '../../../lib/api';
+import { ErrorPanel, Page } from '../../components';
+import { TokenView } from './token-view';
 
 type Finding = {
   id: string;
@@ -36,6 +35,7 @@ type TokenData = {
   metadataStatus: string;
   spamStatus: string;
   poolCount: number;
+  primaryPoolAddress: string | null;
   contract: { verified: boolean; isProxy: boolean } | null;
   risk: Risk;
 };
@@ -55,20 +55,17 @@ type PriceData = {
 
 const USDG = '0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168';
 
-/**
- * Machine reasons are for logs and clients, not for readers. Rendering the raw
- * code told visitors "NO_COMPLETED_SCAN: unavailable", which states a fact about
- * our pipeline rather than about the token they asked about.
- */
-function describeRiskUnavailable(reason: string | null | undefined): string {
-  switch (reason) {
-    case 'NO_COMPLETED_SCAN':
-      return 'No scan has completed for this token yet, so there are no findings to show. Scans run as a token’s on-chain evidence is indexed.';
-    case 'WITHHELD_PENDING_RULE_COVERAGE':
-      return 'The report is withheld until rule coverage is complete, so it cannot imply checks that did not run.';
-    default:
-      return 'The risk report is unavailable for this token.';
-  }
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ address: string }>;
+}): Promise<Metadata> {
+  const { address } = await params;
+  const token = await apiRequest<TokenData>(
+    `/v1/tokens/${encodeURIComponent(address)}?chainId=${chainId()}`,
+  );
+  const label = token.ok ? (token.data.symbol ?? token.data.name ?? null) : null;
+  return { title: label ?? 'Token' };
 }
 
 export default async function Token({ params }: { params: Promise<{ address: string }> }) {
@@ -83,8 +80,8 @@ export default async function Token({ params }: { params: Promise<{ address: str
       ? apiRequest<PriceData>(
           `/v1/tokens/${encodeURIComponent(address)}/price?chainId=${chain}&quoteAssetAddress=${USDG}`,
         )
-      : Promise.resolve({
-          ok: false as const,
+      : Promise.resolve<ApiResult<PriceData>>({
+          ok: false,
           status: 503,
           code: 'PRICE_SOURCE_UNAVAILABLE',
           message: 'No verified testnet quote asset is configured.',
@@ -97,84 +94,5 @@ export default async function Token({ params }: { params: Promise<{ address: str
       </Page>
     );
   }
-  const data = token.data;
-  const risk = data.risk;
-  const score = risk.score ?? null;
-  return (
-    <Page title={data.name ?? data.symbol ?? 'Token'}>
-      <p className="lede">
-        {data.symbol === null ? null : <strong>{data.symbol} · </strong>}
-        <code>{data.address}</code>
-      </p>
-      <div className="actions">
-        <Link href={`/trade?input=${data.address}`}>Prepare trade</Link>
-        <Link href={`/wallet/${data.address}`}>Inspect as wallet</Link>
-      </div>
-      <div className="grid">
-        <Stat
-          label="USDG price"
-          value={price.ok ? formatRaw(price.data.priceRaw, price.data.priceDecimals) : undefined}
-        />
-        <Stat label="Pools" value={data.poolCount.toString()} />
-        <Stat
-          label="Indexed holders"
-          value={holders.ok ? holders.data.holders.length.toString() : undefined}
-        />
-        {score === null ? null : (
-          <>
-            <Stat label="Risk grade" value={score.grade} />
-            <Stat label="Completeness" value={`${score.completenessPercent}%`} />
-          </>
-        )}
-        <Stat label="Contract source" value={data.contract?.verified ? 'Verified' : 'Unverified'} />
-      </div>
-      <section className="panel">
-        <h2>Evidence-backed risk report</h2>
-        {risk.scoreStatus === 'WITHHELD_PENDING_RULE_COVERAGE' ? (
-          <p className="muted">
-            No single score. A number hides which check actually failed. Each signal below is a
-            concrete, evidence-backed fact from live on-chain data, so you can see exactly what’s
-            flagged and decide for yourself.
-          </p>
-        ) : null}
-        {risk.status === 'unavailable' ? (
-          <p className="muted">{describeRiskUnavailable(risk.reason)}</p>
-        ) : (
-          <ul className="risk-list">
-            {(risk.findings ?? []).map((finding) => (
-              <li className="risk-item" key={finding.id}>
-                <div className="actions">
-                  <span className={`badge sev-${finding.severity.toLowerCase()}`}>
-                    {finding.severity}
-                  </span>
-                  <span className="badge">Confidence {finding.confidence}</span>
-                </div>
-                <strong>{finding.title}</strong>
-                <p>{finding.explanation}</p>
-              </li>
-            ))}
-            {(risk.findings ?? []).length === 0 ? <li>No active findings.</li> : null}
-          </ul>
-        )}
-      </section>
-      <AiReportPanel address={data.address} />
-      <section className="panel">
-        <h2>Top indexed holders</h2>
-        {holders.ok ? (
-          holders.data.holders.map((holder) => (
-            <div className="metric-row" key={holder.address}>
-              <Link href={`/wallet/${holder.address}`}>{compactAddress(holder.address)}</Link>
-              <span>
-                {formatRaw(holder.balanceRaw, data.decimals)} {data.symbol ?? ''}
-                {holder.supplyShareBps === null ? '' : ` · ${Number(holder.supplyShareBps) / 100}%`}
-              </span>
-            </div>
-          ))
-        ) : (
-          <Unavailable label="Holder projection" />
-        )}
-      </section>
-      <ReportForm address={data.address} />
-    </Page>
-  );
+  return <TokenView initialToken={token.data} initialHolders={holders} initialPrice={price} />;
 }

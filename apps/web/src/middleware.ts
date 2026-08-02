@@ -7,7 +7,7 @@ export function middleware(request: NextRequest) {
   const developmentScriptPolicy = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${developmentScriptPolicy}`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'sha256-JRA88BSMuRMJ2gRkzclz3c50KYvbJvdgA1ipFDrXUQA='${developmentScriptPolicy}`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https:`,
     `connect-src 'self' https:`,

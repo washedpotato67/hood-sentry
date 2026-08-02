@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import { compactAddress, formatRaw } from '../lib/api';
 import { riskGradeClass } from '../lib/risk';
-import { EmptyState } from './components';
-
 export type DiscoveryItem = {
   address: string;
   name: string | null;
@@ -10,8 +8,15 @@ export type DiscoveryItem = {
   priceRaw: string | null;
   priceDecimals: number | null;
   liquidityRaw: string | null;
+  liquidityDecimals: number | null;
+  liquidityChangeBps: string | null;
   volumeRaw: string | null;
   holderCount: string | null;
+  // When the token first appeared on chain; age filters (<24h) read it.
+  firstSeenAt: string | null;
+  // GeckoTerminal's /pools/ page expects a pool address, not a token address;
+  // the feed carries the deepest pool so Trade links land on a real page.
+  primaryPoolAddress: string | null;
   // Stripped from the feed while aggregate scoring is withheld, so it's optional.
   riskGrade?: string | null;
   riskCompletenessBps: string | null;
@@ -27,7 +32,7 @@ export type DiscoveryItem = {
 };
 
 // A tiny liquidity trend line, computed server-side (no client JS). Green when
-// the latest point is at or above the first, amber when it's fallen.
+// the latest point is at or above the first, red when it's fallen.
 function Sparkline({ points }: { points?: number[] }) {
   if (!points || points.length < 2) return null;
   // An all-zero series draws the same flat line as steady liquidity would, so it
@@ -49,7 +54,7 @@ function Sparkline({ points }: { points?: number[] }) {
     .join(' ');
   const first = points[0] ?? 0;
   const last = points[points.length - 1] ?? 0;
-  const stroke = last >= first ? 'var(--g-a)' : 'var(--g-d)';
+  const stroke = last >= first ? 'var(--g-a)' : 'var(--g-f)';
   return (
     <svg
       className="spark"
@@ -71,145 +76,111 @@ function Sparkline({ points }: { points?: number[] }) {
   );
 }
 
-// Compact severity beads: a colored dot at the worst level present, with counts.
-// "Clean" reads as an em-dash — no scan findings, not missing data.
-//
-// Rules the analyzer could not run are reported separately as "unchecked"
-// rather than folded into the low count. They are the absence of a verdict, and
-// showing them as low-severity risk makes an unscannable contract look risky
-// and a clean one look flawed.
-function Signals({ signals }: { signals?: DiscoveryItem['signals'] }) {
-  if (!signals) return <span className="muted">—</span>;
-  const assessed = signals.high + signals.medium + signals.low;
-  if (assessed === 0) {
-    return signals.unavailable > 0 ? (
-      <span className="muted" title="Rules the analyzer could not run against this token">
-        {signals.unavailable} unchecked
-      </span>
-    ) : (
-      <span className="muted">—</span>
-    );
-  }
-  const parts: string[] = [];
-  if (signals.high > 0) parts.push(`${signals.high} high`);
-  if (signals.medium > 0) parts.push(`${signals.medium} med`);
-  if (signals.low > 0) parts.push(`${signals.low} low`);
-  const worst = signals.high > 0 ? 'b-high' : signals.medium > 0 ? 'b-med' : 'b-low';
+// ─── Terminal board rows ────────────────────────────────────────────────────
+// The dense list rows behind the discovery board: a logo tile, name and meta,// tabular volume/liquidity stats, then price, holders, and a row action. Every
+// field is real feed data — no fabricated change or trade counts.
+
+function RowInitials(item: DiscoveryItem): string {
+  const source = item.symbol ?? item.name;
+  if (!source) return '?';
+  const words = source.trim().split(/\s+/);
+  if (words.length === 1) return (words[0] ?? '').slice(0, 3).toUpperCase() || '?';
+  const first = words[0]?.[0] ?? '';
+  const second = words[1]?.[0] ?? '';
+  return `${first}${second}`.toUpperCase() || '?';
+}
+
+// The worst severity present in a token's finding beads, if any.
+function worstSeverity(signals?: DiscoveryItem['signals']): string | null {
+  if (!signals) return null;
+  if (signals.high > 0) return 'b-high';
+  if (signals.medium > 0) return 'b-med';
+  if (signals.low > 0) return 'b-low';
+  return null;
+}
+
+// The row's meta strip: holder count, severity beads, unchecked count, grade.
+function TrowMeta({ item, holders }: { item: DiscoveryItem; holders: number | null }) {
+  const signals = item.signals;
+  const worst = worstSeverity(signals);
+  const count = signals ? signals.high + signals.medium + signals.low : 0;
   return (
-    <span className="sig">
-      <span className={`bead ${worst}`} aria-hidden="true" />
-      <span className="count">{parts.join(' · ')}</span>
-      {signals.unavailable > 0 ? (
-        <span className="muted" title="Rules the analyzer could not run against this token">
-          {' '}
-          · {signals.unavailable} unchecked
+    <span className="trow-meta">
+      {holders === null ? <span>·</span> : <span>{holders.toLocaleString('en-US')} holders</span>}
+      {worst !== null && count > 0 ? (
+        <span className="sig">
+          <span className={`bead ${worst}`} aria-hidden="true" />
+          <span>{count}</span>
         </span>
+      ) : null}
+      {signals !== undefined && signals.unavailable > 0 ? (
+        <span title="Rules the analyzer could not run against this token">
+          {signals.unavailable} unchecked
+        </span>
+      ) : null}
+      {item.riskGrade ? (
+        <span className={`trow-risk ${riskGradeClass(item.riskGrade)}`}>{item.riskGrade}</span>
       ) : null}
     </span>
   );
 }
 
-export function DiscoveryTable({ items }: { items: readonly DiscoveryItem[] }) {
-  if (items.length === 0)
-    return (
-      <EmptyState
-        title="Nothing indexed here yet"
-        action={<Link href="/methodology">How ranking works →</Link>}
-      >
-        Tokens surface here as their on-chain evidence lands. Indexing currently trails the chain
-        head. The block Sentry has reached, and how far behind that is, are shown in the status bar
-        above. Nothing is ranked until its evidence is indexed.
-      </EmptyState>
-    );
+// The one trade action everywhere: GeckoTerminal's pool page for this token.
+// The pool address is what GeckoTerminal routes on; the token address is the
+// fallback for tokens without an indexed or aggregated pool yet.
+export function TradeLink({
+  pool,
+  token,
+  className = 'trow-trade',
+}: {
+  pool: string | null;
+  token: string;
+  className?: string;
+}) {
   return (
-    <>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Token</th>
-              <th>Price</th>
-              <th>Liquidity</th>
-              <th>Volume</th>
-              <th>Holders</th>
-              <th>Risk</th>
-              <th>Signals</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.address} className="table-row-link">
-                <td>
-                  <Link href={`/token/${item.address}`}>
-                    <strong>{item.symbol ?? item.name ?? 'Unknown token'}</strong>
-                    <br />
-                    <code className="muted">{compactAddress(item.address)}</code>
-                  </Link>
-                </td>
-                <td>{formatRaw(item.priceRaw, item.priceDecimals)}</td>
-                <td className="liq-cell">
-                  <Sparkline points={item.spark} />
-                  {formatRaw(item.liquidityRaw)}
-                </td>
-                <td>{formatRaw(item.volumeRaw)}</td>
-                <td>{item.holderCount ?? 'Unavailable'}</td>
-                <td>
-                  <span
-                    className={riskGradeClass(item.riskGrade)}
-                    title={
-                      item.riskGrade
-                        ? undefined
-                        : 'Aggregate grade withheld until rule coverage is complete'
-                    }
-                  >
-                    {item.riskGrade ?? '—'}
-                  </span>
-                </td>
-                <td>
-                  <Signals signals={item.signals} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <a
+      className={className}
+      href={`https://www.geckoterminal.com/robinhood/pools/${pool ?? token}`}
+      target="_blank"
+      rel="noreferrer noopener"
+    >
+      Trade
+    </a>
+  );
+}
 
-      {/* Below the table breakpoint the same rows render as cards: a table this
-          wide cannot show seven columns on a phone without either clipping or a
-          sideways scroll no one finds. */}
-      <div className="cards">
-        {items.map((item) => (
-          <article className="tcard" key={item.address}>
-            <Link className="tcard-head" href={`/token/${item.address}`}>
+export function DiscoveryRow({ item }: { item: DiscoveryItem }) {
+  const price = formatRaw(item.priceRaw, item.priceDecimals);
+  const holders = item.holderCount === null ? null : Number(item.holderCount);
+  return (
+    <div className="trow">
+      <Link className="trow-fill" href={`/token/${item.address}`}>
+        <span className="trow-main">
+          <span className="trow-logo">{RowInitials(item)}</span>
+          <span className="trow-id">
+            <span className="trow-name">
               <strong>{item.symbol ?? item.name ?? 'Unknown token'}</strong>
-              <code className="muted">{compactAddress(item.address)}</code>
-            </Link>
-            <div className="tcard-metrics">
-              <div>
-                <span className="muted">Price</span>
-                <span>{formatRaw(item.priceRaw, item.priceDecimals)}</span>
-              </div>
-              <div>
-                <span className="muted">Liquidity</span>
-                <span>{formatRaw(item.liquidityRaw)}</span>
-              </div>
-              <div>
-                <span className="muted">Volume</span>
-                <span>{formatRaw(item.volumeRaw)}</span>
-              </div>
-              <div>
-                <span className="muted">Holders</span>
-                <span>{item.holderCount ?? 'Unavailable'}</span>
-              </div>
-              <div>
-                <span className="muted">Risk</span>
-                <span className={riskGradeClass(item.riskGrade)}>{item.riskGrade ?? '—'}</span>
-              </div>
-            </div>
-            <Signals signals={item.signals} />
-          </article>
-        ))}
-      </div>
-    </>
+              <code>{compactAddress(item.address)}</code>
+            </span>
+            <TrowMeta item={item} holders={holders} />
+          </span>
+        </span>
+        <span className="trow-stats">
+          <span className="trow-stat">
+            <b className="stat-v">V</b>
+            <span>{formatRaw(item.volumeRaw)}</span>
+          </span>
+          <span className="trow-stat">
+            <b className="stat-lq">LQ</b>
+            <span>{formatRaw(item.liquidityRaw)}</span>
+          </span>
+        </span>
+        <span className="trow-foot">
+          <span className="trow-price">{price === 'Unavailable' ? '·' : price}</span>
+          <Sparkline points={item.spark} />
+        </span>
+      </Link>
+      <TradeLink pool={item.primaryPoolAddress} token={item.address} />
+    </div>
   );
 }

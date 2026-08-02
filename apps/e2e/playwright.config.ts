@@ -27,7 +27,7 @@ export default defineConfig({
       // Deliberately unreachable: the public pages must degrade rather than fail when the API
       // is down, which is the property these tests pin.
       SENTRY_API_INTERNAL_URL: 'http://127.0.0.1:65535',
-      NEXT_PUBLIC_ROBINHOOD_CHAIN_ID: '46630',
+      NEXT_PUBLIC_ROBINHOOD_CHAIN_ID: '4663',
       PORT: '3100',
       HOSTNAME: '127.0.0.1',
     },
