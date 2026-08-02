@@ -46,6 +46,8 @@
       ".next",
       ".turbo",
       ".claude",
+      ".agents",
+      ".vercel",
       "coverage",
       "out",
       "packages/contracts/out",

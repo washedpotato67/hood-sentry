@@ -38,6 +38,7 @@ VIOLATIONS=$(grep -r "process\.env" \
   | grep -v "drizzle\.config\.ts" \
   | grep -v "^\./apps/web/next\.config\.ts:" \
   | grep -v "^\./apps/e2e/playwright\.config\.ts:" \
+  | grep -v "^\./apps/e2e/playwright\.production\.config\.ts:" \
   | grep -v "^\./apps/web/src/lib/api\.ts:" \
   | grep -v "^\./apps/web/src/middleware\.ts:" \
   || true)

@@ -35,6 +35,8 @@ apps/e2e/blob-report/
 
 # Local tooling / agent artifacts
 .claude/
+.agents/
+.codex/
 .playwright-mcp/
 home.png
 
