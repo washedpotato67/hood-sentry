@@ -215,14 +215,19 @@ async function resolveToken(
   return aggregatorToken(chainId, checksum, options.market, options.holders, options.readCache);
 }
 
-async function resolvePoolCount(
+async function resolvePools(
   options: IntelligenceRouteOptions,
   chainId: number,
   checksum: `0x${string}`,
-): Promise<number> {
+): Promise<{ count: number; primaryPoolAddress: `0x${string}` | null }> {
   const indexed = await options.protocols.getPoolsByToken(chainId, checksum);
-  if (indexed.length > 0 || options.market === undefined) return indexed.length;
-  return (await options.market.pools(chainId, checksum)).length;
+  if (indexed.length > 0) {
+    const primary = indexed[0]?.poolAddress;
+    return { count: indexed.length, primaryPoolAddress: primary ?? null };
+  }
+  if (options.market === undefined) return { count: 0, primaryPoolAddress: null };
+  const pools = await options.market.pools(chainId, checksum);
+  return { count: pools.length, primaryPoolAddress: pools[0]?.address ?? null };
 }
 
 type LiveRiskResult = {
@@ -273,9 +278,9 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
     const input = target(request, options.defaultChainId);
     const token = await resolveToken(options, input.chainId, input.checksum, input.identity);
     if (token === null) throw new NotFoundError('Token', input.checksum);
-    const [contract, poolCount, report] = await Promise.all([
+    const [contract, pools, report] = await Promise.all([
       options.contracts.getContract(input.chainId, input.identity),
-      resolvePoolCount(options, input.chainId, input.checksum),
+      resolvePools(options, input.chainId, input.checksum),
       riskReport(options.risk, input.chainId, input.identity),
     ]);
     let contractOut =
@@ -284,7 +289,7 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
     // No indexed scan (the serve-don't-store default): compute a live risk report
     // from current facts, and fill contract verification from the same lookup.
     if (report.status === 'unavailable') {
-      const live = await liveRiskFor(options, input.chainId, input.checksum, poolCount);
+      const live = await liveRiskFor(options, input.chainId, input.checksum, pools.count);
       if (live !== null) {
         risk = live.risk;
         if (contractOut === null && live.contract !== null) contractOut = live.contract;
@@ -294,7 +299,8 @@ export async function intelligenceRoutes(app: FastifyInstance, options: Intellig
       data: {
         ...tokenData(token),
         contract: contractOut,
-        poolCount,
+        poolCount: pools.count,
+        primaryPoolAddress: pools.primaryPoolAddress,
         risk,
       },
     };
