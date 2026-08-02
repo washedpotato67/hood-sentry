@@ -34,7 +34,7 @@ describe('AI token report provider', () => {
     const fetchRequest = vi.fn<typeof fetch>().mockResolvedValue(
       chatResponse(
         JSON.stringify({
-          summary: 'A small-cap token with thin liquidity relative to its holder base.',
+          summary: 'A small-cap token — with thin liquidity relative to its holder base.',
           highlights: ['210 holders across 2 pools.'],
           watchouts: ['Liquidity is shallow at $45k.'],
           disclaimer: 'This is an overview from live data, not financial advice.',
@@ -50,7 +50,9 @@ describe('AI token report provider', () => {
 
     const result = await provider.generate(facts);
 
-    expect(result.report.summary).toContain('thin liquidity');
+    expect(result.report.summary).toBe(
+      'A small-cap token, with thin liquidity relative to its holder base.',
+    );
     expect(result.report.watchouts).toHaveLength(1);
     expect(result.model).toBe('openai/gpt-4o-mini');
     expect(result.providerResponseId).toBe('gen-abc123');

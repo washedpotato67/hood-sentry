@@ -174,7 +174,7 @@ export function computeLiveRiskFindings(input: LiveRiskInput): LiveRiskFinding[]
         confidence: 'high',
         title: 'Contract is an upgradeable proxy',
         explanation:
-          'The token is a proxy, so its logic can be changed after you buy — rules that hold today may not hold tomorrow.',
+          'The token is a proxy, so its logic can be changed after you buy. Rules that hold today may not hold tomorrow.',
         evidence: [{ label: 'Proxy', value: 'Yes' }],
       });
     }
@@ -190,7 +190,7 @@ export function computeLiveRiskFindings(input: LiveRiskInput): LiveRiskFinding[]
       confidence: 'high',
       title: 'No elevated risk signals from live data',
       explanation:
-        'The live checks — holder concentration, liquidity depth, pool count, volume-to-liquidity, and contract verification — found nothing elevated. Coverage is partial; this is not an audit.',
+        'The live checks (holder concentration, liquidity depth, pool count, volume-to-liquidity, and contract verification) found nothing elevated. Coverage is partial; this is not an audit.',
       evidence: [],
     });
   }
@@ -211,6 +211,6 @@ export function serializeLiveRisk(findings: readonly LiveRiskFinding[]): Record<
     scoreStatus: 'WITHHELD_PENDING_RULE_COVERAGE',
     findings,
     notice:
-      'Live evidence signals from current market and on-chain data. Partial coverage — not a full audit or financial advice.',
+      'Live evidence signals from current market and on-chain data. Partial coverage, not a full audit or financial advice.',
   };
 }

@@ -13,6 +13,16 @@ export type AiExplanation = {
   citations: readonly string[];
   groups: readonly { title: string; findingIds: readonly string[] }[];
 };
+
+/**
+ * Models reach for em dashes even when the prompt forbids them. Dash characters
+ * are typographic noise in a product whose UI avoids them, so they are stripped
+ * at the boundary: no generated prose can carry an em or en dash to the page.
+ */
+function stripDashes(text: string): string {
+  return text.replace(/\s*[\u2013\u2014]\s*/g, ', ');
+}
+
 export async function explainFindings(
   findings: readonly DeterministicFinding[],
   provider: AiProvider,
@@ -40,5 +50,5 @@ export async function explainFindings(
     !r.citations.every((id) => typeof id === 'string' && ids.has(id))
   )
     throw new Error('AI response contains invalid citations');
-  return { summary: r.summary, citations: r.citations, groups: [] };
+  return { summary: stripDashes(r.summary), citations: r.citations, groups: [] };
 }

@@ -20,6 +20,23 @@ describe('AI explanation controls', () => {
       ),
     ).resolves.toMatchObject({ citations: ['f1'] });
   });
+  it('strips em and en dashes from generated prose', async () => {
+    const findings = [
+      { id: 'f1', title: 'Risk', severity: 'high', confidence: 'high', evidence: ['chain'] },
+    ];
+    await expect(
+      explainFindings(
+        findings,
+        {
+          generate: async () => ({
+            summary: 'Owner control — a persistent privilege, 5–9 of them.',
+            citations: ['f1'],
+          }),
+        },
+        true,
+      ),
+    ).resolves.toMatchObject({ summary: 'Owner control, a persistent privilege, 5, 9 of them.' });
+  });
   it('works without AI', async () => {
     await expect(explainFindings([], { generate: async () => ({}) }, false)).resolves.toMatchObject(
       { summary: 'AI explanations are disabled.' },

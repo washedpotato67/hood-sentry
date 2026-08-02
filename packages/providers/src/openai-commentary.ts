@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ProviderHttpClient, ProviderHttpError } from './http-client.js';
 import { getProviderDefinition, getProviderServiceUrl } from './registry.js';
 
-export const RISK_COMMENTARY_PROMPT_VERSION = 'risk-commentary-v1';
+export const RISK_COMMENTARY_PROMPT_VERSION = 'risk-commentary-v2';
 
 export const riskCommentarySchema = z
   .object({
@@ -206,8 +206,15 @@ export class OpenAiRiskCommentaryProvider {
       );
     }
 
+    const c = commentary.data;
+    const clean = (text: string): string => text.replace(/\s*[\u2013\u2014]\s*/g, ', ');
     return {
-      commentary: commentary.data,
+      commentary: {
+        summary: clean(c.summary),
+        evidenceHighlights: c.evidenceHighlights.map(clean),
+        limitations: c.limitations.map(clean),
+        userActions: c.userActions.map(clean),
+      },
       providerResponseId: response.data.id,
       providerId: 'openai',
       model: response.data.model,

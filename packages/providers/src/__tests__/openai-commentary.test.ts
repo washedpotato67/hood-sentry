@@ -62,7 +62,7 @@ describe('OpenAI risk commentary provider', () => {
                   type: 'output_text',
                   text: JSON.stringify({
                     summary: 'The report identifies one medium privilege warning.',
-                    evidenceHighlights: ['Owner control is present.'],
+                    evidenceHighlights: ['Owner control is present — with a timelock pending.'],
                     limitations: ['The scan covers block 100.'],
                     userActions: ['Review the owner address.'],
                   }),
@@ -85,8 +85,10 @@ describe('OpenAI risk commentary provider', () => {
     await expect(provider.generate(input)).resolves.toMatchObject({
       providerResponseId: 'resp_123',
       providerId: 'openai',
-      promptVersion: 'risk-commentary-v1',
-      commentary: { evidenceHighlights: ['Owner control is present.'] },
+      promptVersion: 'risk-commentary-v2',
+      commentary: {
+        evidenceHighlights: ['Owner control is present, with a timelock pending.'],
+      },
       inputTokens: 100,
       outputTokens: 40,
     });

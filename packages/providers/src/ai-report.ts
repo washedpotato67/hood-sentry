@@ -118,8 +118,17 @@ const SYSTEM_PROMPT = [
   'Respond with a single JSON object and nothing else, matching exactly:',
   '{"summary": string, "highlights": string[] (<=5), "watchouts": string[] (<=5), "disclaimer": string}',
   'Keep summary under 900 characters. Each highlight/watchout under 200 characters. The disclaimer must note this is not financial advice.',
-  'Write with plain punctuation only. Never use em dashes (—); use periods, commas, or colons instead.',
+  'Write with plain punctuation only. Never use em dashes; use periods, commas, or colons instead.',
 ].join(' ');
+
+/**
+ * Models slip em dashes into prose even when the prompt bans them. The web UI
+ * avoids dash characters, so every rendered field is normalized at the provider
+ * boundary: whatever the model says, no em or en dash reaches the page.
+ */
+function stripDashes(text: string): string {
+  return text.replace(/\s*[\u2013\u2014]\s*/g, ', ');
+}
 
 /**
  * An AI narrator for a token's live facts, backed by any OpenAI-compatible Chat
@@ -244,7 +253,12 @@ export class AiTokenReportProvider {
     }
 
     return {
-      report: report.data,
+      report: {
+        summary: stripDashes(report.data.summary),
+        highlights: report.data.highlights.map(stripDashes),
+        watchouts: report.data.watchouts.map(stripDashes),
+        disclaimer: stripDashes(report.data.disclaimer),
+      },
       model: response.data.model ?? this.model,
       providerResponseId: response.data.id,
       promptVersion: AI_REPORT_PROMPT_VERSION,
