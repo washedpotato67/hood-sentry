@@ -20,7 +20,7 @@
     "@hood-sentry/observability": "workspace:*",
     "@hood-sentry/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "viem": "^2.55.1",
+    "viem": "^2.55.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {

@@ -32,7 +32,7 @@
     "@hood-sentry/trading": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.2.1",
-    "viem": "^2.55.1",
+    "viem": "^2.55.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {

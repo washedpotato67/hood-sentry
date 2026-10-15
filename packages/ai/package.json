@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@hood-sentry/shared": "workspace:*",
-    "viem": "^2.22.8",
+    "viem": "^2.55.8",
     "zod": "^3.24.1"
   },
   "devDependencies": {
