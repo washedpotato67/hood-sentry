@@ -26,7 +26,7 @@
     "@hood-sentry/queue": "workspace:*",
     "@hood-sentry/risk-engine": "workspace:*",
     "@hood-sentry/shared": "workspace:*",
-    "bullmq": "^5.34.8",
+    "bullmq": "^5.81.1",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.4.2",
     "viem": "^2.22.8",
